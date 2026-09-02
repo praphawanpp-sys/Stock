@@ -33,6 +33,24 @@ categories = [
     "เมล็ดกาแฟ / Coffee Beans",
 ]
 
+# หน่วยนับที่เพิ่มตามที่คุณต้องการ
+unit_options = [
+    "Kg.",
+    "Gram",
+    "Pack",
+    "Bottle",
+    "Can",
+    "Box",
+    "Pcs.",
+    "Bag",
+    "Litres",
+    "Tray",
+    "Gallon",
+    "Case",
+    "Jar",
+    "Cup",
+]
+
 # สร้างฐานข้อมูลจำลองแยกตามบริษัทใน session_state
 if "company_inventories" not in st.session_state:
   st.session_state.company_inventories = {}
@@ -77,14 +95,14 @@ if "transactions" not in st.session_state:
 # --- ส่วนหัวของเว็บ ---
 st.title("🍽️ ระบบจัดการสต็อกวัตถุดิบ (Food Cost Control)")
 
-# 1. ย้าย "เลือกบริษัท / สาขา" มาไว้ที่ Sidebar (เมนูด้านข้าง)
+# 1. เลือกบริษัท / สาขา ที่ Sidebar
 selected_company = st.sidebar.selectbox(
     "🏢 กรุณาเลือกบริษัท / สาขา:", companies
 )
 
 st.sidebar.markdown("---")
 
-# 2. ย้าย "เลือกเมนูการใช้งาน" มาไว้ที่หน้าจอหลัก (Main Screen)
+# 2. เลือกเมนูการใช้งาน (เพิ่มเมนูนับสต็อกสิ้นเดือนแล้ว)
 menu = st.selectbox(
     "📌 เลือกเมนูการใช้งาน",
     [
@@ -92,6 +110,7 @@ menu = st.selectbox(
         "📦 จัดการรายการสินค้า (Master)",
         "📥 บันทึกรับเข้าสินค้า (Stock In)",
         "📜 ประวัติการรับสินค้า",
+        "📋 นับสต็อกตอนสิ้นเดือน (End of Month)",
     ],
 )
 
@@ -99,6 +118,12 @@ st.markdown("---")
 
 # ดึงข้อมูลของบริษัทที่ถูกเลือกปัจจุบัน
 current_inv = st.session_state.company_inventories[selected_company]
+trans_df = st.session_state.transactions
+
+# ดึงรายชื่อ Supplier เก่าจากระบบ (ถ้ามี) มาทำ Dropdown
+existing_suppliers = (
+    trans_df["Supplier"].unique().tolist() if len(trans_df) > 0 else []
+)
 
 # ---------------------------------------------------------
 # เมนูที่ 1: หน้าแรก / สรุปภาพรวม
@@ -128,60 +153,192 @@ if menu == "📊 หน้าแรก / สรุปภาพรวม":
     st.dataframe(current_inv, use_container_width=True)
   else:
     st.info(
-        f"ยังไม่มีข้อมูลสินค้าใน {selected_company} กรุณาเพิ่มสินค้าที่เมนู 'จัดการรายการสินค้า'"
+        f"ยังไม่มีข้อมูลสินค้าใน {selected_company}"
+        " กรุณาเพิ่มสินค้าหรือนำเข้าจากไฟล์ Excel"
     )
 
 # ---------------------------------------------------------
-# เมนูที่ 2: จัดการรายการสินค้า (Product Master)
+# เมนูที่ 2: จัดการรายการสินค้า (Product Master & Import Excel)
 # ---------------------------------------------------------
 elif menu == "📦 จัดการรายการสินค้า (Master)":
   st.header(f"จัดการรายการวัตถุดิบ: {selected_company}")
 
+  # 📂 ส่วนนำเข้าข้อมูลจากไฟล์ Excel หรือ CSV
+  with st.expander("📥 นำเข้าข้อมูลรายการสินค้าจากไฟล์ Excel / CSV"):
+    uploaded_file = st.file_uploader(
+        "เลือกไฟล์ Excel หรือ CSV", type=["xlsx", "csv"]
+    )
+    if uploaded_file is not None:
+      try:
+        if uploaded_file.name.endswith(".csv"):
+          df_import = pd.read_csv(uploaded_file)
+        else:
+          df_import = pd.read_excel(uploaded_file)
+
+        st.write("ตัวอย่างข้อมูลที่อ่านได้:")
+        st.dataframe(df_import.head())
+
+        if st.button("ยืนยันการนำเข้าข้อมูลเข้าสู่ระบบ"):
+          required_cols = [
+              "Item Name",
+              "Category",
+              "Unit",
+              "Stock Balance",
+              "Last Price",
+          ]
+          if all(col in df_import.columns for col in required_cols):
+            if "Product Code" not in df_import.columns:
+              df_import["Product Code"] = "AUTO-IMP"
+
+            st.session_state.company_inventories[selected_company] = (
+                pd.concat(
+                    [
+                        st.session_state.company_inventories[selected_company],
+                        df_import[
+                            [
+                                "Product Code",
+                                "Item Name",
+                                "Category",
+                                "Unit",
+                                "Stock Balance",
+                                "Last Price",
+                            ]
+                        ],
+                    ],
+                    ignore_index=True,
+                )
+                .drop_duplicates(subset=["Item Name"], keep="last")
+            )
+            st.success("นำเข้าข้อมูลสำเร็จ!")
+            st.rerun()
+          else:
+            st.error(
+                "ชื่อคอลัมน์ในไฟล์ไม่ถูกต้อง (ต้องมี Item Name, Category, Unit,"
+                " Stock Balance, Last Price)"
+            )
+      except Exception as e:
+        st.error(f"เกิดข้อผิดพลาด: {e}")
+
+  st.markdown("---")
+
   with st.form("add_product_form", clear_on_submit=True):
-    st.subheader("➕ เพิ่มวัตถุดิบใหม่")
+    st.subheader("➕ เพิ่มวัตถุดิบ / บันทึกรับเข้า")
+
     col1, col2 = st.columns(2)
     with col1:
-      new_code = st.text_input("รหัสสินค้า (Product Code)")
-      new_name = st.text_input("ชื่อวัตถุดิบ (ไทย / อังกฤษ)")
-      new_category = st.selectbox("หมวดหมู่วัตถุดิบ", categories)
-    with col2:
-      new_unit = st.text_input("หน่วยนับ (เช่น Kg., Pack, Bottle, Pcs.)")
-      new_price = st.number_input(
-          "ราคาตั้งต้น / ราคาล่าสุดต่อหน่วย (บาท)", min_value=0.0, step=0.1
+      # ชื่อ Supplier แบบ Dropdown / พิมพ์ใหม่
+      sup_mode = st.radio(
+          "รูปแบบการเลือกชื่อ Supplier",
+          ["เลือกจากประวัติเดิม", "พิมพ์ชื่อ Supplier ใหม่"],
+          horizontal=True,
       )
-      new_stock = st.number_input("ยอดสต็อกเริ่มต้น", min_value=0.0, step=0.1)
+      if sup_mode == "เลือกจากประวัติเดิม" and len(existing_suppliers) > 0:
+        supplier_name = st.selectbox("1. ชื่อ Supplier", existing_suppliers)
+      else:
+        supplier_name = st.text_input(
+            "1. ชื่อ Supplier ใหม่ (เช่น Makro, Big Green)"
+        )
 
-    submit_button = st.form_submit_button(label="บันทึกเพิ่มสินค้า")
+      purchase_date = st.date_input("2. วันที่รับเข้า", value=datetime.today())
+
+      existing_items = (
+          current_inv["Item Name"].tolist() if len(current_inv) > 0 else []
+      )
+      item_mode = st.radio(
+          "รูปแบบชื่อวัตถุดิบ",
+          ["เลือกจากที่มีอยู่เดิม", "พิมพ์ชื่อวัตถุดิบใหม่"],
+          horizontal=True,
+      )
+      if item_mode == "เลือกจากที่มีอยู่เดิม" and len(existing_items) > 0:
+        item_name = st.selectbox("3. ชื่อวัตถุดิบ", existing_items)
+      else:
+        item_name = st.text_input("3. ชื่อวัตถุดิบใหม่ (ไทย / อังกฤษ)")
+
+      quantity = st.number_input(
+          "4. จำนวนสินค้า", min_value=0.0, step=0.1, value=1.0
+      )
+
+    with col2:
+      # หน่วยนับแบบ Dropdown ตามรายการที่คุณต้องการ
+      unit = st.selectbox("5. หน่วยนับ", unit_options)
+
+      price = st.number_input(
+          "6. ราคาต่อหน่วย (บาท)", min_value=0.0, step=0.1, value=0.0
+      )
+      vat_type = st.selectbox("ประเภทภาษี (Vat)", ["Non Vat", "Vat 7%"])
+      category = st.selectbox("7. หมวดหมู่วัตถุดิบ", categories)
+
+    product_code = st.text_input(
+        "รหัสสินค้า (Product Code) - ถ้ามี", value="AUTO-001"
+    )
+
+    submit_button = st.form_submit_button(label="บันทึกข้อมูล")
 
     if submit_button:
-      if new_code and new_name:
-        new_row = pd.DataFrame({
-            "Product Code": [new_code],
-            "Item Name": [new_name],
-            "Category": [new_category],
-            "Unit": [new_unit],
-            "Stock Balance": [new_stock],
-            "Last Price": [new_price],
+      if item_name and supplier_name:
+        base_total = quantity * price
+        final_total = base_total * 1.07 if vat_type == "Vat 7%" else base_total
+
+        if len(current_inv) > 0 and item_name in current_inv["Item Name"].values:
+          idx = current_inv[current_inv["Item Name"] == item_name].index[0]
+          old_stock = current_inv.loc[idx, "Stock Balance"]
+          st.session_state.company_inventories[selected_company].loc[
+              idx, "Stock Balance"
+          ] = (old_stock + quantity)
+          st.session_state.company_inventories[selected_company].loc[
+              idx, "Last Price"
+          ] = price
+          st.session_state.company_inventories[selected_company].loc[
+              idx, "Unit"
+          ] = unit
+          st.session_state.company_inventories[selected_company].loc[
+              idx, "Category"
+          ] = category
+        else:
+          new_row = pd.DataFrame({
+              "Product Code": [product_code],
+              "Item Name": [item_name],
+              "Category": [category],
+              "Unit": [unit],
+              "Stock Balance": [quantity],
+              "Last Price": [price],
+          })
+          st.session_state.company_inventories[selected_company] = pd.concat(
+              [current_inv, new_row], ignore_index=True
+          )
+
+        new_trans = pd.DataFrame({
+            "Company": [selected_company],
+            "Date": [str(purchase_date)],
+            "Supplier": [supplier_name],
+            "Item Name": [item_name],
+            "Quantity": [quantity],
+            "Price/Unit": [price],
+            "Vat Type": [vat_type],
+            "Total Price": [final_total],
         })
-        st.session_state.company_inventories[selected_company] = pd.concat(
-            [current_inv, new_row], ignore_index=True
+        st.session_state.transactions = pd.concat(
+            [st.session_state.transactions, new_trans], ignore_index=True
         )
-        st.success(f"เพิ่มวัตถุดิบ '{new_name}' สำเร็จเรียบร้อย!")
+
+        st.success(
+            f"บันทึกรายการ '{item_name}' จาก '{supplier_name}' สำเร็จ!"
+        )
         st.rerun()
       else:
-        st.error("กรุณากรอกรหัสสินค้าและชื่อสินค้าให้ครบถ้วน")
+        st.error("กรุณากรอกชื่อ Supplier และชื่อวัตถุดิบให้ครบถ้วน")
 
-  st.subheader("รายการสินค้าทั้งหมดในบริษัทนี้")
+  st.subheader("รายการสินค้าคงเหลือปัจจุบันในบริษัทนี้")
   st.dataframe(
       st.session_state.company_inventories[selected_company],
       use_container_width=True,
   )
 
 # ---------------------------------------------------------
-# เมนูที่ 3: บันทึกรับเข้าสินค้า (Stock In)
+# เมนูที่ 3: บันทึกรับเข้าสินค้า (Stock In) - ปรับช่องร้านค้าเป็น Dropdown
 # ---------------------------------------------------------
 elif menu == "📥 บันทึกรับเข้าสินค้า (Stock In)":
-  st.header(f"บันทึกรับเข้าวัตถุดิบ: {selected_company}")
+  st.header(f"บันทึกรับเข้าวัตถุดิบเพิ่มเติม: {selected_company}")
 
   if len(current_inv) > 0:
     with st.form("stock_in_form"):
@@ -195,9 +352,20 @@ elif menu == "📥 บันทึกรับเข้าสินค้า (St
         purchase_date = st.date_input(
             "วันที่ซื้อ / รับเข้า", value=datetime.today()
         )
-        supplier_name = st.text_input(
-            "ร้านค้าที่ซื้อ (เช่น Big Green, Makro ฯลฯ)"
+
+        # ทำช่องร้านค้าที่ซื้อให้เป็น Dropdown (เลือกจากประวัติ หรือพิมพ์เพิ่ม)
+        sup_in_mode = st.radio(
+            "เลือกวิธีระบุ Supplier",
+            ["เลือกจากประวัติเดิม", "พิมพ์ชื่อร้านค้าใหม่"],
+            horizontal=True,
         )
+        if sup_in_mode == "เลือกจากประวัติเดิม" and len(existing_suppliers) > 0:
+          supplier_name = st.selectbox(
+              "ชื่อ Supplier (ร้านค้าที่ซื้อ)", existing_suppliers
+          )
+        else:
+          supplier_name = st.text_input("ชื่อ Supplier ใหม่ (ร้านค้าที่ซื้อ)")
+
       with col2:
         qty_in = st.number_input(
             "จำนวนที่รับเข้า", min_value=0.1, step=0.1, value=1.0
@@ -212,19 +380,13 @@ elif menu == "📥 บันทึกรับเข้าสินค้า (St
       if submit_in:
         if supplier_name:
           base_total = qty_in * actual_price
-          if vat_type == "Vat 7%":
-            final_total = base_total * 1.07
-          else:
-            final_total = base_total
+          final_total = base_total * 1.07 if vat_type == "Vat 7%" else base_total
 
           idx = current_inv[current_inv["Item Name"] == selected_item].index[0]
-
           old_stock = current_inv.loc[idx, "Stock Balance"]
-          new_stock_balance = old_stock + qty_in
-
           st.session_state.company_inventories[selected_company].loc[
               idx, "Stock Balance"
-          ] = new_stock_balance
+          ] = (old_stock + qty_in)
           st.session_state.company_inventories[selected_company].loc[
               idx, "Last Price"
           ] = actual_price
@@ -245,13 +407,13 @@ elif menu == "📥 บันทึกรับเข้าสินค้า (St
 
           st.success(
               f"บันทึกรับเข้า '{selected_item}' จำนวน {qty_in} จากร้าน"
-              f" '{supplier_name}' ({vat_type}) ยอดรวมสุทธิ"
-              f" {final_total:,.2f} บาท สำเร็จ!"
+              f" '{supplier_name}' สำเร็จ!"
           )
+          st.rerun()
         else:
-          st.error("กรุณาระบุชื่อร้านค้าที่ซื้อ")
+          st.error("กรุณาระบุชื่อ Supplier")
   else:
-    st.warning("ยังไม่มีรายการสินค้า กรุณาเพิ่มสินค้าในเมนูก่อนครับ")
+    st.warning("ยังไม่มีรายการสินค้า กรุณาเพิ่มสินค้าก่อนครับ")
 
 # ---------------------------------------------------------
 # เมนูที่ 4: ประวัติการรับสินค้า / รายงานสิ้นเดือน
@@ -300,9 +462,59 @@ elif menu == "📜 ประวัติการรับสินค้า":
           file_name=(
               f"Stock_Report_{selected_company}_{selected_year}-{selected_month:02d}.csv"
           ),
-          mime="text/css",
+          mime="text/csv",
       )
     else:
       st.info(f"ยังไม่มีประวัติการรับสินค้าของบริษัท {selected_company}")
   else:
     st.info("ยังไม่มีประวัติการทำรายการรับเข้าสินค้าในระบบ")
+
+# ---------------------------------------------------------
+# เมนูที่ 5: นับสต็อกตอนสิ้นเดือน (End of Month Stock Count)
+# ---------------------------------------------------------
+elif menu == "📋 นับสต็อกตอนสิ้นเดือน (End of Month)":
+  st.header(f"นับสต็อกคงเหลือหน้างานประจำสิ้นเดือน: {selected_company}")
+
+  if len(current_inv) > 0:
+    st.write(
+        "กรุณากรอก **'ยอดนับจริง (Actual Count)'** ลงในตารางด้านล่างนี้"
+        " เพื่อปรับปรุงยอดสต็อกให้ตรงกับหน้างานจริง"
+    )
+
+    # สร้างตารางจำลองสำหรับการแก้ไขยอดนับจริง
+    count_df = current_inv[["Item Name", "Category", "Unit", "Stock Balance"]].copy()
+    count_df.rename(
+        columns={"Stock Balance": "System Balance (ยอดในระบบ)"}, inplace=True
+    )
+    count_df["Actual Count (ยอดนับจริง)"] = count_df[
+        "System Balance (ยอดในระบบ)"
+    ]
+
+    # ใช้ data_editor ให้ผู้ใช้นัปและแก้ไขยอดจริงได้
+    edited_df = st.data_editor(
+        count_df,
+        column_config={
+            "Actual Count (ยอดนับจริง)": st.column_config.NumberColumn(
+                "Actual Count (ยอดนับจริง)", min_value=0.0, step=0.1, required=True
+            )
+        },
+        disabled=["Item Name", "Category", "Unit", "System Balance (ยอดในระบบ)"],
+        use_container_width=True,
+    )
+
+    if st.button("💾 บันทึกและปรับปรุงยอดสต็อกสิ้นเดือน"):
+      for idx, row in edited_df.iterrows():
+        item_name = row["Item Name"]
+        actual_val = row["Actual Count (ยอดนับจริง)"]
+        # อัปเดตสต็อกจริงลงในระบบหลัก
+        orig_idx = current_inv[current_inv["Item Name"] == item_name].index[0]
+        st.session_state.company_inventories[selected_company].loc[
+            orig_idx, "Stock Balance"
+        ] = actual_val
+
+      st.success("บันทึกยอดนับสต็อกสิ้นเดือนและปรับปรุงยอดคงเหลือเรียบร้อยแล้ว!")
+      st.rerun()
+  else:
+    st.info(
+        f"ยังไม่มีรายการสินค้าใน {selected_company} กรุณาเพิ่มสินค้าก่อนนับสต็อก"
+    )
