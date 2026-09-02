@@ -15,6 +15,7 @@ companies = [
     "Taboo By Daddy Deli (Branch 0002)",
     "Daddy Deli Pattaya Group (Head Office)",
     "Harvest Bakery And Restaurant (Head Office)",
+    "Daddy Deli Beach House (Head Office)",
 ]
 
 # หมวดหมู่วัตถุดิบ
@@ -76,21 +77,25 @@ if "transactions" not in st.session_state:
 # --- ส่วนหัวของเว็บ ---
 st.title("🍽️ ระบบจัดการสต็อกวัตถุดิบ (Food Cost Control)")
 
-# 1. เมนูด้านข้าง (Sidebar) สำหรับเลือกเมนูการใช้งาน
-menu = st.markdown(
-    "เลือกเมนูการใช้งาน",
+# 1. ย้าย "เลือกบริษัท / สาขา" มาไว้ที่ Sidebar (เมนูด้านข้าง)
+selected_company = st.sidebar.selectbox(
+    "🏢 กรุณาเลือกบริษัท / สาขา:", companies
+)
+
+st.sidebar.markdown("---")
+
+# 2. ย้าย "เลือกเมนูการใช้งาน" มาไว้ที่หน้าจอหลัก (Main Screen)
+menu = st.selectbox(
+    "📌 เลือกเมนูการใช้งาน",
     [
         "📊 หน้าแรก / สรุปภาพรวม",
         "📦 จัดการรายการสินค้า (Master)",
         "📥 บันทึกรับเข้าสินค้า (Stock In)",
         "📜 ประวัติการรับสินค้า",
     ],
-)    
-
-# 2. ปุ่มเลือกบริษัท/สาขา
-selected_company = st.selectbox(
-    "🏢 กรุณาเลือกบริษัท / สาขาที่ต้องการจัดการ:", companies
 )
+
+st.markdown("---")
 
 # ดึงข้อมูลของบริษัทที่ถูกเลือกปัจจุบัน
 current_inv = st.session_state.company_inventories[selected_company]
@@ -138,7 +143,6 @@ elif menu == "📦 จัดการรายการสินค้า (Maste
     with col1:
       new_code = st.text_input("รหัสสินค้า (Product Code)")
       new_name = st.text_input("ชื่อวัตถุดิบ (ไทย / อังกฤษ)")
-      # ใช้ Dropdown สำหรับเลือกหมวดหมู่
       new_category = st.selectbox("หมวดหมู่วัตถุดิบ", categories)
     with col2:
       new_unit = st.text_input("หน่วยนับ (เช่น Kg., Pack, Bottle, Pcs.)")
@@ -185,7 +189,6 @@ elif menu == "📥 บันทึกรับเข้าสินค้า (St
 
       col1, col2 = st.columns(2)
       with col1:
-        # ดึงรายชื่อสินค้าที่มีอยู่แล้วมาทำเป็น Dropdown ให้เลือกอัตโนมัติ
         selected_item = st.selectbox(
             "เลือกวัตถุดิบที่มีในระบบ", current_inv["Item Name"].tolist()
         )
@@ -297,7 +300,7 @@ elif menu == "📜 ประวัติการรับสินค้า":
           file_name=(
               f"Stock_Report_{selected_company}_{selected_year}-{selected_month:02d}.csv"
           ),
-          mime="text/csv",
+          mime="text/css",
       )
     else:
       st.info(f"ยังไม่มีประวัติการรับสินค้าของบริษัท {selected_company}")
