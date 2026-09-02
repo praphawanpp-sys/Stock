@@ -10,11 +10,11 @@ st.set_page_config(
 
 # รายชื่อบริษัทและสาขาตามโครงสร้างนิติบุคคล
 companies = [
-    "The Lake Lodge - Daddy Deli (Head Office)",
-    "The Lake Lodge - Harvest Cafe (Branch 0001)",
-    "The Lake Lodge - Taboo By Daddy Deli (Branch 0002)",
-    "Daddy Deli Pattaya Group Co.,Ltd. (Head Office)",
-    "Harvest Bakery And Restaurant Co.,Ltd. (Head Office)",
+    "Daddy Deli (Head Office)",
+    "Harvest Cafe (Branch 0001)",
+    "Taboo By Daddy Deli (Branch 0002)",
+    "Daddy Deli Pattaya Group (Head Office)",
+    "Harvest Bakery And Restaurant (Head Office)",
 ]
 
 # หมวดหมู่วัตถุดิบ
@@ -73,16 +73,11 @@ if "transactions" not in st.session_state:
       ]
   )
 
-# --- ส่วนหัวของเว็บและปุ่มเลือกบริษัท ---
+# --- ส่วนหัวของเว็บ ---
 st.title("🍽️ ระบบจัดการสต็อกวัตถุดิบ (Food Cost Control)")
-selected_company = st.selectbox(
-    "🏢 กรุณาเลือกบริษัท / สาขาที่ต้องการจัดการ:", companies
-)
 
-st.markdown("---")
-
-# เมนูด้านข้าง (Sidebar)
-menu = st.sidebar.selectbox(
+# 1. เมนูด้านข้าง (Sidebar) สำหรับเลือกเมนูการใช้งาน
+menu = st.markdown(
     "เลือกเมนูการใช้งาน",
     [
         "📊 หน้าแรก / สรุปภาพรวม",
@@ -90,6 +85,11 @@ menu = st.sidebar.selectbox(
         "📥 บันทึกรับเข้าสินค้า (Stock In)",
         "📜 ประวัติการรับสินค้า",
     ],
+)    
+
+# 2. ปุ่มเลือกบริษัท/สาขา
+selected_company = st.selectbox(
+    "🏢 กรุณาเลือกบริษัท / สาขาที่ต้องการจัดการ:", companies
 )
 
 # ดึงข้อมูลของบริษัทที่ถูกเลือกปัจจุบัน
@@ -138,6 +138,7 @@ elif menu == "📦 จัดการรายการสินค้า (Maste
     with col1:
       new_code = st.text_input("รหัสสินค้า (Product Code)")
       new_name = st.text_input("ชื่อวัตถุดิบ (ไทย / อังกฤษ)")
+      # ใช้ Dropdown สำหรับเลือกหมวดหมู่
       new_category = st.selectbox("หมวดหมู่วัตถุดิบ", categories)
     with col2:
       new_unit = st.text_input("หน่วยนับ (เช่น Kg., Pack, Bottle, Pcs.)")
@@ -184,8 +185,9 @@ elif menu == "📥 บันทึกรับเข้าสินค้า (St
 
       col1, col2 = st.columns(2)
       with col1:
+        # ดึงรายชื่อสินค้าที่มีอยู่แล้วมาทำเป็น Dropdown ให้เลือกอัตโนมัติ
         selected_item = st.selectbox(
-            "เลือกวัตถุดิบ", current_inv["Item Name"].tolist()
+            "เลือกวัตถุดิบที่มีในระบบ", current_inv["Item Name"].tolist()
         )
         purchase_date = st.date_input(
             "วันที่ซื้อ / รับเข้า", value=datetime.today()
@@ -256,16 +258,13 @@ elif menu == "📜 ประวัติการรับสินค้า":
   trans_df = st.session_state.transactions
 
   if len(trans_df) > 0:
-    # กรองเฉพาะบริษัทปัจจุบัน
     comp_trans = trans_df[trans_df["Company"] == selected_company].copy()
 
     if len(comp_trans) > 0:
-      # แปลงคอลัมน์ Date เป็น datetime เพื่อให้กรองเดือนง่ายขึ้น
       comp_trans["Date_dt"] = pd.to_datetime(comp_trans["Date"])
 
       col1, col2 = st.columns(2)
       with col1:
-        # เลือกปีและเดือนที่ต้องการออกรายงาน
         available_years = sorted(
             comp_trans["Date_dt"].dt.year.unique(), reverse=True
         )
@@ -280,7 +279,6 @@ elif menu == "📜 ประวัติการรับสินค้า":
         )
         selected_month = st.selectbox("เลือกเดือน", available_months)
 
-      # กรองข้อมูลตามเดือนและปีที่เลือก
       monthly_report = comp_trans[
           (comp_trans["Date_dt"].dt.year == selected_year)
           & (comp_trans["Date_dt"].dt.month == selected_month)
@@ -292,7 +290,6 @@ elif menu == "📜 ประวัติการรับสินค้า":
       )
       st.dataframe(monthly_report, use_container_width=True)
 
-      # ปุ่มดาวน์โหลดรายงานเป็น CSV สำหรับส่งบัญชีหรือเปิดใน Excel
       csv_data = monthly_report.to_csv(index=False).encode("utf-8-sig")
       st.download_button(
           label="📥 ดาวน์โหลดรายงานฉบับนี้ (CSV)",
