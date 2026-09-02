@@ -141,8 +141,7 @@ elif menu == "📦 จัดการรายการสินค้า (Maste
 
   with st.expander("📥 นำเข้าข้อมูลรายการสินค้าจากไฟล์ Excel"):
     st.write(
-        "รูปแบบไฟล์: คอลัมน์ 0=Supplier, คอลัมน์ 1=รหัส, คอลัมน์ 2=ชื่อสินค้า,"
-        " คอลัมน์ 3=ราคา, คอลัมน์ 4=หน่วยนับ"
+        "ระบบจะข้ามแถวแรก (หัวตาราง) และอ่านข้อมูลทั้งหมดโดยอัตโนมัติ"
     )
     uploaded_file = st.file_uploader(
         "เลือกไฟล์ Excel", type=["xlsx", "xls", "csv"]
@@ -164,11 +163,23 @@ elif menu == "📦 จัดการรายการสินค้า (Maste
           new_items_list = []
           new_trans_list = []
 
-          for index, row in df_raw.iterrows():
+          # เริ่มต้นวนลูปตั้งแต่แถวที่ 1 เป็นต้นไป (ข้ามแถว 0 ที่เป็นหัวตาราง)
+          for index, row in df_raw.iloc[1:].iterrows():
             supplier = str(row.get(0, "General Supplier"))
             p_code = str(row.get(1, "AUTO"))
             i_name = str(row.get(2, ""))
-            price = float(row.get(3, 0.0)) if pd.notna(row.get(3)) else 0.0
+
+            # จัดการแปลงราคาให้ปลอดภัย ป้องกัน Error ข้อความ
+            raw_price = row.get(3, 0.0)
+            try:
+              price = (
+                  float(raw_price)
+                  if pd.notna(raw_price) and str(raw_price) != "None"
+                  else 0.0
+              )
+            except:
+              price = 0.0
+
             unit = str(row.get(4, "Pcs.")) if pd.notna(row.get(4)) else "Pcs."
 
             if pd.notna(i_name) and i_name.strip() != "" and i_name != "nan":
