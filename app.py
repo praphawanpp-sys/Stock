@@ -22,6 +22,21 @@ COMPANIES = [
     "Daddy Deli Beach House (Head Office)"
 ]
 
+CATEGORIES_LIST = [
+    "เนื้อสัตว์/เครื่องปรุง/อื่นๆ / Meat / Seasonings / Others",
+    "ผักและผลไม้ / Vegetables & Fruits",
+    "ทะเล / Seafood",
+    "เนื้อวัว / Beef",
+    "น้ำผลไม้/Soft Drink/อื่นๆ / Juice/Soft Drink/Other",
+    "เบียร์ / Beer",
+    "ไส้กรอก / Sausage",
+    "ชีส / Cheese",
+    "นม / Milk"
+]
+
+UNITS_LIST = ["Box", "Pack", "Bag", "Kg", "Pcs", "Litre", "Bottle", "Can", "Gram"]
+VAT_TYPES_LIST = ["Non Vat", "Vat 7%"]
+
 LANG = {
     "th": {
         "title": "ระบบจัดการสต็อกวัตถุดิบและคลังสินค้า (Multi-Company)",
@@ -81,12 +96,12 @@ if 'company_inventories' not in st.session_state:
     st.session_state['company_inventories'] = {}
     for comp in COMPANIES:
         st.session_state['company_inventories'][comp] = pd.DataFrame(columns=[
-            "Product Code", "Item Name", "Category", "Unit", "Stock Balance", "Last Price", "Supplier"
+            "Product Code", "Item Name", "Category", "Unit", "Stock Balance", "Last Price", "Supplier", "Vat Type"
         ])
     st.session_state['company_inventories'][COMPANIES[0]] = pd.DataFrame([
-        {"Product Code": "422582", "Item Name": "นมจืด 1 ลิตร", "Category": "เนื้อสัตว์/เครื่องปรุง/อื่นๆ / Meat / Seasonings / Others", "Unit": "Box", "Stock Balance": 25.0, "Last Price": 109.0, "Supplier": "CP Axtra (Makro)"},
-        {"Product Code": "2502009877754", "Item Name": "กระเทียมดัดจุก 500 ก.", "Category": "ผักและผลไม้ / Vegetables & Fruits", "Unit": "Pack", "Stock Balance": 10.0, "Last Price": 40.0, "Supplier": "CP Axtra (Lotus)"},
-        {"Product Code": "54061057", "Item Name": "คิทแคท ทริกเกอร์ 500 กรัม", "Category": "เนื้อสัตว์/เครื่องปรุง/อื่นๆ / Meat / Seasonings / Others", "Unit": "Bag", "Stock Balance": 0.0, "Last Price": 130.0, "Supplier": "กส-สรา ค้าส่ง"}
+        {"Product Code": "422582", "Item Name": "นมจืด 1 ลิตร", "Category": "เนื้อสัตว์/เครื่องปรุง/อื่นๆ / Meat / Seasonings / Others", "Unit": "Box", "Stock Balance": 25.0, "Last Price": 109.0, "Supplier": "CP Axtra (Makro)", "Vat Type": "Non Vat"},
+        {"Product Code": "2502009877754", "Item Name": "กระเทียมดัดจุก 500 ก.", "Category": "ผักและผลไม้ / Vegetables & Fruits", "Unit": "Pack", "Stock Balance": 10.0, "Last Price": 40.0, "Supplier": "CP Axtra (Lotus)", "Vat Type": "Non Vat"},
+        {"Product Code": "54061057", "Item Name": "คิทแคท ทริกเกอร์ 500 กรัม", "Category": "เนื้อสัตว์/เครื่องปรุง/อื่นๆ / Meat / Seasonings / Others", "Unit": "Bag", "Stock Balance": 0.0, "Last Price": 130.0, "Supplier": "กส-สรา ค้าส่ง", "Vat Type": "Vat 7%"}
     ])
 
 if 'transactions' not in st.session_state:
@@ -218,15 +233,15 @@ elif selected_menu == t['m_inventory_mgmt']:
     
     if len(mgmt_filtered) > 0:
         # หัวตารางจำลอง
-        h_col = st.columns([1.5, 2.5, 2.5, 1, 1, 1, 2, 1.2])
-        headers = ["Product Code", "Item Name", "Category", "Unit", "Stock", "Price", "Supplier", "จัดการ (Action)"]
+        h_col = st.columns([1.2, 2.2, 2.2, 1, 0.8, 0.8, 1.5, 1, 1.2])
+        headers = ["Product Code", "Item Name", "Category", "Unit", "Stock", "Price", "Supplier", "Vat Type", "จัดการ"]
         for hc, h_text in zip(h_col, headers):
             hc.markdown(f"**{h_text}**")
         st.markdown("---")
         
-        # วนลูปแสดงข้อมูลทีละบรรทัด พร้อมปุ่มแก้ไข/ลบที่ท้ายแถวตรงจุดที่ต้องการ
+        # วนลูปแสดงข้อมูลทีละบรรทัด พร้อมปุ่มแก้ไข/ลบที่ท้ายแถว
         for idx, row in mgmt_filtered.iterrows():
-            r_col = st.columns([1.5, 2.5, 2.5, 1, 1, 1, 2, 0.6, 0.6])
+            r_col = st.columns([1.2, 2.2, 2.2, 1, 0.8, 0.8, 1.5, 1, 0.5, 0.5])
             
             r_col[0].write(str(row['Product Code']))
             r_col[1].write(str(row['Item Name']))
@@ -235,31 +250,54 @@ elif selected_menu == t['m_inventory_mgmt']:
             r_col[4].write(str(row['Stock Balance']))
             r_col[5].write(str(row['Last Price']))
             r_col[6].write(str(row['Supplier']))
+            r_col[7].write(str(row.get('Vat Type', 'Non Vat')))
             
-            with r_col[7]:
+            with r_col[8]:
                 if st.button("✏️", key=f"edit_btn_{idx}", help="แก้ไขรายการนี้"):
                     st.session_state[f'edit_target_{selected_company}'] = idx
-            with r_col[8]:
+            with r_col[9]:
                 if st.button("🗑️", key=f"del_btn_{idx}", help="ลบรายการนี้"):
                     st.session_state['company_inventories'][selected_company] = current_inv.drop(idx).reset_index(drop=True)
                     st.success(f"ลบรายการ {row['Item Name']} สำเร็จ!")
                     st.rerun()
                     
-        # หากมีการกดปุ่มแก้ไขของแถวใด ให้แสดงฟอร์มแก้ไขข้อมูลของแถวนั้นๆ ทันที
+        # หากมีการกดปุ่มแก้ไข ให้แสดงฟอร์มแบบ Dropdown
         active_edit_idx = st.session_state.get(f'edit_target_{selected_company}', None)
         if active_edit_idx is not None and active_edit_idx in current_inv.index:
             st.markdown("---")
             st.subheader(f"🛠️ แก้ไขข้อมูลสินค้า: {current_inv.loc[active_edit_idx, 'Item Name']}")
             item_data = current_inv.loc[active_edit_idx]
             
+            existing_suppliers = current_inv['Supplier'].unique().tolist()
+            if not existing_suppliers:
+                existing_suppliers = ["General", "CP Axtra (Makro)", "CP Axtra (Lotus)", "กส-สรา ค้าส่ง"]
+
             with st.form(f"inline_edit_form_{active_edit_idx}"):
                 e_code = st.text_input("รหัสสินค้า (Product Code)", value=str(item_data['Product Code']))
                 e_name = st.text_input("ชื่อวัตถุดิบ (Item Name)", value=str(item_data['Item Name']))
-                e_cat = st.text_input("หมวดหมู่ (Category)", value=str(item_data['Category']))
-                e_unit = st.text_input("หน่วยนับ (Unit)", value=str(item_data['Unit']))
+                
+                # Dropdown: Category
+                curr_cat = str(item_data['Category'])
+                cat_idx = CATEGORIES_LIST.index(curr_cat) if curr_cat in CATEGORIES_LIST else 0
+                e_cat = st.selectbox("หมวดหมู่ (Category)", CATEGORIES_LIST, index=cat_idx)
+                
+                # Dropdown: Unit
+                curr_unit = str(item_data['Unit'])
+                unit_idx = UNITS_LIST.index(curr_unit) if curr_unit in UNITS_LIST else 0
+                e_unit = st.selectbox("หน่วยนับ (Unit)", UNITS_LIST, index=unit_idx)
+                
                 e_bal = st.number_input("จำนวนสต็อก (Stock Balance)", value=float(item_data['Stock Balance']))
                 e_price = st.number_input("ราคาล่าสุด (Last Price)", value=float(item_data['Last Price']))
-                e_sup = st.text_input("ร้านค้า (Supplier)", value=str(item_data['Supplier']))
+                
+                # Dropdown: Supplier
+                curr_sup = str(item_data['Supplier'])
+                sup_idx = existing_suppliers.index(curr_sup) if curr_sup in existing_suppliers else 0
+                e_sup = st.selectbox("ร้านค้าที่ซื้อ (Supplier)", existing_suppliers, index=sup_idx)
+                
+                # Dropdown: Vat Type
+                curr_vat = str(item_data.get('Vat Type', 'Non Vat'))
+                vat_idx = VAT_TYPES_LIST.index(curr_vat) if curr_vat in VAT_TYPES_LIST else 0
+                e_vat = st.selectbox("ประเภทภาษี (Vat Type)", VAT_TYPES_LIST, index=vat_idx)
                 
                 col_sub1, col_sub2 = st.columns(2)
                 with col_sub1:
@@ -268,7 +306,7 @@ elif selected_menu == t['m_inventory_mgmt']:
                     cancel_edit = st.form_submit_button("❌ ยกเลิก")
                     
                 if save_edit:
-                    st.session_state['company_inventories'][selected_company].loc[active_edit_idx] = [e_code, e_name, e_cat, e_unit, e_bal, e_price, e_sup]
+                    st.session_state['company_inventories'][selected_company].loc[active_edit_idx] = [e_code, e_name, e_cat, e_unit, e_bal, e_price, e_sup, e_vat]
                     del st.session_state[f'edit_target_{selected_company}']
                     st.success("บันทึกการแก้ไขสำเร็จ!")
                     st.rerun()
@@ -306,17 +344,18 @@ elif selected_menu == t['sub_import_excel']:
                             price = float(row.get(3, 0.0)) if pd.notna(row.get(3)) else 0.0
                         except:
                             price = 0.0
-                        unit = str(row.get(4, "Pcs.")) if pd.notna(row.get(4)) else "Pcs."
+                        unit = str(row.get(4, "Box")) if pd.notna(row.get(4)) else "Box"
                         
                         if pd.notna(i_name) and i_name.strip() != "" and i_name != "nan":
                             new_items_list.append({
                                 "Product Code": p_code,
                                 "Item Name": i_name,
-                                "Category": "เนื้อสัตว์/เครื่องปรุง/อื่นๆ / Meat / Seasonings / Others",
-                                "Unit": unit,
+                                "Category": CATEGORIES_LIST[0],
+                                "Unit": unit if unit in UNITS_LIST else "Box",
                                 "Stock Balance": 0.0,
                                 "Last Price": price,
-                                "Supplier": supplier
+                                "Supplier": supplier,
+                                "Vat Type": "Non Vat"
                             })
                     
                     if len(new_items_list) > 0:
@@ -331,22 +370,19 @@ elif selected_menu == t['sub_import_excel']:
 
     with tab_m2:
         st.subheader("เพิ่มข้อมูลวัตถุดิบรายรายการ (Manual Add)")
+        existing_suppliers = current_inv['Supplier'].unique().tolist() if len(current_inv) > 0 else ["General", "CP Axtra (Makro)", "CP Axtra (Lotus)"]
+        
         with st.form("manual_add_form"):
             col_a, col_b = st.columns(2)
             with col_a:
                 m_code = st.text_input("รหัสสินค้า (Product Code / SKU)")
                 m_name = st.text_input("ชื่อวัตถุดิบ (Item Name)")
-                m_cat = st.selectbox("หมวดหมู่ (Category)", [
-                    "เนื้อสัตว์/เครื่องปรุง/อื่นๆ / Meat / Seasonings / Others",
-                    "ผักและผลไม้ / Vegetables & Fruits",
-                    "ทะเล / Seafood",
-                    "เนื้อวัว / Beef",
-                    "น้ำผลไม้/Soft Drink/อื่นๆ / Juice/Soft Drink/Other"
-                ])
+                m_cat = st.selectbox("หมวดหมู่ (Category)", CATEGORIES_LIST)
+                m_unit = st.selectbox("หน่วยนับ (Unit)", UNITS_LIST)
             with col_b:
-                m_supplier = st.text_input("ร้านค้าที่ซื้อ (Supplier)")
+                m_supplier = st.selectbox("ร้านค้าที่ซื้อ (Supplier)", existing_suppliers)
                 m_price = st.number_input("ราคาล่าสุดต่อหน่วย (Last Price)", min_value=0.0, value=0.0)
-                m_unit = st.text_input("หน่วยนับ (Unit เช่น กก., แพ็ค, ลิตร, Box)")
+                m_vat = st.selectbox("ประเภทภาษี (Vat Type)", VAT_TYPES_LIST)
                 m_qty = st.number_input("จำนวนสต็อกเริ่มต้น (Initial Stock Balance)", min_value=0.0, value=0.0)
             
             submit_manual = st.form_submit_button("💾 บันทึกเพิ่มสินค้า (Save Item)")
@@ -356,10 +392,11 @@ elif selected_menu == t['sub_import_excel']:
                         "Product Code": m_code if m_code else "AUTO",
                         "Item Name": m_name,
                         "Category": m_cat,
-                        "Unit": m_unit if m_unit else "Pcs.",
+                        "Unit": m_unit,
                         "Stock Balance": m_qty,
                         "Last Price": m_price,
-                        "Supplier": m_supplier if m_supplier else "General"
+                        "Supplier": m_supplier,
+                        "Vat Type": m_vat
                     }
                     st.session_state['company_inventories'][selected_company] = pd.concat([current_inv, pd.DataFrame([new_manual_row])], ignore_index=True)
                     st.success(f"เพิ่มสินค้า '{m_name}' สำเร็จเรียบร้อย!")
@@ -379,19 +416,21 @@ elif selected_menu == t['sub_stock_in']:
             supplier_in = st.text_input("Supplier Name / ชื่อร้านค้าที่ซื้อ")
             qty_in = st.number_input("Quantity / จำนวนรับเข้า", min_value=0.1, value=1.0)
             price_in = st.number_input("Price per Unit / ราคาต่อหน่วย", min_value=0.0, value=10.0)
+            vat_in = st.selectbox("ประเภทภาษี (Vat Type)", VAT_TYPES_LIST)
             
             submit_in = st.form_submit_button("บันทึกรับเข้าสินค้า / Confirm Stock In")
             if submit_in:
                 idx = current_inv[current_inv['Item Name'] == selected_item].index[0]
                 st.session_state['company_inventories'][selected_company].loc[idx, 'Stock Balance'] += qty_in
                 st.session_state['company_inventories'][selected_company].loc[idx, 'Last Price'] = price_in
+                st.session_state['company_inventories'][selected_company].loc[idx, 'Vat Type'] = vat_in
                 if supplier_in:
                     st.session_state['company_inventories'][selected_company].loc[idx, 'Supplier'] = supplier_in
                 
                 new_t = {
                     "Company": selected_company, "Date": str(datetime.today().date()),
                     "Supplier": supplier_in if supplier_in else "General", "Item Name": selected_item,
-                    "Quantity": qty_in, "Price/Unit": price_in, "Vat Type": "Non Vat",
+                    "Quantity": qty_in, "Price/Unit": price_in, "Vat Type": vat_in,
                     "Total Price": qty_in * price_in, "Type": "IMPORT"
                 }
                 st.session_state['transactions'] = pd.concat([st.session_state['transactions'], pd.DataFrame([new_t])], ignore_index=True)
@@ -426,7 +465,7 @@ elif selected_menu == t['sub_stock_out']:
                     new_t = {
                         "Company": selected_company, "Date": str(datetime.today().date()),
                         "Supplier": item_row['Supplier'], "Item Name": selected_item_out,
-                        "Quantity": qty_out, "Price/Unit": item_row['Last Price'], "Vat Type": "Non Vat",
+                        "Quantity": qty_out, "Price/Unit": item_row['Last Price'], "Vat Type": item_row.get('Vat Type', 'Non Vat'),
                         "Total Price": qty_out * item_row['Last Price'], "Type": "EXPORT"
                     }
                     st.session_state['transactions'] = pd.concat([st.session_state['transactions'], pd.DataFrame([new_t])], ignore_index=True)
