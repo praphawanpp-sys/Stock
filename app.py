@@ -119,14 +119,10 @@ if 'admins' not in st.session_state:
     ])
 
 if 'purchase_requests' not in st.session_state:
-    st.session_state['purchase_requests'] = pd.DataFrame([
-        {"PR_ID": "PR-001", "Date": str(datetime.today().date()), "Supplier": "Thai_Namthip", "Branch": REAL_COMPANIES[0], "Status": "Approved (อนุมัติแล้ว)", "Requester": "Admin Kratai", "Items": "น้ำอัดลม จำนวน 10 Box"}
-    ])
+    st.session_state['purchase_requests'] = pd.DataFrame(columns=["PR_ID", "Date", "Supplier", "Branch", "Status", "Requester", "Items_JSON"])
 
 if 'purchase_orders' not in st.session_state:
-    st.session_state['purchase_orders'] = pd.DataFrame([
-        {"PO_ID": "PO-260903", "PR_ID": "PR-001", "Supplier": "Thai_Namthip", "Branch": REAL_COMPANIES[0], "Date": str(datetime.today().date())}
-    ])
+    st.session_state['purchase_orders'] = pd.DataFrame(columns=["PO_ID", "PR_ID", "Supplier", "Branch", "Date"])
 
 if 'wast_variance_records' not in st.session_state:
     st.session_state['wast_variance_records'] = pd.DataFrame(columns=["Company", "Date", "Item Name", "Wast_Variance", "OC_Test", "Note"])
@@ -312,6 +308,7 @@ elif selected_menu == t['sub_stock_in']:
                 idx = current_inv[current_inv['Item Name'] == sel_item_in].index[0]
                 st.session_state['company_inventories'][selected_company].loc[idx, 'Stock Balance'] += qty_in
                 st.session_state['company_inventories'][selected_company].loc[idx, 'Last Price'] = price_in
+                st.session_state['company_inventories'][selected_company].loc[idx, 'Supplier'] = supplier_in
                 
                 new_t = {
                     "Company": selected_company, "Date": str(datetime.today().date()), "DocNo": doc_no,
@@ -377,169 +374,267 @@ elif pr_menu_label in selected_menu:
     tab1, tab2 = st.tabs(["📋 สร้างใบขอซื้อ (PR)", "📄 ดูฟอร์มเอกสารใบสั่งซื้อ (PO Form) & อนุมัติ"])
     
     with tab1:
-        with st.form("pr_form_new"):
-            pr_date = st.date_input("วันที่ขอซื้อ", value=datetime.today())
-            pr_sup = st.text_input("ร้านค้าที่ซื้อ")
-            pr_item = st.text_input("รายการวัตถุดิบที่ขอซื้อ")
-            pr_qty = st.number_input("จำนวน", min_value=1.0)
-            pr_unit = st.selectbox("หน่วยนับ", UNITS_LIST)
-            pr_req = st.text_input("ผู้ขอซื้อ")
+        st.subheader("สร้างใบขอซื้อสินค้า (Purchase Requisition - PR)")
+        
+        # 1.1 เลือกร้านค้าก่อน
+        all_sups = current_inv['Supplier'].unique().tolist() if len(current_inv) > 0 else ["CP Axtra (Makro)", "CP Axtra (Lotus)"]
+        selected_pr_sup = st.selectbox("1. เลือกร้านค้าที่ต้องการซื้อ (Supplier)", all_sups)
+        pr_req_name = st.text_input("ชื่อผู้ขอซื้อ (Requester)")
+        pr_date_input = st.date_input("วันที่ขอซื้อ", value=datetime.today())
+        
+        st.markdown("---")
+        st.subheader("2. เพิ่มรายการสินค้าทีละรายการ")
+        
+        if 'cart_pr_items' not in st.session_state:
+            st.session_state['cart_pr_items'] = []
             
-            if st.form_submit_button("ส่งใบขอซื้อ"):
-                new_pr = {
-                    "PR_ID": f"PR-{datetime.now().strftime('%m%d%H%M%S')}",
-                    "Date": str(pr_date), "Supplier": pr_sup, "Branch": selected_company,
-                    "Status": "Pending (รออนุมัติ)", "Requester": pr_req, "Items": f"{pr_item} จำนวน {pr_qty} {pr_unit}"
-                }
-                st.session_state['purchase_requests'] = pd.concat([st.session_state['purchase_requests'], pd.DataFrame([new_pr])], ignore_index=True)
-                st.success("สร้างใบขอซื้อสำเร็จ!")
+        # กรองรายการสินค้าที่เป็นของ Supplier นี้ หรือเลือกจากคลังทั้งหมด
+        supplier_items = current_inv['Item Name'].tolist() if len(current_inv) > 0 else []
+        
+        with st.form("add_item_to_pr_form"):
+            col_i1, col_i2, col_i3 = st.columns([3, 1, 1])
+            with col_i1:
+                item_choice = st.selectbox("เลือกวัตถุดิบ", supplier_items)
+            with col_i2:
+                qty_choice = st.number_input("จำนวน", min_value=0.1, value=1.0)
+            with col_i3:
+                unit_choice = st.selectbox("หน่วยนับ", UNITS_LIST)
+                
+            add_to_cart_btn = st.form_submit_button("➕ เพิ่มรายการนี้ลงในตะกร้า PR")
+            if add_to_cart_btn and item_choice:
+                # ดึงราคารับล่าสุดของสินค้านั้นๆ มาอ้างอิง
+                match_row = current_inv[current_inv['Item Name'] == item_choice]
+                last_price = float(match_row['Last Price'].values[0]) if len(match_row) > 0 else 0.0
+                
+                st.session_state['cart_pr_items'].append({
+                    "Item Name": item_choice,
+                    "Quantity": qty_choice,
+                    "Unit": unit_choice,
+                    "Reference Price": last_price,
+                    "Total Estimated Price": qty_choice * last_price
+                })
+                st.success(f"เพิ่ม {item_choice} สำเร็จ!")
+                
+        if len(st.session_state['cart_pr_items']) > 0:
+            st.markdown("#### 🛒 รายการสินค้าในใบขอซื้อ (PR) นี้:")
+            cart_df = pd.DataFrame(st.session_state['cart_pr_items'])
+            st.dataframe(cart_df, use_container_width=True)
+            
+            if st.button("🗑️ ล้างรายการในตะกร้าทั้งหมด"):
+                st.session_state['cart_pr_items'] = []
                 st.rerun()
                 
-    with tab2:
-        st.subheader("แสดงรูปแบบเอกสารใบสั่งซื้อสินค้า (Purchase Order Form)")
-        
-        po_df = st.session_state['purchase_orders']
-        if len(po_df) > 0:
-            po_options = [f"{row['PO_ID']} - ร้าน: {row['Supplier']}" for _, row in po_df.iterrows()]
-            selected_po_view = st.selectbox("เลือกเอกสาร PR / PO ที่ต้องการดูฟอร์ม", po_options)
-            
-            chosen_po_id = selected_po_view.split(" - ")[0]
-            po_row = po_df[po_df['PO_ID'] == chosen_po_id].iloc[0]
-            
-            po_company = po_row['Branch'] if po_row['Branch'] in REAL_COMPANIES else REAL_COMPANIES[0]
-            po_address = st.session_state['company_addresses'].get(po_company, "ที่อยู่สำนักงานใหญ่")
-            logo_file = st.session_state['company_logos'].get(po_company, None)
-            
-            logo_html = ""
-            if logo_file is not None:
-                import base64
-                bytes_data = logo_file.getvalue()
-                base64_str = base64.b64encode(bytes_data).decode("utf-8")
-                logo_html = f'<img src="data:image/png;base64,{base64_str}" style="max-height: 60px; max-width: 150px; margin-bottom: 8px;"><br>'
-
-            html_po_content = f"""
-            <!DOCTYPE html>
-            <html>
-            <head>
-            <meta charset="utf-8">
-            <style>
-                body {{ font-family: sans-serif; color: #333; margin: 0; padding: 0; background-color: #ffffff; }}
-                .po-container {{ border: 1px solid #ddd; padding: 20px; border-radius: 8px; background-color: #ffffff; }}
-                table {{ width: 100%; border: 1px solid #333; margin-top: 15px; border-collapse: collapse; }}
-                th, td {{ border: 1px solid #333; padding: 8px; }}
-                th {{ background-color: #f2f2f2; }}
-            </style>
-            </head>
-            <body>
-            <div class="po-container">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <div>
-                        {logo_html}
-                        <h2 style="margin: 0; color: #111;">{po_company}</h2>
-                        <p style="margin: 2px 0 15px 0; font-size: 14px; color: #666;">CAFÉ • EATERY • STORE</p>
-                    </div>
-                    <div style="text-align: right;">
-                        <h3 style="margin: 0; color: #111;">Purchase order</h3>
-                        <p style="margin: 2px 0 0 0; font-size: 14px; color: #666;">ใบสั่งซื้อสินค้า</p>
-                    </div>
-                </div>
-                
-                <table>
-                    <tr>
-                        <td style="width: 50%; vertical-align: top;">
-                            <b>Company / บริษัท:</b><br>
-                            {po_address.replace(chr(10), '<br>')}<br>
-                            <b>Tax ID:</b> 0775565003672<br>
-                            <b>Contact:</b> Admin Kratai
-                        </td>
-                        <td style="width: 50%; vertical-align: top;">
-                            <b>สถานที่ส่งสินค้า / Delivery Address:</b><br>
-                            {po_company}<br>
-                            {po_address.replace(chr(10), '<br>')}<br>
-                            <b>Contact:</b> Admin Kratai
-                        </td>
-                    </tr>
-                </table>
-                
-                <div style="margin-top: 15px; font-size: 14px;">
-                    <p><b>เลขที่ใบสั่งซื้อ (PO ID):</b> {po_row['PO_ID']} &nbsp;&nbsp;|&nbsp;&nbsp; <b>วันที่:</b> {po_row['Date']} &nbsp;&nbsp;|&nbsp;&nbsp; <b>ผู้จำหน่าย (Supplier):</b> {po_row['Supplier']}</p>
-                </div>
-                
-                <table>
-                    <thead>
-                        <tr>
-                            <th style="text-align: center;">ลำดับ</th>
-                            <th style="text-align: left;">รายการสินค้า</th>
-                            <th style="text-align: center;">จำนวน</th>
-                            <th style="text-align: right;">ราคา/หน่วย</th>
-                            <th style="text-align: right;">รวมเป็นเงิน</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td style="text-align: center;">1</td>
-                            <td>น้ำอัดลม (Soft Drink)</td>
-                            <td style="text-align: center;">10 Box</td>
-                            <td style="text-align: right;">350.00</td>
-                            <td style="text-align: right;">3,500.00</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            </body>
-            </html>
-            """
-            st.components.v1.html(html_po_content, height=520, scrolling=True)
+            if st.button("🚀 บันทึกและส่งใบขอซื้อ (PR) ทีเดียว"):
+                import json
+                new_pr_id = f"PR-{datetime.now().strftime('%m%d%H%M%S')}"
+                new_pr_record = {
+                    "PR_ID": new_pr_id,
+                    "Date": str(pr_date_input),
+                    "Supplier": selected_pr_sup,
+                    "Branch": selected_company,
+                    "Status": "Pending (รออนุมัติ)",
+                    "Requester": pr_req_name if pr_req_name else "Admin",
+                    "Items_JSON": json.dumps(st.session_state['cart_pr_items'], ensure_ascii=False)
+                }
+                st.session_state['purchase_requests'] = pd.concat([st.session_state['purchase_requests'], pd.DataFrame([new_pr_record])], ignore_index=True)
+                st.session_state['cart_pr_items'] = [] # ล้างตะกร้า
+                st.success(f"ส่งใบขอซื้อสำเร็จ! หมายเลข: {new_pr_id}")
+                st.rerun()
         else:
-            st.info("ยังไม่มีข้อมูลใบสั่งซื้อ (PO)")
-            
-        st.markdown("---")
-        st.subheader("หัวข้อตรวจสอบอนุมัติ PR")
+            st.info("ยังไม่มีรายการสินค้าในตะกร้า กรุณาเลือกสินค้าและกดเพิ่มรายการ")
+
+    with tab2:
+        st.subheader("📄 รายการใบขอซื้อ (PR) ทั้งหมด & ตรวจสอบรายละเอียด")
+        
         pr_df = st.session_state['purchase_requests']
         if len(pr_df) > 0:
+            # 2. สามารถดึงใบ PR/PO ออกมาเป็น Excel ได้
+            col_dl1, col_dl2 = st.columns(2)
+            with col_dl1:
+                pr_output = io.BytesIO()
+                with pd.ExcelWriter(pr_output, engine='xlsxwriter') as writer:
+                    pr_df.to_excel(writer, sheet_name='Purchase_Requests', index=False)
+                st.download_button("📥 ดาวน์โหลดรายงาน PR เป็น Excel", data=pr_output.getvalue(), file_name="purchase_requests_report.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            with col_dl2:
+                po_output = io.BytesIO()
+                with pd.ExcelWriter(po_output, engine='xlsxwriter') as writer:
+                    st.session_state['purchase_orders'].to_excel(writer, sheet_name='Purchase_Orders', index=False)
+                st.download_button("📥 ดาวน์โหลดรายงาน PO เป็น Excel", data=po_output.getvalue(), file_name="purchase_orders_report.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            
+            st.markdown("---")
             for idx, row in pr_df.iterrows():
+                import json
                 status_color = "orange"
                 if "Approved" in row['Status']:
                     status_color = "green"
                 elif "Rejected" in row['Status']:
                     status_color = "red"
-                
-                st.markdown(f"**PR ID:** {row['PR_ID']} | **ร้าน:** {row['Supplier']} | สถานะ: <span style='color:{status_color}; font-weight:bold;'>{row['Status']}</span>", unsafe_allow_html=True)
-                
-                col_btn1, col_btn2 = st.columns(2)
-                with col_btn1:
-                    if st.button("✅ อนุมัติ", key=f"appr_{idx}"):
-                        st.session_state['purchase_requests'].loc[idx, 'Status'] = "Approved (อนุมัติแล้ว)"
-                        st.rerun()
-                with col_btn2:
-                    if st.button("❌ ปฏิเสธ", key=f"rej_{idx}"):
-                        st.session_state['purchase_requests'].loc[idx, 'Status'] = "Rejected (ปฏิเสธ)"
-                        st.rerun()
-                st.markdown("---")
-                
-            st.subheader("สร้างใบ PO อัตโนมัติจากใบ PR ที่อนุมัติแล้ว")
+                    
+                with st.expander(f"📌 {row['PR_ID']} | ร้าน: {row['Supplier']} | สาขา: {row['Branch']} | สถานะ: {row['Status']}"):
+                    st.write(f"**วันที่ขอซื้อ:** {row['Date']} | **ผู้ขอซื้อ:** {row['Requester']}")
+                    st.markdown("#### รายการสินค้าที่ขอซื้อ (อ้างอิงราคาจากราคารับของล่าสุด):")
+                    
+                    try:
+                        items_list = json.loads(row['Items_JSON'])
+                        items_df = pd.DataFrame(items_list)
+                        st.dataframe(items_df, use_container_width=True)
+                        total_est = items_df['Total Estimated Price'].sum() if 'Total Estimated Price' in items_df.columns else 0.0
+                        st.markdown(f"**💵 มูลค่ารวมประมาณการทั้งหมด:** **{total_est:,.2f} THB**")
+                    except:
+                        st.write(row['Items_JSON'])
+                        
+                    col_b1, col_b2 = st.columns(2)
+                    with col_b1:
+                        if st.button("✅ อนุมัติใบ PR นี้", key=f"appr_{idx}"):
+                            st.session_state['purchase_requests'].loc[idx, 'Status'] = "Approved (อนุมัติแล้ว)"
+                            st.rerun()
+                    with col_b2:
+                        if st.button("❌ ปฏิเสธใบ PR นี้", key=f"rej_{idx}"):
+                            st.session_state['purchase_requests'].loc[idx, 'Status'] = "Rejected (ปฏิเสธ)"
+                            st.rerun()
+                            
+            st.markdown("---")
+            st.subheader("🖨️ ออกใบสั่งซื้อ (PO) จากใบ PR ที่อนุมัติแล้ว")
             approved_prs = pr_df[pr_df['Status'] == "Approved (อนุมัติแล้ว)"]
             if len(approved_prs) > 0:
                 pr_options = [f"{r['PR_ID']} - ร้าน: {r['Supplier']}" for _, r in approved_prs.iterrows()]
-                selected_po_choice = st.selectbox("เลือกใบ PR ที่อนุมัติแล้วเพื่อออก PO", pr_options)
+                selected_po_choice = st.selectbox("เลือกใบ PR ที่อนุมัติแล้ว", pr_options)
                 
-                if st.button("🖨️ สร้างใบ PO"):
+                if st.button("สร้างใบ PO และดูฟอร์ม"):
                     chosen_id = selected_po_choice.split(" - ")[0]
                     chosen_row = approved_prs[approved_prs['PR_ID'] == chosen_id].iloc[0]
                     
-                    new_po_id = f"PO-{datetime.now().strftime('%y%m%d')}"
+                    new_po_id = f"PO-{datetime.now().strftime('%y%m%d%H%M')}"
                     new_po_data = {
                         "PO_ID": new_po_id, "PR_ID": chosen_row['PR_ID'],
                         "Supplier": chosen_row['Supplier'], "Branch": chosen_row['Branch'],
                         "Date": str(datetime.today().date())
                     }
                     st.session_state['purchase_orders'] = pd.concat([st.session_state['purchase_orders'], pd.DataFrame([new_po_data])], ignore_index=True)
-                    st.success(f"สร้างใบ PO สำเร็จ (เลขที่ {new_po_id}) สำหรับร้านค้า: {chosen_row['Supplier']}")
+                    st.success(f"สร้างใบ PO สำเร็จ (เลขที่ {new_po_id})")
                     st.rerun()
             else:
-                st.info("ไม่มีใบ PR ที่อนุมัติแล้ว")
+                st.info("ยังไม่มีใบ PR ที่ได้รับการอนุมัติเพื่อนำมาออก PO")
+                
+            st.markdown("---")
+            st.subheader("📄 ดูฟอร์มเอกสารใบสั่งซื้อสินค้า (PO Form)")
+            po_df = st.session_state['purchase_orders']
+            if len(po_df) > 0:
+                po_options = [f"{row['PO_ID']} - PR: {row['PR_ID']} - ร้าน: {row['Supplier']}" for _, row in po_df.iterrows()]
+                selected_po_view = st.selectbox("เลือกเอกสาร PO ที่ต้องการแสดงฟอร์ม", po_options)
+                
+                chosen_po_id = selected_po_view.split(" - ")[0]
+                po_row = po_df[po_df['PO_ID'] == chosen_po_id].iloc[0]
+                
+                # ดึงข้อมูล PR ที่เกี่ยวข้องมาแสดงในฟอร์ม PO
+                related_pr = pr_df[pr_df['PR_ID'] == po_row['PR_ID']].iloc[0]
+                import json
+                try:
+                    po_items_list = json.loads(related_pr['Items_JSON'])
+                except:
+                    po_items_list = []
+                    
+                po_company = po_row['Branch'] if po_row['Branch'] in REAL_COMPANIES else REAL_COMPANIES[0]
+                po_address = st.session_state['company_addresses'].get(po_company, "ที่อยู่สำนักงานใหญ่")
+                logo_file = st.session_state['company_logos'].get(po_company, None)
+                
+                logo_html = ""
+                if logo_file is not None:
+                    import base64
+                    bytes_data = logo_file.getvalue()
+                    base64_str = base64.b64encode(bytes_data).decode("utf-8")
+                    logo_html = f'<img src="data:image/png;base64,{base64_str}" style="max-height: 60px; max-width: 150px; margin-bottom: 8px;"><br>'
+
+                # สร้างแถวตารางสินค้า HTML จากข้อมูลจริงใน PR
+                table_rows_html = ""
+                grand_total = 0.0
+                for i, itm in enumerate(po_items_list, 1):
+                    tot_p = itm.get('Total Estimated Price', 0.0)
+                    grand_total += tot_p
+                    table_rows_html += f"""
+                    <tr>
+                        <td style="text-align: center;">{i}</td>
+                        <td>{itm.get('Item Name')}</td>
+                        <td style="text-align: center;">{itm.get('Quantity')} {itm.get('Unit')}</td>
+                        <td style="text-align: right;">{itm.get('Reference Price', 0.0):,.2f}</td>
+                        <td style="text-align: right;">{tot_p:,.2f}</td>
+                    </tr>
+                    """
+
+                html_po_content = f"""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                <meta charset="utf-8">
+                <style>
+                    body {{ font-family: sans-serif; color: #333; margin: 0; padding: 0; background-color: #ffffff; }}
+                    .po-container {{ border: 1px solid #ddd; padding: 20px; border-radius: 8px; background-color: #ffffff; }}
+                    table {{ width: 100%; border: 1px solid #333; margin-top: 15px; border-collapse: collapse; }}
+                    th, td {{ border: 1px solid #333; padding: 8px; font-size: 13px; }}
+                    th {{ background-color: #f2f2f2; }}
+                </style>
+                </head>
+                <body>
+                <div class="po-container">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                            {logo_html}
+                            <h2 style="margin: 0; color: #111;">{po_company}</h2>
+                            <p style="margin: 2px 0 15px 0; font-size: 13px; color: #666;">CAFÉ • EATERY • STORE</p>
+                        </div>
+                        <div style="text-align: right;">
+                            <h3 style="margin: 0; color: #111;">Purchase Order</h3>
+                            <p style="margin: 2px 0 0 0; font-size: 13px; color: #666;">ใบสั่งซื้อสินค้า</p>
+                        </div>
+                    </div>
+                    
+                    <table>
+                        <tr>
+                            <td style="width: 50%; vertical-align: top;">
+                                <b>Company / บริษัท:</b><br>
+                                {po_address.replace(chr(10), '<br>')}<br>
+                                <b>Tax ID:</b> 0775565003672<br>
+                                <b>Contact:</b> {related_pr['Requester']}
+                            </td>
+                            <td style="width: 50%; vertical-align: top;">
+                                <b>สถานที่ส่งสินค้า / Delivery Address:</b><br>
+                                {po_company}<br>
+                                {po_address.replace(chr(10), '<br>')}<br>
+                                <b>Contact:</b> {related_pr['Requester']}
+                            </td>
+                        </tr>
+                    </table>
+                    
+                    <div style="margin-top: 12px; font-size: 13px;">
+                        <p><b>เลขที่ใบสั่งซื้อ (PO ID):</b> {po_row['PO_ID']} &nbsp;&nbsp;|&nbsp;&nbsp; <b>วันที่:</b> {po_row['Date']} &nbsp;&nbsp;|&nbsp;&nbsp; <b>ผู้จำหน่าย (Supplier):</b> {po_row['Supplier']}</p>
+                    </div>
+                    
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="text-align: center;">ลำดับ</th>
+                                <th style="text-align: left;">รายการสินค้า</th>
+                                <th style="text-align: center;">จำนวน</th>
+                                <th style="text-align: right;">ราคาอ้างอิง/หน่วย</th>
+                                <th style="text-align: right;">รวมเป็นเงิน (THB)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {table_rows_html}
+                        </tbody>
+                    </table>
+                    <div style="text-align: right; margin-top: 10px; font-size: 14px;">
+                        <b>มูลค่ารวมทั้งสิ้น: {grand_total:,.2f} บาท</b>
+                    </div>
+                </div>
+                </body>
+                </html>
+                """
+                st.components.v1.html(html_po_content, height=550, scrolling=True)
+            else:
+                st.info("ยังไม่มีข้อมูลใบสั่งซื้อ (PO)")
         else:
-            st.info("ยังไม่มีข้อมูลใบขอซื้อ")
+            st.info("ยังไม่มีข้อมูลใบขอซื้อ (PR)")
 
 # ----------------------------------------------------
 # 10. รายการสรุปสต็อก & นับสต็อก
