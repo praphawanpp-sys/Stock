@@ -145,7 +145,7 @@ def localize_text(text):
     return text
 
 # ----------------------------------------------------
-# 3. เมนูที่ 1: แดชบอร์ดภาพรวม + ระบบแก้ไข/ลบข้อมูลวัตถุดิบ
+# 3. เมนูที่ 1: แดชบอร์ดภาพรวม
 # ----------------------------------------------------
 if selected_menu == t['m_dashboard']:
     st.title(f"📊 {t['m_dashboard']} - {selected_company}")
@@ -179,54 +179,22 @@ if selected_menu == t['m_dashboard']:
     with col3:
         st.metric("Estimated Stock Value / มูลค่าสต็อกรวม", f"{total_val:,.2f} THB")
         
-    st.subheader("📦 Inventory Data Table / ตารางข้อมูลวัตถุดิบ & จัดการ")
+    st.subheader("📦 Inventory Data Table / ตารางข้อมูลวัตถุดิบ")
     if len(filtered_inv) > 0:
         display_inv = filtered_inv.copy()
         if st.session_state['lang'] == 'en':
             display_inv['Category'] = display_inv['Category'].apply(localize_text)
         st.dataframe(display_inv, use_container_width=True)
-        
-        st.markdown("---")
-        st.subheader("🛠️ แก้ไขหรือลบรายการวัตถุดิบ (Edit / Delete Item)")
-        selected_item_to_manage = st.selectbox("เลือกรายการวัตถุดิบที่ต้องการแก้ไข/ลบ", filtered_inv['Item Name'].tolist(), key="dash_edit_sel")
-        
-        item_data = current_inv[current_inv['Item Name'] == selected_item_to_manage].iloc[0]
-        orig_idx = current_inv[current_inv['Item Name'] == selected_item_to_manage].index[0]
-        
-        with st.form("edit_item_form"):
-            e_code = st.text_input("รหัสสินค้า (Product Code)", value=str(item_data['Product Code']))
-            e_name = st.text_input("ชื่อวัตถุดิบ (Item Name)", value=str(item_data['Item Name']))
-            e_cat = st.text_input("หมวดหมู่ (Category)", value=str(item_data['Category']))
-            e_unit = st.text_input("หน่วยนับ (Unit)", value=str(item_data['Unit']))
-            e_bal = st.number_input("จำนวนสต็อก (Stock Balance)", value=float(item_data['Stock Balance']))
-            e_price = st.number_input("ราคาล่าสุด (Last Price)", value=float(item_data['Last Price']))
-            e_sup = st.text_input("ร้านค้า (Supplier)", value=str(item_data['Supplier']))
-            
-            col_btn1, col_btn2 = st.columns(2)
-            with col_btn1:
-                update_btn = st.form_submit_button("💾 บันทึกการแก้ไข (Update)")
-            with col_btn2:
-                delete_btn = st.form_submit_button("🗑️ ลบรายการนี้ (Delete)")
-                
-            if update_btn:
-                st.session_state['company_inventories'][selected_company].loc[orig_idx] = [e_code, e_name, e_cat, e_unit, e_bal, e_price, e_sup]
-                st.success("อัปเดตข้อมูลสำเร็จ!")
-                st.rerun()
-            elif delete_btn:
-                st.session_state['company_inventories'][selected_company] = current_inv.drop(orig_idx).reset_index(drop=True)
-                st.success("ลบรายการสำเร็จ!")
-                st.rerun()
     else:
         st.info("No inventory data found for this selection.")
 
 # ----------------------------------------------------
-# 4. เมนูที่ 2: การจัดการรายการสินค้า (Inventory Management) + เพิ่มตัวกรองแยกตามร้านค้าและปุ่มแก้ไข/ลบ
+# 4. เมนูที่ 2: การจัดการรายการสินค้า (Inventory Management) + ปุ่มแก้ไข/ลบ ทุกบรรทัด
 # ----------------------------------------------------
 elif selected_menu == t['m_inventory_mgmt']:
     st.title(f"📦 {t['m_inventory_mgmt']} - {selected_company}")
     
     st.markdown("#### 🔍 ค้นหาและกรองข้อมูลสินค้าตามร้านค้า (Filter by Supplier)")
-    
     col_m1, col_m2 = st.columns(2)
     with col_m1:
         all_suppliers_mgmt = ["ทั้งหมดทุกร้านค้า (All Suppliers)"] + (current_inv['Supplier'].unique().tolist() if len(current_inv)>0 else [])
@@ -236,7 +204,6 @@ elif selected_menu == t['m_inventory_mgmt']:
         
     st.markdown("---")
     
-    # กรองข้อมูลตามเงื่อนไข
     mgmt_filtered = current_inv.copy()
     if selected_mgmt_supplier != "ทั้งหมดทุกร้านค้า (All Suppliers)":
         mgmt_filtered = mgmt_filtered[mgmt_filtered['Supplier'] == selected_mgmt_supplier]
@@ -248,39 +215,66 @@ elif selected_menu == t['m_inventory_mgmt']:
         ]
         
     st.subheader(f"📋 รายการสินค้าทั้งหมด ({len(mgmt_filtered)} รายการ)")
+    
     if len(mgmt_filtered) > 0:
-        st.dataframe(mgmt_filtered, use_container_width=True)
-        
+        # หัวตารางจำลอง
+        h_col = st.columns([1.5, 2.5, 2.5, 1, 1, 1, 2, 1.2])
+        headers = ["Product Code", "Item Name", "Category", "Unit", "Stock", "Price", "Supplier", "จัดการ (Action)"]
+        for hc, h_text in zip(h_col, headers):
+            hc.markdown(f"**{h_text}**")
         st.markdown("---")
-        st.subheader("🛠️ จัดการข้อมูลสินค้า (แก้ไข / ลบ รายการในกลุ่มที่แสดง)")
-        mgmt_item_select = st.selectbox("เลือกรายการสินค้าที่ต้องการแก้ไข/ลบ", mgmt_filtered['Item Name'].tolist(), key="mgmt_sel_item")
         
-        m_item_data = current_inv[current_inv['Item Name'] == mgmt_item_select].iloc[0]
-        m_orig_idx = current_inv[current_inv['Item Name'] == mgmt_item_select].index[0]
-        
-        with st.form("mgmt_edit_form"):
-            me_code = st.text_input("รหัสสินค้า (Product Code)", value=str(m_item_data['Product Code']))
-            me_name = st.text_input("ชื่อวัตถุดิบ (Item Name)", value=str(m_item_data['Item Name']))
-            me_cat = st.text_input("หมวดหมู่ (Category)", value=str(m_item_data['Category']))
-            me_unit = st.text_input("หน่วยนับ (Unit)", value=str(m_item_data['Unit']))
-            me_bal = st.number_input("จำนวนสต็อก (Stock Balance)", value=float(m_item_data['Stock Balance']))
-            me_price = st.number_input("ราคาล่าสุด (Last Price)", value=float(m_item_data['Last Price']))
-            me_sup = st.text_input("ร้านค้า (Supplier)", value=str(m_item_data['Supplier']))
+        # วนลูปแสดงข้อมูลทีละบรรทัด พร้อมปุ่มแก้ไข/ลบที่ท้ายแถวตรงจุดที่ต้องการ
+        for idx, row in mgmt_filtered.iterrows():
+            r_col = st.columns([1.5, 2.5, 2.5, 1, 1, 1, 2, 0.6, 0.6])
             
-            mc_btn1, mc_btn2 = st.columns(2)
-            with mc_btn1:
-                m_update_btn = st.form_submit_button("💾 บันทึกการแก้ไข (Update)")
-            with mc_btn2:
-                m_delete_btn = st.form_submit_button("🗑️ ลบรายการนี้ (Delete)")
+            r_col[0].write(str(row['Product Code']))
+            r_col[1].write(str(row['Item Name']))
+            r_col[2].write(str(row['Category']))
+            r_col[3].write(str(row['Unit']))
+            r_col[4].write(str(row['Stock Balance']))
+            r_col[5].write(str(row['Last Price']))
+            r_col[6].write(str(row['Supplier']))
+            
+            with r_col[7]:
+                if st.button("✏️", key=f"edit_btn_{idx}", help="แก้ไขรายการนี้"):
+                    st.session_state[f'edit_target_{selected_company}'] = idx
+            with r_col[8]:
+                if st.button("🗑️", key=f"del_btn_{idx}", help="ลบรายการนี้"):
+                    st.session_state['company_inventories'][selected_company] = current_inv.drop(idx).reset_index(drop=True)
+                    st.success(f"ลบรายการ {row['Item Name']} สำเร็จ!")
+                    st.rerun()
+                    
+        # หากมีการกดปุ่มแก้ไขของแถวใด ให้แสดงฟอร์มแก้ไขข้อมูลของแถวนั้นๆ ทันที
+        active_edit_idx = st.session_state.get(f'edit_target_{selected_company}', None)
+        if active_edit_idx is not None and active_edit_idx in current_inv.index:
+            st.markdown("---")
+            st.subheader(f"🛠️ แก้ไขข้อมูลสินค้า: {current_inv.loc[active_edit_idx, 'Item Name']}")
+            item_data = current_inv.loc[active_edit_idx]
+            
+            with st.form(f"inline_edit_form_{active_edit_idx}"):
+                e_code = st.text_input("รหัสสินค้า (Product Code)", value=str(item_data['Product Code']))
+                e_name = st.text_input("ชื่อวัตถุดิบ (Item Name)", value=str(item_data['Item Name']))
+                e_cat = st.text_input("หมวดหมู่ (Category)", value=str(item_data['Category']))
+                e_unit = st.text_input("หน่วยนับ (Unit)", value=str(item_data['Unit']))
+                e_bal = st.number_input("จำนวนสต็อก (Stock Balance)", value=float(item_data['Stock Balance']))
+                e_price = st.number_input("ราคาล่าสุด (Last Price)", value=float(item_data['Last Price']))
+                e_sup = st.text_input("ร้านค้า (Supplier)", value=str(item_data['Supplier']))
                 
-            if m_update_btn:
-                st.session_state['company_inventories'][selected_company].loc[m_orig_idx] = [me_code, me_name, me_cat, me_unit, me_bal, me_price, me_sup]
-                st.success("อัปเดตข้อมูลสินค้าสำเร็จ!")
-                st.rerun()
-            elif m_delete_btn:
-                st.session_state['company_inventories'][selected_company] = current_inv.drop(m_orig_idx).reset_index(drop=True)
-                st.success("ลบรายการสินค้าสำเร็จ!")
-                st.rerun()
+                col_sub1, col_sub2 = st.columns(2)
+                with col_sub1:
+                    save_edit = st.form_submit_button("💾 บันทึกการแก้ไข")
+                with col_sub2:
+                    cancel_edit = st.form_submit_button("❌ ยกเลิก")
+                    
+                if save_edit:
+                    st.session_state['company_inventories'][selected_company].loc[active_edit_idx] = [e_code, e_name, e_cat, e_unit, e_bal, e_price, e_sup]
+                    del st.session_state[f'edit_target_{selected_company}']
+                    st.success("บันทึกการแก้ไขสำเร็จ!")
+                    st.rerun()
+                elif cancel_edit:
+                    del st.session_state[f'edit_target_{selected_company}']
+                    st.rerun()
     else:
         st.info("ไม่พบรายการสินค้าตามเงื่อนไขที่เลือก")
 
@@ -509,7 +503,7 @@ elif selected_menu == t['m_eom']:
         st.info("ยังไม่มีข้อมูลสินค้าในสาขานี้")
 
 # ----------------------------------------------------
-# 11. จัดการแอดมินและสิทธิ์ + ระบบแก้ไข/ลบแอดมิน
+# 11. จัดการแอดมินและสิทธิ์
 # ----------------------------------------------------
 elif selected_menu == t['m_admin']:
     st.title(f"⚙️ {t['m_admin']}")
