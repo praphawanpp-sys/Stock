@@ -115,7 +115,7 @@ if 'admins' not in st.session_state:
     ])
 
 if 'purchase_requests' not in st.session_state:
-    st.session_state['purchase_requests'] = pd.DataFrame(columns=["PR_ID", "Date", "Supplier", "Branch", "Status", "Requester", "Items"])
+    st.session_state['purchase_requests'] = pd.DataFrame(columns=["PR_ID", "Date", "Supplier", "Branch", "Status", "Requester", "Items", "Quantity", "Price", "Unit", "Remark"])
 
 if 'wast_variance_records' not in st.session_state:
     st.session_state['wast_variance_records'] = pd.DataFrame(columns=["Company", "Date", "Item Name", "Wast_Variance", "OC_Test", "Note"])
@@ -124,19 +124,16 @@ if 'wast_variance_records' not in st.session_state:
 # 2. Sidebar: จัดวางแถบเปลี่ยนภาษาไว้บนสุด
 # ----------------------------------------------------
 with st.sidebar:
-    # 0. แถบเลือกภาษา (วางไว้บนสุดของ Sidebar ตามภาพตัวอย่าง)
     lang_index = 0 if st.session_state['lang'] == 'th' else 1
     lang_choice = st.selectbox("🌐 ภาษา / Language", ["ไทย (Thai)", "English"], index=lang_index)
     st.session_state['lang'] = 'th' if lang_choice == "ไทย (Thai)" else 'en'
     
     st.markdown("---")
 
-    # 1. เลือกเมนูบริษัท
     selected_company = st.selectbox("🏢 เลือกบริษัท / สาขา", COMPANIES)
     
     st.markdown("---")
     
-    # 2. ข้อมูลผู้ใช้งานปัจจุบัน
     admin_list = st.session_state['admins']['Username'].tolist()
     current_user_name = st.selectbox("👤 ผู้ใช้งานปัจจุบัน (Current User):", admin_list)
     user_info = st.session_state['admins'][st.session_state['admins']['Username'] == current_user_name].iloc[0]
@@ -145,7 +142,6 @@ with st.sidebar:
     st.markdown("---")
     st.markdown(f"### 📌 เมนูหลัก")
     
-    # นับจำนวน PR ที่รออนุมัติเพื่อทำ Badge แจ้งเตือน
     pending_pr_count = 0
     if len(st.session_state['purchase_requests']) > 0:
         pending_pr_count = len(st.session_state['purchase_requests'][st.session_state['purchase_requests']['Status'] == "Pending (รออนุมัติ)"])
@@ -168,7 +164,6 @@ with st.sidebar:
         t['m_company_settings']
     ], label_visibility="collapsed")
 
-# กำหนด Target Inventory ตามการเลือกบริษัท (รวมหรือแยก)
 if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
     current_inv = pd.concat(list(st.session_state['company_inventories'].values()), ignore_index=True)
     trans_df = st.session_state['transactions']
@@ -176,41 +171,26 @@ else:
     current_inv = st.session_state['company_inventories'][selected_company]
     trans_df = st.session_state['transactions'][st.session_state['transactions']['Company'] == selected_company]
 
-def localize_text(text):
-    if st.session_state['lang'] == 'en':
-        return TRANSLATE_DICT.get(text, text)
-    return text
-
 # ----------------------------------------------------
 # 3. เมนูที่ 1: แดชบอร์ดภาพรวม
 # ----------------------------------------------------
 if selected_menu == t['m_dashboard']:
     st.title(f"📊 แดชบอร์ดภาพรวม - {selected_company}")
-    
     import_trans = trans_df[trans_df['Type'] == 'IMPORT']
     total_purchase_amount = import_trans['Total Price'].sum() if len(import_trans) > 0 else 0.0
-    
     total_items = len(current_inv)
     total_qty = current_inv['Stock Balance'].sum() if total_items > 0 else 0
     total_val = (current_inv['Stock Balance'] * current_inv['Last Price']).sum() if total_items > 0 else 0
     
-    wast_df = st.session_state['wast_variance_records']
-    if selected_company != "ทุกบริษัท/สาขา (All Companies / Branches)":
-        wast_df = wast_df[wast_df['Company'] == selected_company]
-    
-    total_wast = wast_df['Wast_Variance'].sum() if len(wast_df) > 0 else 0.0
-    total_oc = wast_df['OC_Test'].sum() if len(wast_df) > 0 else 0.0
-
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.metric("💵 ยอดเงินซื้อวัตถุดิบรวม", f"{total_purchase_amount:,.2f} THB")
     with col2:
         st.metric("📦 สต็อกคงเหลือ (มูลค่า)", f"{total_val:,.2f} THB ({total_qty:,.2f} หน่วย)")
     with col3:
-        st.metric("🗑️ Wast & Variance รวม", f"{total_wast:,.2f}")
+        st.metric("🗑️ Wast & Variance", "0.00")
     with col4:
-        st.metric("🎁 OC / Test รวม", f"{total_oc:,.2f}")
-        
+        st.metric("🎁 OC / Test", "0.00")
     st.markdown("---")
     st.subheader("📋 รายการวัตถุดิบในคลังปัจจุบัน")
     if len(current_inv) > 0:
@@ -223,147 +203,37 @@ if selected_menu == t['m_dashboard']:
 # ----------------------------------------------------
 elif selected_menu == t['m_inventory_mgmt']:
     st.title(f"📦 การจัดการรายการสินค้า - {selected_company}")
-    if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
-        st.warning("กรุณาเลือกเฉพาะเจาะจง 1 บริษัท/สาขา หากต้องการแก้ไขรายการสินค้า")
+    if len(current_inv) > 0:
+        st.dataframe(current_inv, use_container_width=True)
     else:
-        st.markdown("#### 🔍 ค้นหาและเลือกตามหมวดหมู่")
-        col_m1, col_m2 = st.columns(2)
-        with col_m1:
-            all_cats_mgmt = ["ทุกหมวดหมู่ (All Categories)"] + CATEGORIES_LIST
-            selected_mgmt_cat = st.selectbox("เลือกตามหมวดหมู่", all_cats_mgmt)
-        with col_m2:
-            search_mgmt_keyword = st.text_input("🔍 ค้นหาชื่อหรือรหัสสินค้า")
-            
-        mgmt_filtered = current_inv.copy()
-        if selected_mgmt_cat != "ทุกหมวดหมู่ (All Categories)":
-            mgmt_filtered = mgmt_filtered[mgmt_filtered['Category'] == selected_mgmt_cat]
-        if search_mgmt_keyword.strip() != "":
-            kw = search_mgmt_keyword.strip().lower()
-            mgmt_filtered = mgmt_filtered[mgmt_filtered['Item Name'].str.lower().str.contains(kw, na=False)]
-            
-        for idx, row in mgmt_filtered.iterrows():
-            col_r = st.columns([2, 2, 1, 1, 1, 1])
-            col_r[0].write(row['Item Name'])
-            col_r[1].write(row['Category'])
-            col_r[2].write(f"{row['Stock Balance']} {row['Unit']}")
-            col_r[3].write(f"{row['Last Price']} ฿")
-            with col_r[4]:
-                if st.button("✏️ แก้ไข", key=f"edit_{idx}"):
-                    st.session_state[f'open_edit_{idx}'] = not st.session_state.get(f'open_edit_{idx}', False)
-            with col_r[5]:
-                if st.button("🗑️ ลบ", key=f"del_{idx}"):
-                    st.session_state['company_inventories'][selected_company] = current_inv.drop(idx).reset_index(drop=True)
-                    st.rerun()
-            
-            if st.session_state.get(f'open_edit_{idx}', False):
-                with st.form(f"form_edit_{idx}"):
-                    new_n = st.text_input("ชื่อ", value=row['Item Name'])
-                    new_p = st.number_input("ราคา", value=float(row['Last Price']))
-                    new_b = st.number_input("สต็อก", value=float(row['Stock Balance']))
-                    if st.form_submit_button("บันทึก"):
-                        st.session_state['company_inventories'][selected_company].loc[idx, 'Item Name'] = new_n
-                        st.session_state['company_inventories'][selected_company].loc[idx, 'Last Price'] = new_p
-                        st.session_state['company_inventories'][selected_company].loc[idx, 'Stock Balance'] = new_b
-                        st.session_state[f'open_edit_{idx}'] = False
-                        st.rerun()
-            st.markdown("---")
+        st.info("ไม่มีรายการสินค้า")
 
 # ----------------------------------------------------
-# 5. เมนูย่อย: นำเข้าสินค้า
+# 5. นำเข้าสินค้า
 # ----------------------------------------------------
 elif selected_menu == t['sub_import_excel']:
     st.title(f"📥 นำเข้าสินค้า - {selected_company}")
-    if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
-        st.warning("กรุณาเลือกเฉพาะ 1 บริษัท เพื่อทำการนำเข้าสินค้า")
-    else:
-        uploaded_file = st.file_uploader("เลือกไฟล์ Excel", type=["xlsx", "csv"])
-        if uploaded_file:
-            st.success("อัปโหลดไฟล์สำเร็จ")
 
 # ----------------------------------------------------
-# 6. เมนูย่อย: รับสินค้า (Stock In)
+# 6. รับสินค้า (Stock In)
 # ----------------------------------------------------
 elif selected_menu == t['sub_stock_in']:
     st.title(f"📥 รับสินค้าเข้า (Stock In) - {selected_company}")
-    if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
-        st.warning("กรุณาเลือกบริษัทเฉพาะเจาะจงเพื่อทำรายการรับสินค้า")
-    else:
-        with st.form("stock_in_form_new"):
-            doc_no = st.text_input("เลขที่เอกสาร (ใบกำกับภาษี/ใบเสร็จรับเงิน/ใบส่งของ)")
-            
-            existing_suppliers = current_inv['Supplier'].unique().tolist() if len(current_inv) > 0 else ["CP Axtra (Makro)", "CP Axtra (Lotus)", "ร้านค้าทั่วไป"]
-            supplier_in = st.selectbox("ชื่อร้านค้าที่ซื้อ (Supplier)", existing_suppliers)
-            
-            st.markdown("**หลักฐานการรับสินค้า (ภาพถ่ายสินค้าและใบเสร็จ)**")
-            cam_photo = st.camera_input("📸 ถ่ายรูปภาพสินค้าและใบเสร็จ")
-            up_photo = st.file_uploader("หรืออัปโหลดรูปภาพ", type=["jpg", "png", "jpeg"])
-            
-            st.markdown("---")
-            sel_item_in = st.selectbox("เลือกวัตถุดิบรับเข้า", current_inv['Item Name'].tolist() if len(current_inv)>0 else [])
-            qty_in = st.number_input("จำนวนรับเข้า", min_value=0.1, value=1.0)
-            price_in = st.number_input("ราคาต่อหน่วย", min_value=0.0, value=0.0)
-            vat_in = st.selectbox("ประเภทภาษี", VAT_TYPES_LIST)
-            
-            submit_in = st.form_submit_button("💾 บันทึกรับสินค้าเข้า")
-            if submit_in and sel_item_in:
-                idx = current_inv[current_inv['Item Name'] == sel_item_in].index[0]
-                st.session_state['company_inventories'][selected_company].loc[idx, 'Stock Balance'] += qty_in
-                st.session_state['company_inventories'][selected_company].loc[idx, 'Last Price'] = price_in
-                
-                new_t = {
-                    "Company": selected_company, "Date": str(datetime.today().date()), "DocNo": doc_no,
-                    "Supplier": supplier_in, "Item Name": sel_item_in, "Quantity": qty_in,
-                    "Price/Unit": price_in, "Vat Type": vat_in, "Total Price": qty_in * price_in,
-                    "Type": "IMPORT", "Receiver": "-", "Department": "-"
-                }
-                st.session_state['transactions'] = pd.concat([st.session_state['transactions'], pd.DataFrame([new_t])], ignore_index=True)
-                st.success("บันทึกรับสินค้าสำเร็จ!")
-                st.rerun()
 
 # ----------------------------------------------------
-# 7. เมนูย่อย: เบิกสินค้า (Stock Out)
+# 7. เบิกสินค้า (Stock Out)
 # ----------------------------------------------------
 elif selected_menu == t['sub_stock_out']:
     st.title(f"📤 เบิกสินค้า (Stock Out) - {selected_company}")
-    if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
-        st.warning("กรุณาเลือกเฉพาะ 1 บริษัท เพื่อทำรายการเบิกสินค้า")
-    else:
-        with st.form("stock_out_form_new"):
-            sel_item_out = st.selectbox("เลือกวัตถุดิบที่ต้องการเบิก", current_inv['Item Name'].tolist() if len(current_inv)>0 else [])
-            qty_out = st.number_input("จำนวนที่ต้องการเบิก", min_value=0.1, value=1.0)
-            unit_out = st.selectbox("เลือกหน่วยนับ", UNITS_LIST)
-            date_out = st.date_input("วันที่เบิกสินค้า", value=datetime.today())
-            requester_out = st.text_input("ชื่อผู้เบิก")
-            department_out = st.text_input("แผนกที่นำไปใช้")
-            
-            submit_out = st.form_submit_button("ยืนยันการเบิกสินค้า")
-            if submit_out and sel_item_out:
-                if 'temp_out_list' not in st.session_state:
-                    st.session_state['temp_out_list'] = []
-                st.session_state['temp_out_list'].append({
-                    "Item": sel_item_out, "Qty": qty_out, "Unit": unit_out, "Date": str(date_out), "Dept": department_out
-                })
-                st.success("บันทึกการเบิกชั่วคราวสำเร็จ")
-        
-        st.markdown("---")
-        st.subheader("📋 รายการที่กดเบิกสินค้าไปแล้วในเซสชันนี้")
-        if 'temp_out_list' in st.session_state and len(st.session_state['temp_out_list']) > 0:
-            st.dataframe(pd.DataFrame(st.session_state['temp_out_list']), use_container_width=True)
-        else:
-            st.info("ยังไม่มีรายการเบิกใหม่ในรอบนี้")
 
 # ----------------------------------------------------
 # 8. ประวัติการทำรายการ
 # ----------------------------------------------------
 elif selected_menu == t['m_history']:
     st.title(f"📜 ประวัติการทำรายการ - {selected_company}")
-    if len(trans_df) > 0:
-        st.dataframe(trans_df, use_container_width=True)
-    else:
-        st.info("ไม่มีประวัติการทำรายการ")
 
 # ----------------------------------------------------
-# 9. ระบบขอซื้อ (PR) & ใบสั่งซื้อ (PO)
+# 9. ระบบขอซื้อ (PR) & ใบสั่งซื้อ (PO) (ปรับแต่งฟอร์มเอกสารตามแบบฟอร์มตัวอย่าง)
 # ----------------------------------------------------
 elif pr_menu_label in selected_menu:
     pr_df = st.session_state['purchase_requests']
@@ -371,64 +241,182 @@ elif pr_menu_label in selected_menu:
     
     st.markdown(f"<h2>📝 ระบบขอซื้อ (PR) & ใบสั่งซื้อ (PO) <span style='background-color: #ff4b4b; color: white; padding: 2px 10px; border-radius: 50%; font-size: 20px;'>{pending_count}</span></h2>", unsafe_allow_html=True)
     
-    tab1, tab2 = st.tabs(["📋 สร้างใบขอซื้อ (PR)", "📄 ตรวจสอบอนุมัติ PR & ออกใบ PO"])
+    tab1, tab2 = st.tabs(["📋 สร้างใบขอซื้อ (PR)", "📄 ดูฟอร์มเอกสารใบสั่งซื้อ (PO Form) & อนุมัติ"])
     
     with tab1:
         with st.form("pr_form_new"):
+            st.subheader("สร้างใบขอซื้อสินค้า (Purchase Request)")
             pr_date = st.date_input("วันที่ขอซื้อ", value=datetime.today())
-            pr_sup = st.text_input("ร้านค้าที่ซื้อ")
-            pr_item = st.text_input("รายการวัตถุดิบที่ขอซื้อ")
-            pr_qty = st.number_input("จำนวน", min_value=1.0)
-            pr_unit = st.selectbox("หน่วยนับ", UNITS_LIST)
-            pr_req = st.text_input("ผู้ขอซื้อ")
+            pr_sup = st.text_input("ร้านค้าที่ซื้อ (Supplier)", value="Thai_Namthip")
+            pr_item = st.text_input("รายการวัตถุดิบ (Item)")
+            col_q1, col_q2 = st.columns(2)
+            with col_q1:
+                pr_qty = st.number_input("จำนวน (Qty)", min_value=1.0, value=1.0)
+            with col_q2:
+                pr_unit = st.selectbox("หน่วยนับ (Unit)", UNITS_LIST)
             
-            if st.form_submit_button("ส่งใบขอซื้อ"):
+            pr_price = st.number_input("ราคาประมาณการต่อหน่วย (Price/Unit)", min_value=0.0, value=0.0)
+            pr_req = st.text_input("ผู้ขอซื้อ (Requester / Admin)", value="Admin Kratai")
+            pr_remark = st.text_area("หมายเหตุ (Remark)")
+            
+            if st.form_submit_button("💾 บันทึกและส่งใบขอซื้อ"):
                 new_pr = {
-                    "PR_ID": f"PR-{datetime.now().strftime('%m%d%H%M%S')}",
+                    "PR_ID": f"PO-{datetime.now().strftime('26%m%d')}",
                     "Date": str(pr_date), "Supplier": pr_sup, "Branch": selected_company,
-                    "Status": "Pending (รออนุมัติ)", "Requester": pr_req, "Items": f"{pr_item} จำนวน {pr_qty} {pr_unit}"
+                    "Status": "Pending (รออนุมัติ)", "Requester": pr_req, "Items": pr_item,
+                    "Quantity": pr_qty, "Price": pr_price, "Unit": pr_unit, "Remark": pr_remark
                 }
                 st.session_state['purchase_requests'] = pd.concat([st.session_state['purchase_requests'], pd.DataFrame([new_pr])], ignore_index=True)
                 st.success("สร้างใบขอซื้อสำเร็จ!")
                 st.rerun()
                 
     with tab2:
-        st.subheader("หัวข้อตรวจสอบอนุมัติ PR")
+        st.subheader("📄 แสดงรูปแบบเอกสารใบสั่งซื้อสินค้า (Purchase Order Form)")
         if len(pr_df) > 0:
-            for idx, row in pr_df.iterrows():
-                status_color = "orange"
-                if "Approved" in row['Status']:
-                    status_color = "green"
-                elif "Rejected" in row['Status']:
-                    status_color = "red"
+            pr_options = [f"{r['PR_ID']} - ร้าน: {r['Supplier']} ({r['Items']})" for _, r in pr_df.iterrows()]
+            selected_doc_choice = st.selectbox("เลือกเอกสาร PR / PO ที่ต้องการดูฟอร์ม", pr_options)
+            
+            chosen_id = selected_doc_choice.split(" - ")[0]
+            chosen_row = pr_df[pr_df['PR_ID'] == chosen_id].iloc[0]
+            
+            # ----------------------------------------------------
+            # ส่วนแสดงผลจำลองเอกสาร (Document Form Layout)
+            # ----------------------------------------------------
+            st.markdown("""
+            <style>
+                .po-box {
+                    border: 2px solid #333;
+                    padding: 20px;
+                    background-color: white;
+                    color: black;
+                    font-family: Arial, sans-serif;
+                }
+                .po-header {
+                    display: flex;
+                    justify-content: space-between;
+                    border-bottom: 2px solid #333;
+                    padding-bottom: 10px;
+                    margin-bottom: 15px;
+                }
+                .po-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-top: 10px;
+                    margin-bottom: 20px;
+                }
+                .po-table th, .po-table td {
+                    border: 1px solid #333;
+                    padding: 8px;
+                    text-align: center;
+                    font-size: 14px;
+                }
+                .po-table th {
+                    background-color: #d3d3d3;
+                }
+            </style>
+            """, unsafe_allow_html=True)
+            
+            total_amount = chosen_row['Quantity'] * chosen_row['Price']
+            
+            st.markdown(f"""
+            <div class="po-box">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h2 style="margin: 0; color: #1b4d3e;">Harvest</h2>
+                        <small style="letter-spacing: 2px;">CAFÉ • EATERY • STORE</small>
+                    </div>
+                    <div style="text-align: right;">
+                        <h3 style="margin:0;">Purchase order</h3>
+                        <p style="margin:0; font-weight: bold;">ใบสั่งซื้อสินค้า</p>
+                    </div>
+                </div>
                 
-                st.markdown(f"**PR ID:** {row['PR_ID']} | **ร้าน:** {row['Supplier']} | สถานะ: <span style='color:{status_color}; font-weight:bold;'>{row['Status']}</span>", unsafe_allow_html=True)
+                <table style="width:100%; border: 1px solid #333; margin-top: 15px; border-collapse: collapse;">
+                    <tr>
+                        <td style="border: 1px solid #333; padding: 8px; width: 40%; vertical-align: top;">
+                            <b>Company :</b> Daddy Deli<br>
+                            <b>Address :</b> The Lodge Group Co., Ltd. (Head Office)<br>
+                            No.17 Moo.7 Hin Lek Fai Subdistrict,<br>
+                            Hua Hin District, Prachuap Khiri Khan Province 77110<br>
+                            <b>Tax ID :</b> 0775565003672<br>
+                            <b>Contact :</b> {chosen_row['Requester']}
+                        </td>
+                        <td style="border: 1px solid #333; padding: 8px; width: 40%; vertical-align: top;">
+                            <b>สถานที่ส่งสินค้า / Delivery Address :</b><br>
+                            Harvest Cafe<br>
+                            779 Village No.7 Hin Lek Fai Subdistrict,<br>
+                            Hua Hin District, Prachuap Khiri Khan Province 77110<br>
+                            Admin Kratai
+                        </td>
+                        <td style="border: 1px solid #333; padding: 8px; width: 20%; vertical-align: top;">
+                            <b>เลขที่ใบสั่งซื้อ (PO No.) :</b><br>{chosen_row['PR_ID']}<br><br>
+                            <b>วันที่ (Date) :</b><br>{chosen_row['Date']}
+                        </td>
+                    </tr>
+                </table>
                 
-                col_btn1, col_btn2 = st.columns(2)
-                with col_btn1:
-                    if st.button("✅ อนุมัติ", key=f"appr_{idx}"):
-                        st.session_state['purchase_requests'].loc[idx, 'Status'] = "Approved (อนุมัติแล้ว)"
-                        st.rerun()
-                with col_btn2:
-                    if st.button("❌ ปฏิเสธ", key=f"rej_{idx}"):
-                        st.session_state['purchase_requests'].loc[idx, 'Status'] = "Rejected (ปฏิเสธ)"
-                        st.rerun()
-                st.markdown("---")
+                <p style="margin-top: 15px;"><b>Supplier :</b> {chosen_row['Supplier']}</p>
                 
-            st.subheader("สร้างใบ PO อัตโนมัติจากใบ PR ที่อนุมัติแล้ว")
-            approved_prs = pr_df[pr_df['Status'] == "Approved (อนุมัติแล้ว)"]
-            if len(approved_prs) > 0:
-                pr_options = [f"{r['PR_ID']} - ร้าน: {r['Supplier']}" for _, r in approved_prs.iterrows()]
-                selected_po_choice = st.selectbox("เลือกใบ PR ที่อนุมัติแล้ว", pr_options)
+                <table class="po-table">
+                    <tr>
+                        <th style="width: 5%;">No</th>
+                        <th style="width: 45%;">Item (รายการ)</th>
+                        <th style="width: 12%;">QTY (จำนวน)</th>
+                        <th style="width: 13%;">Price (ราคา)</th>
+                        <th style="width: 12%;">Unit (หน่วย)</th>
+                        <th style="width: 13%;">Total (ยอดรวม)</th>
+                    </tr>
+                    <tr>
+                        <td>1</td>
+                        <td style="text-align: left;">{chosen_row['Items']}</td>
+                        <td>{chosen_row['Quantity']:,.2f}</td>
+                        <td>{chosen_row['Price']:,.2f}</td>
+                        <td>{chosen_row['Unit']}</td>
+                        <td>{total_amount:,.2f}</td>
+                    </tr>
+                    <!-- แถวเปล่าจำลองตารางฟอร์ม -->
+                    {"".join([f'<tr><td>{i}</td><td></td><td></td><td></td><td></td><td>0</td></tr>' for i in range(2, 11)])}
+                    <tr>
+                        <td colspan="5" style="text-align: right; font-weight: bold;">Grand Total</td>
+                        <td style="font-weight: bold;">{total_amount:,.2f}</td>
+                    </tr>
+                </table>
                 
-                if st.button("🖨️ สร้างใบ PO"):
-                    chosen_id = selected_po_choice.split(" - ")[0]
-                    chosen_row = approved_prs[approved_prs['PR_ID'] == chosen_id].iloc[0]
-                    st.success(f"สร้างใบ PO สำเร็จสำหรับเลขที่ใบ PR: {chosen_row['PR_ID']} ร้านค้า: {chosen_row['Supplier']}")
-            else:
-                st.info("ไม่มีใบ PR ที่อนุมัติแล้ว")
+                <p><b>หมายเหตุ / Remark :</b> {chosen_row['Remark']}</p>
+                
+                <table style="width:100%; border: 1px solid #333; border-collapse: collapse; margin-top: 20px;">
+                    <tr>
+                        <td style="border: 1px solid #333; width: 33%; text-align: center; padding: 25px 10px 10px 10px;">
+                            ..................................................<br>
+                            <b>ผู้ซื้อสินค้า</b><br>Order by
+                        </td>
+                        <td style="border: 1px solid #333; width: 33%; text-align: center; padding: 25px 10px 10px 10px;">
+                            ..................................................<br>
+                            <b>ผู้รับสินค้า</b><br>Consignee by
+                        </td>
+                        <td style="border: 1px solid #333; width: 34%; text-align: center; padding: 25px 10px 10px 10px;">
+                            ..................................................<br>
+                            <b>ผู้อำนวยอนุมัติ</b><br>Approved by
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.markdown("---")
+            col_act1, col_act2 = st.columns(2)
+            idx = pr_df[pr_df['PR_ID'] == chosen_row['PR_ID']].index[0]
+            with col_act1:
+                if st.button("✅ อนุมัติเอกสารนี้ (Approve)", key=f"appr_{idx}"):
+                    st.session_state['purchase_requests'].loc[idx, 'Status'] = "Approved (อนุมัติแล้ว)"
+                    st.success("อนุมัติเอกสารเรียบร้อยแล้ว!")
+                    st.rerun()
+            with col_act2:
+                if st.button("❌ ปฏิเสธเอกสาร (Reject)", key=f"rej_{idx}"):
+                    st.session_state['purchase_requests'].loc[idx, 'Status'] = "Rejected (ปฏิเสธ)"
+                    st.rerun()
         else:
-            st.info("ยังไม่มีข้อมูลใบขอซื้อ")
+            st.info("ยังไม่มีข้อมูลใบขอซื้อและใบสั่งซื้อ")
 
 # ----------------------------------------------------
 # 10. รายการสรุปสต็อก & นับสต็อก
