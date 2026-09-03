@@ -121,19 +121,26 @@ if 'wast_variance_records' not in st.session_state:
     st.session_state['wast_variance_records'] = pd.DataFrame(columns=["Company", "Date", "Item Name", "Wast_Variance", "OC_Test", "Note"])
 
 # ----------------------------------------------------
-# 2. Sidebar: จัดลำดับใหม่ตามข้อ 7 และ 8
+# 2. Sidebar: จัดวางแถบเปลี่ยนภาษาไว้บนสุด
 # ----------------------------------------------------
 with st.sidebar:
-    # 1. ข้อมูลผู้ใช้งานปัจจุบัน ขึ้นมาเป็นอันดับแรก
+    # 0. แถบเลือกภาษา (วางไว้บนสุดของ Sidebar ตามภาพตัวอย่าง)
+    lang_index = 0 if st.session_state['lang'] == 'th' else 1
+    lang_choice = st.selectbox("🌐 ภาษา / Language", ["ไทย (Thai)", "English"], index=lang_index)
+    st.session_state['lang'] = 'th' if lang_choice == "ไทย (Thai)" else 'en'
+    
+    st.markdown("---")
+
+    # 1. เลือกเมนูบริษัท
+    selected_company = st.selectbox("🏢 เลือกบริษัท / สาขา", COMPANIES)
+    
+    st.markdown("---")
+    
+    # 2. ข้อมูลผู้ใช้งานปัจจุบัน
     admin_list = st.session_state['admins']['Username'].tolist()
     current_user_name = st.selectbox("👤 ผู้ใช้งานปัจจุบัน (Current User):", admin_list)
     user_info = st.session_state['admins'][st.session_state['admins']['Username'] == current_user_name].iloc[0]
     st.info(f"**{user_info['Name']}**\n\nสิทธิ์: {user_info['Role']}")
-    
-    st.markdown("---")
-    
-    # 2. เลือกเมนูบริษัท เป็นอันที่ 2 (เพิ่ม "ทุกบริษัท/สาขาได้")
-    selected_company = st.selectbox("🏢 เลือกบริษัท / สาขา", COMPANIES)
     
     st.markdown("---")
     st.markdown(f"### 📌 เมนูหลัก")
@@ -160,15 +167,6 @@ with st.sidebar:
         t['m_eom'],
         t['m_company_settings']
     ], label_visibility="collapsed")
-
-    st.markdown("<br><br><br>", unsafe_allow_html=True)
-    st.markdown("---")
-    
-    # แถบเลือกภาษา EN / TH เล็กๆ ด้านล่างขวาของแถบ (ปรับกลับเป็นแบบเดิม)
-    cols_lang = st.columns([2, 1])
-    with cols_lang[1]:
-        lang_choice = st.radio("Lang", ["TH", "EN"], index=0 if st.session_state['lang']=='th' else 1, horizontal=True, label_visibility="collapsed")
-        st.session_state['lang'] = 'th' if lang_choice == "TH" else 'en'
 
 # กำหนด Target Inventory ตามการเลือกบริษัท (รวมหรือแยก)
 if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
