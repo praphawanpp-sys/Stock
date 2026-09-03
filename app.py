@@ -32,7 +32,7 @@ LANG = {
         "menu": "📌 เมนูหลัก",
         "m_dashboard": "📊 แดชบอร์ดภาพรวม",
         "m_inventory_mgmt": "📦 การจัดการรายการสินค้า",
-        "sub_import_excel": "📥 3.1 นำเข้าสินค้าจาก Excel",
+        "sub_import_excel": "📥 3.1 นำเข้าสินค้า (Excel & Manual)",
         "sub_stock_in": "📥 3.2 รับสินค้า (Stock In)",
         "sub_stock_out": "📤 3.3 เบิกสินค้า (Stock Out)",
         "m_history": "📜 ประวัติการทำรายการ",
@@ -49,7 +49,7 @@ LANG = {
         "menu": "📌 Main Menu",
         "m_dashboard": "📊 Dashboard & Overview",
         "m_inventory_mgmt": "📦 Inventory Management",
-        "sub_import_excel": "📥 3.1 Import from Excel",
+        "sub_import_excel": "📥 3.1 Import Items (Excel & Manual)",
         "sub_stock_in": "📥 3.2 Stock In",
         "sub_stock_out": "📤 3.3 Stock Out / Requisition",
         "m_history": "📜 Transaction History",
@@ -59,7 +59,6 @@ LANG = {
     }
 }
 
-# พจนานุกรมแปลชื่อวัตถุดิบและหมวดหมู่เป็นอังกฤษอัตโนมัติ
 TRANSLATE_DICT = {
     "เนื้อสัตว์/เครื่องปรุง/อื่นๆ / Meat / Seasonings / Others": "Meat / Seasonings / Others",
     "ผักและผลไม้ / Vegetables & Fruits": "Vegetables & Fruits",
@@ -67,11 +66,9 @@ TRANSLATE_DICT = {
     "เนื้อวัว / Beef": "Beef",
     "น้ำผลไม้/Soft Drink/อื่นๆ / Juice/Soft Drink/Other": "Juice / Soft Drink / Other",
     "เบียร์ / Beer": "Beer",
-    "เนื้อแกะ / Lamb": "Lamb",
-    "ไวน์ / Wine": "Wine",
-    "ขนมปัง / Bread": "Bread",
-    "ของหวาน / Dessert": "Dessert",
-    "เมล็ดกาแฟ / Coffee Beans": "Coffee Beans"
+    "ไส้กรอก / Sausage": "Sausage",
+    "ชีส / Cheese": "Cheese",
+    "นม / Milk": "Milk"
 }
 
 # ----------------------------------------------------
@@ -86,7 +83,6 @@ if 'company_inventories' not in st.session_state:
         st.session_state['company_inventories'][comp] = pd.DataFrame(columns=[
             "Product Code", "Item Name", "Category", "Unit", "Stock Balance", "Last Price", "Supplier"
         ])
-    # ใส่ข้อมูลตัวอย่างให้บริษัทแรก
     st.session_state['company_inventories'][COMPANIES[0]] = pd.DataFrame([
         {"Product Code": "422582", "Item Name": "นมจืด 1 ลิตร", "Category": "เนื้อสัตว์/เครื่องปรุง/อื่นๆ / Meat / Seasonings / Others", "Unit": "Box", "Stock Balance": 25.0, "Last Price": 109.0, "Supplier": "CP Axtra (Makro)"},
         {"Product Code": "2502009877754", "Item Name": "กระเทียมดัดจุก 500 ก.", "Category": "ผักและผลไม้ / Vegetables & Fruits", "Unit": "Pack", "Stock Balance": 10.0, "Last Price": 40.0, "Supplier": "CP Axtra (Lotus)"}
@@ -139,11 +135,9 @@ with st.sidebar:
         t['m_admin']
     ], label_visibility="collapsed")
 
-# ดึงข้อมูลสต็อกและประวัติของบริษัทที่เลือกปัจจุบัน
 current_inv = st.session_state['company_inventories'][selected_company]
 trans_df = st.session_state['transactions']
 
-# ฟังก์ชันแปลงชื่อตามภาษาที่เลือก
 def localize_text(text):
     if st.session_state['lang'] == 'en':
         return TRANSLATE_DICT.get(text, text)
@@ -168,13 +162,11 @@ if selected_menu == t['m_dashboard']:
         
     st.markdown("---")
     
-    # กรองข้อมูลตามเงื่อนไข
     filtered_inv = current_inv.copy()
     if len(trans_df) > 0:
         comp_trans = trans_df[(trans_df['Company'] == selected_company)].copy()
         comp_trans['Date_dt'] = pd.to_datetime(comp_trans['Date'], errors='coerce')
         
-        # กรองวันที่และ Supplier
         mask = (comp_trans['Date_dt'].dt.date >= start_date) & (comp_trans['Date_dt'].dt.date <= end_date)
         if selected_supplier_filter != "All Suppliers / ทุกร้านค้า":
             mask &= (comp_trans['Supplier'] == selected_supplier_filter)
@@ -204,52 +196,93 @@ if selected_menu == t['m_dashboard']:
         st.info("No inventory data found for this selection.")
 
 # ----------------------------------------------------
-# 4. เมนูย่อย 3.1: นำเข้าสินค้าจาก Excel (Import Excel)
+# 4. เมนูย่อย 3.1: นำเข้าสินค้า (Excel Upload & Manual Add)
 # ----------------------------------------------------
 elif selected_menu == t['sub_import_excel']:
     st.title(f"📥 {t['sub_import_excel']} - {selected_company}")
     
-    st.write("รูปแบบไฟล์: คอลัมน์ 0=Supplier, คอลัมน์ 1=รหัสสินค้า, คอลัมน์ 2=ชื่อวัตถุดิบ, คอลัมน์ 3=ราคา, คอลัมน์ 4=หน่วยนับ")
-    uploaded_file = st.file_uploader("เลือกไฟล์ Excel / Choose Excel File", type=["xlsx", "xls", "csv"])
+    tab_m1, tab_m2 = st.tabs(["📁 นำเข้าผ่านไฟล์ Excel (Excel Import)", "✍️ เพิ่มสินค้าแบบแมนนวล (Manual Add)"])
     
-    if uploaded_file is not None:
-        try:
-            df_raw = pd.read_csv(uploaded_file, header=None) if uploaded_file.name.endswith(".csv") else pd.read_excel(uploaded_file, header=None)
-            st.write(f"พบข้อมูลทั้งหมด: {len(df_raw)} แถว (แสดงตัวอย่าง 5 แถวแรก):")
-            st.dataframe(df_raw.head())
-            
-            if st.button("ยืนยันการนำเข้าข้อมูลเข้าสู่ระบบ / Confirm Import"):
-                new_items_list = []
-                for index, row in df_raw.iloc[1:].iterrows():
-                    supplier = str(row.get(0, "General"))
-                    p_code = str(row.get(1, "AUTO"))
-                    i_name = str(row.get(2, ""))
-                    try:
-                        price = float(row.get(3, 0.0)) if pd.notna(row.get(3)) else 0.0
-                    except:
-                        price = 0.0
-                    unit = str(row.get(4, "Pcs.")) if pd.notna(row.get(4)) else "Pcs."
-                    
-                    if pd.notna(i_name) and i_name.strip() != "" and i_name != "nan":
-                        new_items_list.append({
-                            "Product Code": p_code,
-                            "Item Name": i_name,
-                            "Category": "เนื้อสัตว์/เครื่องปรุง/อื่นๆ / Meat / Seasonings / Others",
-                            "Unit": unit,
-                            "Stock Balance": 0.0,
-                            "Last Price": price,
-                            "Supplier": supplier
-                        })
+    with tab_m1:
+        st.write("รูปแบบไฟล์: คอลัมน์ 0=Supplier, คอลัมน์ 1=รหัสสินค้า, คอลัมน์ 2=ชื่อวัตถุดิบ, คอลัมน์ 3=ราคา, คอลัมน์ 4=หน่วยนับ")
+        uploaded_file = st.file_uploader("เลือกไฟล์ Excel / Choose Excel File", type=["xlsx", "xls", "csv"])
+        
+        if uploaded_file is not None:
+            try:
+                df_raw = pd.read_csv(uploaded_file, header=None) if uploaded_file.name.endswith(".csv") else pd.read_excel(uploaded_file, header=None)
+                st.write(f"พบข้อมูลทั้งหมด: {len(df_raw)} แถว (แสดงตัวอย่าง 5 แถวแรก):")
+                st.dataframe(df_raw.head())
                 
-                if len(new_items_list) > 0:
-                    df_import = pd.DataFrame(new_items_list)
-                    st.session_state['company_inventories'][selected_company] = pd.concat([current_inv, df_import], ignore_index=True).drop_duplicates(subset=["Item Name"], keep="last")
-                    st.success(f"นำเข้าสำเร็จ {len(new_items_list)} รายการ!")
+                if st.button("ยืนยันการนำเข้าข้อมูลเข้าสู่ระบบ / Confirm Excel Import"):
+                    new_items_list = []
+                    for index, row in df_raw.iloc[1:].iterrows():
+                        supplier = str(row.get(0, "General"))
+                        p_code = str(row.get(1, "AUTO"))
+                        i_name = str(row.get(2, ""))
+                        try:
+                            price = float(row.get(3, 0.0)) if pd.notna(row.get(3)) else 0.0
+                        except:
+                            price = 0.0
+                        unit = str(row.get(4, "Pcs.")) if pd.notna(row.get(4)) else "Pcs."
+                        
+                        if pd.notna(i_name) and i_name.strip() != "" and i_name != "nan":
+                            new_items_list.append({
+                                "Product Code": p_code,
+                                "Item Name": i_name,
+                                "Category": "เนื้อสัตว์/เครื่องปรุง/อื่นๆ / Meat / Seasonings / Others",
+                                "Unit": unit,
+                                "Stock Balance": 0.0,
+                                "Last Price": price,
+                                "Supplier": supplier
+                            })
+                    
+                    if len(new_items_list) > 0:
+                        df_import = pd.DataFrame(new_items_list)
+                        st.session_state['company_inventories'][selected_company] = pd.concat([current_inv, df_import], ignore_index=True).drop_duplicates(subset=["Item Name"], keep="last")
+                        st.success(f"นำเข้าสำเร็จ {len(new_items_list)} รายการ!")
+                        st.rerun()
+                    else:
+                        st.error("ไม่พบข้อมูลชื่อสินค้าในไฟล์")
+            except Exception as e:
+                st.error(f"เกิดข้อผิดพลาด: {e}")
+
+    with tab_m2:
+        st.subheader("เพิ่มข้อมูลวัตถุดิบรายรายการ (Manual Add)")
+        with st.form("manual_add_form"):
+            col_a, col_b = st.columns(2)
+            with col_a:
+                m_code = st.text_input("รหัสสินค้า (Product Code / SKU)")
+                m_name = st.text_input("ชื่อวัตถุดิบ (Item Name)")
+                m_cat = st.selectbox("หมวดหมู่ (Category)", [
+                    "เนื้อสัตว์/เครื่องปรุง/อื่นๆ / Meat / Seasonings / Others",
+                    "ผักและผลไม้ / Vegetables & Fruits",
+                    "ทะเล / Seafood",
+                    "เนื้อวัว / Beef",
+                    "น้ำผลไม้/Soft Drink/อื่นๆ / Juice/Soft Drink/Other"
+                ])
+            with col_b:
+                m_supplier = st.text_input("ร้านค้าที่ซื้อ (Supplier)")
+                m_price = st.number_input("ราคาล่าสุดต่อหน่วย (Last Price)", min_value=0.0, value=0.0)
+                m_unit = st.text_input("หน่วยนับ (Unit เช่น กก., แพ็ค, ลิตร, Box)")
+                m_qty = st.number_input("จำนวนสต็อกเริ่มต้น (Initial Stock Balance)", min_value=0.0, value=0.0)
+            
+            submit_manual = st.form_submit_button("💾 บันทึกเพิ่มสินค้า (Save Item)")
+            if submit_manual:
+                if m_name.strip() != "":
+                    new_manual_row = {
+                        "Product Code": m_code if m_code else "AUTO",
+                        "Item Name": m_name,
+                        "Category": m_cat,
+                        "Unit": m_unit if m_unit else "Pcs.",
+                        "Stock Balance": m_qty,
+                        "Last Price": m_price,
+                        "Supplier": m_supplier if m_supplier else "General"
+                    }
+                    st.session_state['company_inventories'][selected_company] = pd.concat([current_inv, pd.DataFrame([new_manual_row])], ignore_index=True)
+                    st.success(f"เพิ่มสินค้า '{m_name}' สำเร็จเรียบร้อย!")
                     st.rerun()
                 else:
-                    st.error("ไม่พบข้อมูลชื่อสินค้าในไฟล์")
-        except Exception as e:
-            st.error(f"เกิดข้อผิดพลาด: {e}")
+                    st.warning("กรุณากรอกชื่อวัตถุดิบ (Item Name)")
 
 # ----------------------------------------------------
 # 5. เมนูย่อย 3.2: รับสินค้า (Stock In)
