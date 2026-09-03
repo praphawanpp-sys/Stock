@@ -144,7 +144,7 @@ def localize_text(text):
     return text
 
 # ----------------------------------------------------
-# 3. เมนูที่ 1: แดชบอร์ดภาพรวม พร้อมตัวกรองร้านค้าและวันที่
+# 3. เมนูที่ 1: แดชบอร์ดภาพรวม + ระบบแก้ไข/ลบข้อมูลวัตถุดิบ
 # ----------------------------------------------------
 if selected_menu == t['m_dashboard']:
     st.title(f"📊 {t['m_dashboard']} - {selected_company}")
@@ -166,7 +166,6 @@ if selected_menu == t['m_dashboard']:
     if len(trans_df) > 0:
         comp_trans = trans_df[(trans_df['Company'] == selected_company)].copy()
         comp_trans['Date_dt'] = pd.to_datetime(comp_trans['Date'], errors='coerce')
-        
         mask = (comp_trans['Date_dt'].dt.date >= start_date) & (comp_trans['Date_dt'].dt.date <= end_date)
         if selected_supplier_filter != "All Suppliers / ทุกร้านค้า":
             mask &= (comp_trans['Supplier'] == selected_supplier_filter)
@@ -186,12 +185,43 @@ if selected_menu == t['m_dashboard']:
     with col3:
         st.metric("Estimated Stock Value / มูลค่าสต็อกรวม", f"{total_val:,.2f} THB")
         
-    st.subheader("📦 Inventory Data Table / ตารางข้อมูลวัตถุดิบ")
+    st.subheader("📦 Inventory Data Table / ตารางข้อมูลวัตถุดิบ & จัดการ")
     if len(filtered_inv) > 0:
         display_inv = filtered_inv.copy()
         if st.session_state['lang'] == 'en':
             display_inv['Category'] = display_inv['Category'].apply(localize_text)
         st.dataframe(display_inv, use_container_width=True)
+        
+        st.markdown("---")
+        st.subheader("🛠️ แก้ไขหรือลบรายการวัตถุดิบ (Edit / Delete Item)")
+        selected_item_to_manage = st.selectbox("เลือกรายการวัตถุดิบที่ต้องการแก้ไข/ลบ", filtered_inv['Item Name'].tolist())
+        
+        item_data = current_inv[current_inv['Item Name'] == selected_item_to_manage].iloc[0]
+        orig_idx = current_inv[current_inv['Item Name'] == selected_item_to_manage].index[0]
+        
+        with st.form("edit_item_form"):
+            e_code = st.text_input("รหัสสินค้า (Product Code)", value=str(item_data['Product Code']))
+            e_name = st.text_input("ชื่อวัตถุดิบ (Item Name)", value=str(item_data['Item Name']))
+            e_cat = st.text_input("หมวดหมู่ (Category)", value=str(item_data['Category']))
+            e_unit = st.text_input("หน่วยนับ (Unit)", value=str(item_data['Unit']))
+            e_bal = st.number_input("จำนวนสต็อก (Stock Balance)", value=float(item_data['Stock Balance']))
+            e_price = st.number_input("ราคาล่าสุด (Last Price)", value=float(item_data['Last Price']))
+            e_sup = st.text_input("ร้านค้า (Supplier)", value=str(item_data['Supplier']))
+            
+            col_btn1, col_btn2 = st.columns(2)
+            with col_btn1:
+                update_btn = st.form_submit_button("💾 บันทึกการแก้ไข (Update)")
+            with col_btn2:
+                delete_btn = st.form_submit_button("🗑️ ลบรายการนี้ (Delete)")
+                
+            if update_btn:
+                st.session_state['company_inventories'][selected_company].loc[orig_idx] = [e_code, e_name, e_cat, e_unit, e_bal, e_price, e_sup]
+                st.success("อัปเดตข้อมูลสำเร็จ!")
+                st.rerun()
+            elif delete_btn:
+                st.session_state['company_inventories'][selected_company] = current_inv.drop(orig_idx).reset_index(drop=True)
+                st.success("ลบรายการสำเร็จ!")
+                st.rerun()
     else:
         st.info("No inventory data found for this selection.")
 
@@ -420,7 +450,7 @@ elif selected_menu == t['m_eom']:
         st.info("ยังไม่มีข้อมูลสินค้าในสาขานี้")
 
 # ----------------------------------------------------
-# 10. จัดการแอดมินและสิทธิ์ (Admin Management)
+# 10. จัดการแอดมินและสิทธิ์ + ระบบแก้ไข/ลบแอดมิน
 # ----------------------------------------------------
 elif selected_menu == t['m_admin']:
     st.title(f"⚙️ {t['m_admin']}")
@@ -428,3 +458,32 @@ elif selected_menu == t['m_admin']:
         st.error("เฉพาะ Super Admin เท่านั้นที่เข้าถึงหน้านี้ได้")
     else:
         st.dataframe(st.session_state['admins'], use_container_width=True)
+        
+        st.markdown("---")
+        st.subheader("🛠️ จัดการผู้ดูแลระบบ (Edit / Delete Admin)")
+        admin_names = st.session_state['admins']['Username'].tolist()
+        sel_admin = st.selectbox("เลือกบัญชีผู้ใช้ที่ต้องการแก้ไขหรือลบ", admin_names)
+        
+        adm_row = st.session_state['admins'][st.session_state['admins']['Username'] == sel_admin].iloc[0]
+        adm_idx = st.session_state['admins'][st.session_state['admins']['Username'] == sel_admin].index[0]
+        
+        with st.form("edit_admin_form"):
+            a_user = st.text_input("Username", value=str(adm_row['Username']))
+            a_name = st.text_input("Full Name / ชื่อ-นามสกุล", value=str(adm_row['Name']))
+            a_branch = st.selectbox("Branch / สาขา", COMPANIES + ["All Branches"], index=0 if adm_row['Branch'] in COMPANIES else len(COMPANIES))
+            a_role = st.selectbox("Role / สิทธิ์", ["Super Admin", "Manager", "Staff"], index=0 if adm_row['Role']=="Super Admin" else (1 if adm_row['Role']=="Manager" else 2))
+            
+            c_abtn1, c_abtn2 = st.columns(2)
+            with c_abtn1:
+                up_adm = st.form_submit_button("💾 บันทึกการแก้ไขแอดมิน")
+            with c_abtn2:
+                del_adm = st.form_submit_button("🗑️ ลบแอดมินนี้ออก")
+                
+            if up_adm:
+                st.session_state['admins'].loc[adm_idx] = [a_user, a_name, a_branch, a_role]
+                st.success("อัปเดตสิทธิ์แอดมินสำเร็จ!")
+                st.rerun()
+            elif del_adm:
+                st.session_state['admins'] = st.session_state['admins'].drop(adm_idx).reset_index(drop=True)
+                st.success("ลบแอดมินสำเร็จ!")
+                st.rerun()
