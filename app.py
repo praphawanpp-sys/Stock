@@ -93,7 +93,7 @@ if 'company_addresses' not in st.session_state:
     st.session_state['company_addresses'] = {comp: f"ที่อยู่สำนักงานใหญ่/สาขา ของ {comp}" for comp in REAL_COMPANIES}
 
 if 'company_logos' not in st.session_state:
-    st.session_state['company_logos'] = {} # เก็บไฟล์โลโก้แต่ละบริษัท
+    st.session_state['company_logos'] = {}
 
 if 'company_inventories' not in st.session_state:
     st.session_state['company_inventories'] = {}
@@ -406,7 +406,6 @@ elif pr_menu_label in selected_menu:
             chosen_po_id = selected_po_view.split(" - ")[0]
             po_row = po_df[po_df['PO_ID'] == chosen_po_id].iloc[0]
             
-            # ดึงข้อมูลโลโก้และที่อยู่ของบริษัทที่เกี่ยวข้องกับ PO นั้นๆ
             po_company = po_row['Branch'] if po_row['Branch'] in REAL_COMPANIES else REAL_COMPANIES[0]
             po_address = st.session_state['company_addresses'].get(po_company, "ที่อยู่สำนักงานใหญ่")
             logo_file = st.session_state['company_logos'].get(po_company, None)
@@ -419,7 +418,20 @@ elif pr_menu_label in selected_menu:
                 logo_html = f'<img src="data:image/png;base64,{base64_str}" style="max-height: 60px; max-width: 150px; margin-bottom: 8px;"><br>'
 
             html_po_content = f"""
-            <div style="border: 1px solid #ddd; padding: 20px; border-radius: 8px; background-color: #ffffff; font-family: sans-serif; color: #333;">
+            <!DOCTYPE html>
+            <html>
+            <head>
+            <meta charset="utf-8">
+            <style>
+                body {{ font-family: sans-serif; color: #333; margin: 0; padding: 0; background-color: #ffffff; }}
+                .po-container {{ border: 1px solid #ddd; padding: 20px; border-radius: 8px; background-color: #ffffff; }}
+                table {{ width: 100%; border: 1px solid #333; margin-top: 15px; border-collapse: collapse; }}
+                th, td {{ border: 1px solid #333; padding: 8px; }}
+                th {{ background-color: #f2f2f2; }}
+            </style>
+            </head>
+            <body>
+            <div class="po-container">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                     <div>
                         {logo_html}
@@ -432,15 +444,15 @@ elif pr_menu_label in selected_menu:
                     </div>
                 </div>
                 
-                <table style="width:100%; border: 1px solid #333; margin-top: 15px; border-collapse: collapse;">
+                <table>
                     <tr>
-                        <td style="border: 1px solid #333; padding: 10px; width: 50%; vertical-align: top;">
+                        <td style="width: 50%; vertical-align: top;">
                             <b>Company / บริษัท:</b><br>
                             {po_address.replace(chr(10), '<br>')}<br>
                             <b>Tax ID:</b> 0775565003672<br>
                             <b>Contact:</b> Admin Kratai
                         </td>
-                        <td style="border: 1px solid #333; padding: 10px; width: 50%; vertical-align: top;">
+                        <td style="width: 50%; vertical-align: top;">
                             <b>สถานที่ส่งสินค้า / Delivery Address:</b><br>
                             {po_company}<br>
                             {po_address.replace(chr(10), '<br>')}<br>
@@ -453,29 +465,31 @@ elif pr_menu_label in selected_menu:
                     <p><b>เลขที่ใบสั่งซื้อ (PO ID):</b> {po_row['PO_ID']} &nbsp;&nbsp;|&nbsp;&nbsp; <b>วันที่:</b> {po_row['Date']} &nbsp;&nbsp;|&nbsp;&nbsp; <b>ผู้จำหน่าย (Supplier):</b> {po_row['Supplier']}</p>
                 </div>
                 
-                <table style="width:100%; border: 1px solid #333; margin-top: 15px; border-collapse: collapse;">
+                <table>
                     <thead>
-                        <tr style="background-color: #f2f2f2;">
-                            <th style="border: 1px solid #333; padding: 8px; text-align: center;">ลำดับ</th>
-                            <th style="border: 1px solid #333; padding: 8px; text-align: left;">รายการสินค้า</th>
-                            <th style="border: 1px solid #333; padding: 8px; text-align: center;">จำนวน</th>
-                            <th style="border: 1px solid #333; padding: 8px; text-align: right;">ราคา/หน่วย</th>
-                            <th style="border: 1px solid #333; padding: 8px; text-align: right;">รวมเป็นเงิน</th>
+                        <tr>
+                            <th style="text-align: center;">ลำดับ</th>
+                            <th style="text-align: left;">รายการสินค้า</th>
+                            <th style="text-align: center;">จำนวน</th>
+                            <th style="text-align: right;">ราคา/หน่วย</th>
+                            <th style="text-align: right;">รวมเป็นเงิน</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td style="border: 1px solid #333; padding: 8px; text-align: center;">1</td>
-                            <td style="border: 1px solid #333; padding: 8px;">น้ำอัดลม (Soft Drink)</td>
-                            <td style="border: 1px solid #333; padding: 8px; text-align: center;">10 Box</td>
-                            <td style="border: 1px solid #333; padding: 8px; text-align: right;">350.00</td>
-                            <td style="border: 1px solid #333; padding: 8px; text-align: right;">3,500.00</td>
+                            <td style="text-align: center;">1</td>
+                            <td>น้ำอัดลม (Soft Drink)</td>
+                            <td style="text-align: center;">10 Box</td>
+                            <td style="text-align: right;">350.00</td>
+                            <td style="text-align: right;">3,500.00</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
+            </body>
+            </html>
             """
-            st.markdown(html_po_content, unsafe_allow_html=True)
+            st.components.v1.html(html_po_content, height=520, scrolling=True)
         else:
             st.info("ยังไม่มีข้อมูลใบสั่งซื้อ (PO)")
             
@@ -579,7 +593,6 @@ elif selected_menu == t['m_company_settings']:
         st.subheader("แก้ไขชื่อ ที่อยู่ และอัปโหลดโลโก้บริษัท")
         current_addr = st.session_state['company_addresses'].get(selected_company, "")
         
-        # แสดงโลโก้เดิม (ถ้ามี)
         existing_logo = st.session_state['company_logos'].get(selected_company, None)
         if existing_logo is not None:
             st.image(existing_logo, width=150, caption="โลโก้ปัจจุบันของบริษัท")
