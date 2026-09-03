@@ -85,7 +85,8 @@ if 'company_inventories' not in st.session_state:
         ])
     st.session_state['company_inventories'][COMPANIES[0]] = pd.DataFrame([
         {"Product Code": "422582", "Item Name": "นมจืด 1 ลิตร", "Category": "เนื้อสัตว์/เครื่องปรุง/อื่นๆ / Meat / Seasonings / Others", "Unit": "Box", "Stock Balance": 25.0, "Last Price": 109.0, "Supplier": "CP Axtra (Makro)"},
-        {"Product Code": "2502009877754", "Item Name": "กระเทียมดัดจุก 500 ก.", "Category": "ผักและผลไม้ / Vegetables & Fruits", "Unit": "Pack", "Stock Balance": 10.0, "Last Price": 40.0, "Supplier": "CP Axtra (Lotus)"}
+        {"Product Code": "2502009877754", "Item Name": "กระเทียมดัดจุก 500 ก.", "Category": "ผักและผลไม้ / Vegetables & Fruits", "Unit": "Pack", "Stock Balance": 10.0, "Last Price": 40.0, "Supplier": "CP Axtra (Lotus)"},
+        {"Product Code": "54061057", "Item Name": "คิทแคท ทริกเกอร์ 500 กรัม", "Category": "เนื้อสัตว์/เครื่องปรุง/อื่นๆ / Meat / Seasonings / Others", "Unit": "Bag", "Stock Balance": 0.0, "Last Price": 130.0, "Supplier": "กส-สรา ค้าส่ง"}
     ])
 
 if 'transactions' not in st.session_state:
@@ -153,8 +154,8 @@ if selected_menu == t['m_dashboard']:
     col_f1, col_f2, col_f3 = st.columns(3)
     
     with col_f1:
-        suppliers_list = ["All Suppliers / ทุกร้านค้า"] + (trans_df['Supplier'].unique().tolist() if len(trans_df)>0 else [])
-        selected_supplier_filter = st.selectbox("Supplier / ร้านค้าที่ซื้อ", suppliers_list)
+        suppliers_list = ["All Suppliers / ทุกร้านค้า"] + (current_inv['Supplier'].unique().tolist() if len(current_inv)>0 else [])
+        selected_supplier_filter = st.selectbox("Supplier / ร้านค้าที่ซื้อ", suppliers_list, key="dash_sup_filter")
     with col_f2:
         start_date = st.date_input("Start Date / ตั้งแต่วันที่", value=datetime.today().replace(day=1))
     with col_f3:
@@ -163,15 +164,8 @@ if selected_menu == t['m_dashboard']:
     st.markdown("---")
     
     filtered_inv = current_inv.copy()
-    if len(trans_df) > 0:
-        comp_trans = trans_df[(trans_df['Company'] == selected_company)].copy()
-        comp_trans['Date_dt'] = pd.to_datetime(comp_trans['Date'], errors='coerce')
-        mask = (comp_trans['Date_dt'].dt.date >= start_date) & (comp_trans['Date_dt'].dt.date <= end_date)
-        if selected_supplier_filter != "All Suppliers / ทุกร้านค้า":
-            mask &= (comp_trans['Supplier'] == selected_supplier_filter)
-        filtered_trans = comp_trans[mask]
-    else:
-        filtered_trans = pd.DataFrame()
+    if selected_supplier_filter != "All Suppliers / ทุกร้านค้า":
+        filtered_inv = filtered_inv[filtered_inv['Supplier'] == selected_supplier_filter]
 
     total_items = len(filtered_inv)
     total_qty = filtered_inv['Stock Balance'].sum() if total_items > 0 else 0
@@ -194,7 +188,7 @@ if selected_menu == t['m_dashboard']:
         
         st.markdown("---")
         st.subheader("🛠️ แก้ไขหรือลบรายการวัตถุดิบ (Edit / Delete Item)")
-        selected_item_to_manage = st.selectbox("เลือกรายการวัตถุดิบที่ต้องการแก้ไข/ลบ", filtered_inv['Item Name'].tolist())
+        selected_item_to_manage = st.selectbox("เลือกรายการวัตถุดิบที่ต้องการแก้ไข/ลบ", filtered_inv['Item Name'].tolist(), key="dash_edit_sel")
         
         item_data = current_inv[current_inv['Item Name'] == selected_item_to_manage].iloc[0]
         orig_idx = current_inv[current_inv['Item Name'] == selected_item_to_manage].index[0]
@@ -226,7 +220,72 @@ if selected_menu == t['m_dashboard']:
         st.info("No inventory data found for this selection.")
 
 # ----------------------------------------------------
-# 4. เมนูย่อย 3.1: นำเข้าสินค้า (Excel Upload & Manual Add)
+# 4. เมนูที่ 2: การจัดการรายการสินค้า (Inventory Management) + เพิ่มตัวกรองแยกตามร้านค้าและปุ่มแก้ไข/ลบ
+# ----------------------------------------------------
+elif selected_menu == t['m_inventory_mgmt']:
+    st.title(f"📦 {t['m_inventory_mgmt']} - {selected_company}")
+    
+    st.markdown("#### 🔍 ค้นหาและกรองข้อมูลสินค้าตามร้านค้า (Filter by Supplier)")
+    
+    col_m1, col_m2 = st.columns(2)
+    with col_m1:
+        all_suppliers_mgmt = ["ทั้งหมดทุกร้านค้า (All Suppliers)"] + (current_inv['Supplier'].unique().tolist() if len(current_inv)>0 else [])
+        selected_mgmt_supplier = st.selectbox("เลือกตามร้านค้าที่ซื้อ (Select Supplier)", all_suppliers_mgmt)
+    with col_m2:
+        search_mgmt_keyword = st.text_input("🔍 ค้นหาด้วยชื่อสินค้า หรือ รหัสสินค้า (Search Name / Code)")
+        
+    st.markdown("---")
+    
+    # กรองข้อมูลตามเงื่อนไข
+    mgmt_filtered = current_inv.copy()
+    if selected_mgmt_supplier != "ทั้งหมดทุกร้านค้า (All Suppliers)":
+        mgmt_filtered = mgmt_filtered[mgmt_filtered['Supplier'] == selected_mgmt_supplier]
+    if search_mgmt_keyword.strip() != "":
+        kw = search_mgmt_keyword.strip().lower()
+        mgmt_filtered = mgmt_filtered[
+            mgmt_filtered['Item Name'].str.lower().str.contains(kw, na=False) |
+            mgmt_filtered['Product Code'].str.lower().str.contains(kw, na=False)
+        ]
+        
+    st.subheader(f"📋 รายการสินค้าทั้งหมด ({len(mgmt_filtered)} รายการ)")
+    if len(mgmt_filtered) > 0:
+        st.dataframe(mgmt_filtered, use_container_width=True)
+        
+        st.markdown("---")
+        st.subheader("🛠️ จัดการข้อมูลสินค้า (แก้ไข / ลบ รายการในกลุ่มที่แสดง)")
+        mgmt_item_select = st.selectbox("เลือกรายการสินค้าที่ต้องการแก้ไข/ลบ", mgmt_filtered['Item Name'].tolist(), key="mgmt_sel_item")
+        
+        m_item_data = current_inv[current_inv['Item Name'] == mgmt_item_select].iloc[0]
+        m_orig_idx = current_inv[current_inv['Item Name'] == mgmt_item_select].index[0]
+        
+        with st.form("mgmt_edit_form"):
+            me_code = st.text_input("รหัสสินค้า (Product Code)", value=str(m_item_data['Product Code']))
+            me_name = st.text_input("ชื่อวัตถุดิบ (Item Name)", value=str(m_item_data['Item Name']))
+            me_cat = st.text_input("หมวดหมู่ (Category)", value=str(m_item_data['Category']))
+            me_unit = st.text_input("หน่วยนับ (Unit)", value=str(m_item_data['Unit']))
+            me_bal = st.number_input("จำนวนสต็อก (Stock Balance)", value=float(m_item_data['Stock Balance']))
+            me_price = st.number_input("ราคาล่าสุด (Last Price)", value=float(m_item_data['Last Price']))
+            me_sup = st.text_input("ร้านค้า (Supplier)", value=str(m_item_data['Supplier']))
+            
+            mc_btn1, mc_btn2 = st.columns(2)
+            with mc_btn1:
+                m_update_btn = st.form_submit_button("💾 บันทึกการแก้ไข (Update)")
+            with mc_btn2:
+                m_delete_btn = st.form_submit_button("🗑️ ลบรายการนี้ (Delete)")
+                
+            if m_update_btn:
+                st.session_state['company_inventories'][selected_company].loc[m_orig_idx] = [me_code, me_name, me_cat, me_unit, me_bal, me_price, me_sup]
+                st.success("อัปเดตข้อมูลสินค้าสำเร็จ!")
+                st.rerun()
+            elif m_delete_btn:
+                st.session_state['company_inventories'][selected_company] = current_inv.drop(m_orig_idx).reset_index(drop=True)
+                st.success("ลบรายการสินค้าสำเร็จ!")
+                st.rerun()
+    else:
+        st.info("ไม่พบรายการสินค้าตามเงื่อนไขที่เลือก")
+
+# ----------------------------------------------------
+# 5. เมนูย่อย 3.1: นำเข้าสินค้า (Excel Import & Manual Add)
 # ----------------------------------------------------
 elif selected_menu == t['sub_import_excel']:
     st.title(f"📥 {t['sub_import_excel']} - {selected_company}")
@@ -315,7 +374,7 @@ elif selected_menu == t['sub_import_excel']:
                     st.warning("กรุณากรอกชื่อวัตถุดิบ (Item Name)")
 
 # ----------------------------------------------------
-# 5. เมนูย่อย 3.2: รับสินค้า (Stock In)
+# 6. เมนูย่อย 3.2: รับสินค้า (Stock In)
 # ----------------------------------------------------
 elif selected_menu == t['sub_stock_in']:
     st.title(f"📥 {t['sub_stock_in']} - {selected_company}")
@@ -348,7 +407,7 @@ elif selected_menu == t['sub_stock_in']:
         st.warning("ยังไม่มีรายการสินค้าในสาขานี้ กรุณานำเข้าหรือเพิ่มสินค้าก่อน")
 
 # ----------------------------------------------------
-# 6. เมนูย่อย 3.3: เบิกสินค้า (Stock Out)
+# 7. เมนูย่อย 3.3: เบิกสินค้า (Stock Out)
 # ----------------------------------------------------
 elif selected_menu == t['sub_stock_out']:
     st.title(f"📤 {t['sub_stock_out']} - {selected_company}")
@@ -383,7 +442,7 @@ elif selected_menu == t['sub_stock_out']:
         st.warning("ไม่มีสินค้าในระบบ")
 
 # ----------------------------------------------------
-# 7. ประวัติการทำรายการ (History)
+# 8. ประวัติการทำรายการ (History)
 # ----------------------------------------------------
 elif selected_menu == t['m_history']:
     st.title(f"📜 {t['m_history']} - {selected_company}")
@@ -394,7 +453,7 @@ elif selected_menu == t['m_history']:
         st.info("ยังไม่มีประวัติการทำรายการ")
 
 # ----------------------------------------------------
-# 8. ระบบขอซื้อ (PR) & ใบสั่งซื้อ (PO)
+# 9. ระบบขอซื้อ (PR) & ใบสั่งซื้อ (PO)
 # ----------------------------------------------------
 elif selected_menu == t['m_pr_po']:
     st.title(f"📝 {t['m_pr_po']} - {selected_company}")
@@ -420,7 +479,7 @@ elif selected_menu == t['m_pr_po']:
         st.write("เลือก PR ที่ได้รับการอนุมัติเพื่อพิมพ์ใบ PO ทางการ")
 
 # ----------------------------------------------------
-# 9. รายการสรุปสต็อกและนับสต็อกสิ้นเดือน (End of Month Count)
+# 10. รายการสรุปสต็อกและนับสต็อกสิ้นเดือน (End of Month Count)
 # ----------------------------------------------------
 elif selected_menu == t['m_eom']:
     st.title(f"📋 {t['m_eom']} - {selected_company}")
@@ -450,7 +509,7 @@ elif selected_menu == t['m_eom']:
         st.info("ยังไม่มีข้อมูลสินค้าในสาขานี้")
 
 # ----------------------------------------------------
-# 10. จัดการแอดมินและสิทธิ์ + ระบบแก้ไข/ลบแอดมิน
+# 11. จัดการแอดมินและสิทธิ์ + ระบบแก้ไข/ลบแอดมิน
 # ----------------------------------------------------
 elif selected_menu == t['m_admin']:
     st.title(f"⚙️ {t['m_admin']}")
