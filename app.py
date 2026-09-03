@@ -138,7 +138,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown(f"### 📌 เมนูหลัก")
     
-    # นับจำนวน PR ที่รออนุมัติเพื่อทำ Badge แจ้งเตือน (ข้อ 3)
+    # นับจำนวน PR ที่รออนุมัติเพื่อทำ Badge แจ้งเตือน
     pending_pr_count = 0
     if len(st.session_state['purchase_requests']) > 0:
         pending_pr_count = len(st.session_state['purchase_requests'][st.session_state['purchase_requests']['Status'] == "Pending (รออนุมัติ)"])
@@ -163,7 +163,7 @@ with st.sidebar:
 
     st.markdown("<br><br><br>", unsafe_allow_html=True)
     st.markdown("---")
-    # แถบเลือกภาษา EN / TH เล็กๆ ด้านล่างขวาของแถบ (ข้อ 7)
+    # แถบเลือกภาษา EN / TH เล็กๆ ด้านล่างขวาของแถบ
     cols_lang = st.columns([2, 1])
     with cols_lang[1]:
         lang_choice = st.radio("Lang", ["TH", "EN"], index=0 if st.session_state['lang']=='th' else 1, horizontal=True, label_visibility="collapsed")
@@ -183,21 +183,18 @@ def localize_text(text):
     return text
 
 # ----------------------------------------------------
-# 3. เมนูที่ 1: แดชบอร์ดภาพรวม (ปรับปรุงตามข้อ 6)
+# 3. เมนูที่ 1: แดชบอร์ดภาพรวม
 # ----------------------------------------------------
 if selected_menu == t['m_dashboard']:
     st.title(f"📊 แดชบอร์ดภาพรวม - {selected_company}")
     
-    # คำนวณยอดเงินที่ซื้อวัตถุดิบไปทั้งหมด (จาก Transaction IMPORT)
     import_trans = trans_df[trans_df['Type'] == 'IMPORT']
     total_purchase_amount = import_trans['Total Price'].sum() if len(import_trans) > 0 else 0.0
     
-    # สต็อกคงเหลือปัจจุบันและมูลค่า
     total_items = len(current_inv)
     total_qty = current_inv['Stock Balance'].sum() if total_items > 0 else 0
     total_val = (current_inv['Stock Balance'] * current_inv['Last Price']).sum() if total_items > 0 else 0
     
-    # ยอด Wast & Variance และ OC / Test
     wast_df = st.session_state['wast_variance_records']
     if selected_company != "ทุกบริษัท/สาขา (All Companies / Branches)":
         wast_df = wast_df[wast_df['Company'] == selected_company]
@@ -249,8 +246,8 @@ elif selected_menu == t['m_inventory_mgmt']:
             col_r = st.columns([2, 2, 1, 1, 1, 1])
             col_r[0].write(row['Item Name'])
             col_r[1].write(row['Category'])
-            col_r[2].write(f"{row['StockBalance']} {row['Unit']}")
-            col_r[3].write(f"{row['LastPrice']} ฿")
+            col_r[2].write(f"{row['Stock Balance']} {row['Unit']}")
+            col_r[3].write(f"{row['Last Price']} ฿")
             with col_r[4]:
                 if st.button("✏️ แก้ไข", key=f"edit_{idx}"):
                     st.session_state[f'open_edit_{idx}'] = not st.session_state.get(f'open_edit_{idx}', False)
@@ -259,15 +256,14 @@ elif selected_menu == t['m_inventory_mgmt']:
                     st.session_state['company_inventories'][selected_company] = current_inv.drop(idx).reset_index(drop=True)
                     st.rerun()
             
-            # ฟอร์มแก้ไขใต้รายการ (ตามข้อกำหนดเดิม)
             if st.session_state.get(f'open_edit_{idx}', False):
                 with st.form(f"form_edit_{idx}"):
                     new_n = st.text_input("ชื่อ", value=row['Item Name'])
-                    new_p = st.number_input("ราคา", value=float(row['LastPrice']))
+                    new_p = st.number_input("ราคา", value=float(row['Last Price']))
                     new_b = st.number_input("สต็อก", value=float(row['Stock Balance']))
                     if st.form_submit_button("บันทึก"):
                         st.session_state['company_inventories'][selected_company].loc[idx, 'Item Name'] = new_n
-                        st.session_state['company_inventories'][selected_company].loc[idx, 'LastPrice'] = new_p
+                        st.session_state['company_inventories'][selected_company].loc[idx, 'Last Price'] = new_p
                         st.session_state['company_inventories'][selected_company].loc[idx, 'Stock Balance'] = new_b
                         st.session_state[f'open_edit_{idx}'] = False
                         st.rerun()
@@ -286,7 +282,7 @@ elif selected_menu == t['sub_import_excel']:
             st.success("อัปโหลดไฟล์สำเร็จ")
 
 # ----------------------------------------------------
-# 6. เมนูย่อย: รับสินค้า (Stock In) - ปรับปรุงตามข้อ 1
+# 6. เมนูย่อย: รับสินค้า (Stock In)
 # ----------------------------------------------------
 elif selected_menu == t['sub_stock_in']:
     st.title(f"📥 รับสินค้าเข้า (Stock In) - {selected_company}")
@@ -296,11 +292,9 @@ elif selected_menu == t['sub_stock_in']:
         with st.form("stock_in_form_new"):
             doc_no = st.text_input("เลขที่เอกสาร (ใบกำกับภาษี/ใบเสร็จรับเงิน/ใบส่งของ)")
             
-            # ช่องชื่อร้านค้า ทำเป็น Dropdown (ข้อ 1)
             existing_suppliers = current_inv['Supplier'].unique().tolist() if len(current_inv) > 0 else ["CP Axtra (Makro)", "CP Axtra (Lotus)", "ร้านค้าทั่วไป"]
             supplier_in = st.selectbox("ชื่อร้านค้าที่ซื้อ (Supplier)", existing_suppliers)
             
-            # หลักฐานการรับสินค้า แก้วงเล็บเป็น (ภาพถ่ายสินค้าและใบเสร็จ) + เพิ่มกล้องถ่ายรูป (ข้อ 1)
             st.markdown("**หลักฐานการรับสินค้า (ภาพถ่ายสินค้าและใบเสร็จ)**")
             cam_photo = st.camera_input("📸 ถ่ายรูปภาพสินค้าและใบเสร็จ")
             up_photo = st.file_uploader("หรืออัปโหลดรูปภาพ", type=["jpg", "png", "jpeg"])
@@ -328,7 +322,7 @@ elif selected_menu == t['sub_stock_in']:
                 st.rerun()
 
 # ----------------------------------------------------
-# 7. เมนูย่อย: เบิกสินค้า (Stock Out) - ปรับปรุงตามข้อ 2
+# 7. เมนูย่อย: เบิกสินค้า (Stock Out)
 # ----------------------------------------------------
 elif selected_menu == t['sub_stock_out']:
     st.title(f"📤 เบิกสินค้า (Stock Out) - {selected_company}")
@@ -338,10 +332,7 @@ elif selected_menu == t['sub_stock_out']:
         with st.form("stock_out_form_new"):
             sel_item_out = st.selectbox("เลือกวัตถุดิบที่ต้องการเบิก", current_inv['Item Name'].tolist() if len(current_inv)>0 else [])
             qty_out = st.number_input("จำนวนที่ต้องการเบิก", min_value=0.1, value=1.0)
-            
-            # เพิ่มตัวเลือกหน่วยนับเป็น Dropdown (ข้อ 2)
             unit_out = st.selectbox("เลือกหน่วยนับ", UNITS_LIST)
-            
             date_out = st.date_input("วันที่เบิกสินค้า", value=datetime.today())
             requester_out = st.text_input("ชื่อผู้เบิก")
             department_out = st.text_input("แผนกที่นำไปใช้")
@@ -355,7 +346,6 @@ elif selected_menu == t['sub_stock_out']:
                 })
                 st.success("บันทึกการเบิกชั่วคราวสำเร็จ")
         
-        # ขึ้นข้อมูลที่กดเบิกสินค้าไป ไว้ที่ด้านล่าง (ข้อ 2)
         st.markdown("---")
         st.subheader("📋 รายการที่กดเบิกสินค้าไปแล้วในเซสชันนี้")
         if 'temp_out_list' in st.session_state and len(st.session_state['temp_out_list']) > 0:
@@ -374,10 +364,16 @@ elif selected_menu == t['m_history']:
         st.info("ไม่มีประวัติการทำรายการ")
 
 # ----------------------------------------------------
-# 9. ระบบขอซื้อ (PR) & ใบสั่งซื้อ (PO) - ปรับปรุงตามข้อ 3 และ 4
+# 9. ระบบขอซื้อ (PR) & ใบสั่งซื้อ (PO) - แสดงตัวเลขแจ้งเตือนที่หัวข้อตามที่วงไว้
 # ----------------------------------------------------
 elif pr_menu_label in selected_menu:
-    st.title(f"📝 ระบบขอซื้อ (PR) & ใบสั่งซื้อ (PO)")
+    # คำนวณจำนวน PR ที่รออนุมัติ
+    pr_df = st.session_state['purchase_requests']
+    pending_count = len(pr_df[pr_df['Status'] == "Pending (รออนุมัติ)"]) if len(pr_df) > 0 else 0
+    
+    # แสดงหัวข้อพร้อมตัวเลขวงกลมสีแดงแบบในรูปภาพที่วงไว้
+    st.markdown(f"<h2>📝 ระบบขอซื้อ (PR) & ใบสั่งซื้อ (PO) <span style='background-color: #ff4b4b; color: white; padding: 2px 10px; border-radius: 50%; font-size: 20px;'>{pending_count}</span></h2>", unsafe_allow_html=True)
+    
     tab1, tab2 = st.tabs(["📋 สร้างใบขอซื้อ (PR)", "📄 ตรวจสอบอนุมัติ PR & ออกใบ PO"])
     
     with tab1:
@@ -401,10 +397,8 @@ elif pr_menu_label in selected_menu:
                 
     with tab2:
         st.subheader("หัวข้อตรวจสอบอนุมัติ PR")
-        pr_df = st.session_state['purchase_requests']
         if len(pr_df) > 0:
             for idx, row in pr_df.iterrows():
-                # กำหนดสีสถานะ: เขียว=อนุมัติแล้ว, แดง=ปฏิเสธ, เหลือง=รออนุมัติ (ข้อ 3)
                 status_color = "orange"
                 if "Approved" in row['Status']:
                     status_color = "green"
@@ -424,10 +418,9 @@ elif pr_menu_label in selected_menu:
                         st.rerun()
                 st.markdown("---")
                 
-            st.subheader("สร้างใบ PO อัตโนมัติจากใบ PR ที่อนุมัติแล้ว (ข้อ 4)")
+            st.subheader("สร้างใบ PO อัตโนมัติจากใบ PR ที่อนุมัติแล้ว")
             approved_prs = pr_df[pr_df['Status'] == "Approved (อนุมัติแล้ว)"]
             if len(approved_prs) > 0:
-                # ให้ขึ้นชื่อร้านค้าและเลขที่ใบ PR (ข้อ 4)
                 pr_options = [f"{r['PR_ID']} - ร้าน: {r['Supplier']}" for _, r in approved_prs.iterrows()]
                 selected_po_choice = st.selectbox("เลือกใบ PR ที่อนุมัติแล้ว", pr_options)
                 
@@ -437,17 +430,18 @@ elif pr_menu_label in selected_menu:
                     st.success(f"สร้างใบ PO สำเร็จสำหรับเลขที่ใบ PR: {chosen_row['PR_ID']} ร้านค้า: {chosen_row['Supplier']}")
             else:
                 st.info("ไม่มีใบ PR ที่อนุมัติแล้ว")
+        else:
+            st.info("ยังไม่มีข้อมูลใบขอซื้อ")
 
 # ----------------------------------------------------
-# 10. รายการสรุปสต็อก & นับสต็อก (ปรับปรุงตามข้อ 5)
+# 10. รายการสรุปสต็อก & นับสต็อก
 # ----------------------------------------------------
 elif selected_menu == t['m_eom']:
     st.title(f"📋 รายการสรุปสต็อก & นับสต็อก - {selected_company}")
     if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
         st.warning("กรุณาเลือกเฉพาะ 1 บริษัท เพื่อทำรายการสรุปและนับสต็อก")
     else:
-        st.subheader("📥 นำเข้า/ส่งออก Excel นับสต็อก (ข้อ 5)")
-        # ฟังก์ชันดาวน์โหลด Excel
+        st.subheader("📥 นำเข้า/ส่งออก Excel นับสต็อก")
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
             current_inv.to_excel(writer, sheet_name='Stock_Count', index=False)
@@ -463,7 +457,7 @@ elif selected_menu == t['m_eom']:
             st.success("อัปโหลดและอัปเดตสต็อกเรียบร้อยแล้ว!")
             
         st.markdown("---")
-        st.subheader("ช่องบันทึก Wast & Variance และ OC / Test (ข้อ 5)")
+        st.subheader("ช่องบันทึก Wast & Variance และ OC / Test")
         with st.form("wast_form"):
             item_wast = st.selectbox("เลือกสินค้า", current_inv['Item Name'].tolist() if len(current_inv)>0 else [])
             wast_val = st.number_input("Wast & Variance (จำนวน)", min_value=0.0, value=0.0)
