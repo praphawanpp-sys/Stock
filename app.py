@@ -51,13 +51,13 @@ LANG = {
         "menu": "📌 เมนูหลัก",
         "m_dashboard": "📊 แดชบอร์ดภาพรวม",
         "m_inventory_mgmt": "📦 การจัดการรายการสินค้า",
-        "sub_import_excel": "📥 เพิ่มรายการสินค้า/ร้านค้าใหม่",
+        "sub_import_excel": "📥 เพิ่มรายการสินค้าใหม่",
         "sub_stock_in": "📥 รับสินค้า (Stock In)",
         "sub_stock_out": "📤 เบิกสินค้า (Stock Out)",
         "m_history": "📜 ประวัติการทำรายการ",
         "m_pr_po": "📝 ระบบขอซื้อ (PR) & ใบสั่งซื้อ (PO)",
         "m_eom": "📋 รายการสรุปสต็อก & นับสต็อก",
-        "m_company_settings": "🏢 ตั้งค่าข้อมูลบริษัทและสิทธิ์",
+        "m_company_settings": "🏢 ตั้งค่าข้อมูลบริษัทและแอดมิน",
     },
     "en": {
         "title": "Enterprise Food Cost & Stock Management System",
@@ -373,19 +373,19 @@ elif selected_menu == t["m_inventory_mgmt"]:
 
 # c) Add New Items with 4 Ordered Tabs matching the requested layout
 elif selected_menu == t["sub_import_excel"]:
-    st.title(f"📥 เพิ่มรายการสินค้า/ร้านค้าใหม่ - {selected_company}")
+    st.title(f"📥 เพิ่มรายการสินค้าใหม่ - {selected_company}")
     if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
         st.warning("กรุณาเลือก 1 บริษัทเฉพาะเจาะจงก่อนทำรายการ")
     else:
         tab1, tab2, tab3, tab4 = st.tabs([
-            "1. เพิ่มรายการวัตถุดิบ/สินค้าใหม่",
-            "2. เพิ่ม/แก้ไขข้อมูลร้านค้าหรือบริษัท",
+            "1. เพิ่มรายการสินค้าใหม่",
+            "2. เพิ่ม/แก้ไขข้อมูลร้านค้า",
             "3. เพิ่ม/แก้ไขหน่วยนับ (Units)",
             "4. เพิ่ม/แก้ไขหมวดหมู่สินค้า (Categories)"
         ])
 
         with tab1:
-            st.subheader("เพิ่มรายการวัตถุดิบหริอสินค้า")
+            st.subheader("เลือกเพิ่มแบบกรอกข้อมูลหรือเพิ่มผ่านไฟล์ Excel ในหน้าเดียวกัน")
             sub_tab_excel, sub_tab_manual = st.tabs(["📄 นำเข้าผ่านไฟล์ Excel", "✍️ เพิ่มรายการแบบกรอกข้อมูล"])
 
             with sub_tab_excel:
@@ -628,9 +628,18 @@ elif selected_menu == t["sub_stock_in"]:
             
             st.markdown(f"🏷️ **รหัสสินค้า (Product Code):** `{selected_code}`")
 
-            col_sub1, col_sub2, col_sub3 = st.columns(3)
+            # ดึงค่าหน่วยนับเริ่มต้นของสินค้าที่เลือก
+            default_item_unit = "หน่วย"
+            if sel_item_in and len(current_inv) > 0:
+                mr_unit = current_inv[current_inv["Item Name"] == sel_item_in]
+                if not mr_unit.empty and "Unit" in mr_unit.columns:
+                    default_item_unit = str(mr_unit.iloc[0]["Unit"])
+
+            col_sub1, col_sub_unit, col_sub2, col_sub3 = st.columns([2, 1.5, 2, 2])
             with col_sub1:
                 qty_in = st.number_input("จำนวนรับเข้า", min_value=0.1, value=1.0)
+            with col_sub_unit:
+                unit_in = st.selectbox("หน่วยนับ", st.session_state.units_list, index=st.session_state.units_list.index(default_item_unit) if default_item_unit in st.session_state.units_list else 0)
             with col_sub2:
                 default_price = 0.0
                 if sel_item_in and len(current_inv) > 0:
@@ -647,6 +656,7 @@ elif selected_menu == t["sub_stock_in"]:
                     "Product Code": selected_code,
                     "Item Name": sel_item_in,
                     "Quantity": qty_in,
+                    "Unit": unit_in,
                     "Price/Unit": price_in,
                     "Vat Type": vat_in,
                     "Total Price": qty_in * price_in
