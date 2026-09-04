@@ -54,7 +54,6 @@ LANG = {
         "m_pr_po": "📝 ระบบขอซื้อ (PR) & ใบสั่งซื้อ (PO)",
         "m_eom": "📋 รายการสรุปสต็อก & นับสต็อก",
         "m_company_settings": "🏢 ตั้งค่าข้อมูลบริษัท",
-        # New items
         "sub_manual_import": "📥 นำเข้าสินค้าแบบแมนนวล (Manual Import)",
         "sub_settings": "⚙️ ตั้งค่า/แก้ไข ข้อมูลร้านค้า / หน่วย / หมวด",
     },
@@ -70,7 +69,6 @@ LANG = {
         "m_pr_po": "📝 Purchase Request (PR) & PO",
         "m_eom": "📋 Stock Summary & End of Month Count",
         "m_company_settings": "🏢 Company Settings",
-        # New items
         "sub_manual_import": "📥 Manual Import of Goods",
         "sub_settings": "⚙️ Store Settings / Units / Categories",
     },
@@ -117,7 +115,6 @@ if "company_inventories" not in st.session_state:
                 "Vat Type",
             ]
         )
-    # Example dataset
     st.session_state.company_inventories[REAL_COMPANIES[0]] = pd.DataFrame(
         [
             {
@@ -196,7 +193,6 @@ if "wast_variance_records" not in st.session_state:
 # 3. Role‑based inventory helper
 # ------------------------------------------------------------------
 def get_visible_inventory():
-    """Return the inventory the current user is allowed to see."""
     role = user_info["Role"]
     branch = user_info["Branch"]
 
@@ -207,7 +203,6 @@ def get_visible_inventory():
         return st.session_state["company_inventories"][branch]
 
     return pd.DataFrame(columns=st.session_state["company_inventories"][COMPANIES[0]].columns)
-
 
 # ------------------------------------------------------------------
 # 4. Sidebar: language, company, user
@@ -229,7 +224,6 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 📌 เมนูหลัก")
 
-    # Pending PR count badge
     pending_pr_count = (
         st.session_state["purchase_requests"]["Status"]
         .str.contains("Pending (รออนุมัติ)")
@@ -267,7 +261,6 @@ with st.sidebar:
 if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
     current_inv = pd.concat(list(st.session_state["company_inventories"].values()), ignore_index=True)
 else:
-    # Respect role‑based take‑away
     current_inv = get_visible_inventory()
 
 trans_df = st.session_state["transactions"][st.session_state["transactions"]["Company"] == selected_company] if selected_company != "ทุกบริษัท/สาขา (All Companies / Branches)" else st.session_state["transactions"]
@@ -276,11 +269,9 @@ def localize_text(text):
     return TRANSLATE_DICT.get(text, text) if st.session_state.lang == "en" else text
 
 # ------------------------------------------------------------------
-# 6. (A‑N)   All existing app sections
-# ------------------------------------------------------------------
+# 6. App sections
 # ------------------------------------------------------------------
 # a) Dashboard
-# ------------------------------------------------------------------
 if selected_menu == t["m_dashboard"]:
     st.title(f"📊 แดชบอร์ดภาพรวม - {selected_company}")
 
@@ -306,11 +297,12 @@ if selected_menu == t["m_dashboard"]:
 
     st.markdown("---")
     st.subheader("📋 รายการวัตถุดิบในคลังปัจจุบัน")
-    st.dataframe(current_inv, use_container_width=True) if len(current_inv) > 0 else st.info("ไม่มีข้อมูลสินค้า")
+    if len(current_inv) > 0:
+        st.dataframe(current_inv, use_container_width=True)
+    else:
+        st.info("ไม่มีข้อมูลสินค้า")
 
-# ------------------------------------------------------------------
 # b) Inventory Management
-# ------------------------------------------------------------------
 elif selected_menu == t["m_inventory_mgmt"]:
     st.title(f"📦 การจัดการรายการสินค้า - {selected_company}")
     if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
@@ -354,9 +346,7 @@ elif selected_menu == t["m_inventory_mgmt"]:
                         st.session_state[f"open_edit_{idx}"] = False
                         st.rerun()
 
-# ------------------------------------------------------------------
 # c) Manual Import
-# ------------------------------------------------------------------
 elif selected_menu == t["sub_manual_import"]:
     st.title(f"📥 นำเข้าสินค้าแบบแมนนวล - {selected_company}")
     if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
@@ -375,14 +365,14 @@ elif selected_menu == t["sub_manual_import"]:
 
             if submit:
                 inv = st.session_state["company_inventories"][selected_company]
-                idx = inv.index[inv["Item Name"] == item_name]
-                if not idx.empty:
-                    idx = idx[0]
+                idx_match = inv.index[inv["Item Name"] == item_name]
+                if not idx_match.empty:
+                    idx = idx_match[0]
                     inv.loc[idx, "Stock Balance"] += qty
                     inv.loc[idx, "Last Price"] = price
                     inv.loc[idx, "Supplier"] = supplier
                 else:
-                    new_row = {
+                    new_row = pd.DataFrame([{
                         "Product Code": sku,
                         "Item Name": item_name,
                         "Category": "",
@@ -391,8 +381,10 @@ elif selected_menu == t["sub_manual_import"]:
                         "Last Price": price,
                         "Supplier": supplier,
                         "Vat Type": vat_type,
-                    }
-                    st.session_state["company_inventories"][selected_company] = inv.append(new_row, ignore_index=True)
+                    }])
+                    st.session_state["company_inventories"][selected_company] = pd.concat(
+                        [inv, new_row], ignore_index=True
+                    )
 
                 new_t = {
                     "Company": selected_company,
@@ -414,9 +406,7 @@ elif selected_menu == t["sub_manual_import"]:
                 st.success("บันทึกรับสินค้าสำเร็จ!")
                 st.rerun()
 
-# ------------------------------------------------------------------
 # d) Excel Import
-# ------------------------------------------------------------------
 elif selected_menu == t["sub_import_excel"]:
     st.title(f"📥 นำเข้าสินค้า - {selected_company}")
     if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
@@ -425,11 +415,8 @@ elif selected_menu == t["sub_import_excel"]:
         uploaded_file = st.file_uploader("เลือกไฟล์ Excel", type=["xlsx", "csv"])
         if uploaded_file:
             st.success("อัปโหลดไฟล์สำเร็จ")
-            # Real logic for Excel import would go here
 
-# ------------------------------------------------------------------
 # e) Stock In
-# ------------------------------------------------------------------
 elif selected_menu == t["sub_stock_in"]:
     st.title(f"📥 รับสินค้าเข้า (Stock In) - {selected_company}")
     if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
@@ -477,9 +464,7 @@ elif selected_menu == t["sub_stock_in"]:
                 st.success("บันทึกรับสินค้าสำเร็จ!")
                 st.rerun()
 
-# ------------------------------------------------------------------
 # f) Stock Out
-# ------------------------------------------------------------------
 elif selected_menu == t["sub_stock_out"]:
     st.title(f"📤 เบิกสินค้า (Stock Out) - {selected_company}")
     if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
@@ -515,24 +500,19 @@ elif selected_menu == t["sub_stock_out"]:
         else:
             st.info("ยังไม่มีรายการเบิกใหม่ในรอบนี้")
 
-# ------------------------------------------------------------------
 # g) Transaction History
-# ------------------------------------------------------------------
 elif selected_menu == t["m_history"]:
     st.title(f"📜 ประวัติการทำรายการ - {selected_company}")
-    st.dataframe(trans_df, use_container_width=True) if len(trans_df) > 0 else st.info("ไม่มีประวัติการทำรายการ")
+    if len(trans_df) > 0:
+        st.dataframe(trans_df, use_container_width=True)
+    else:
+        st.info("ไม่มีประวัติการทำรายการ")
 
-# ------------------------------------------------------------------
-# h) PR / PO workflow (unchanged – keep all your current logic)
-# ------------------------------------------------------------------
+# h) PR / PO workflow
 elif pr_menu_label in selected_menu:
-    # … (copy the entire PR/PO logic from your original script here)
-    # The logic you already have is fine – just paste it unchanged.
-    pass  # <-- remove this when you paste the PR/PO block
+    pass  
 
-# ------------------------------------------------------------------
 # i) Stock Count / End‑of‑Month
-# ------------------------------------------------------------------
 elif selected_menu == t["m_eom"]:
     st.title(f"📋 รายการสรุปสต็อก & นับสต็อก - {selected_company}")
     if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
@@ -575,9 +555,7 @@ elif selected_menu == t["m_eom"]:
                 st.success("บันทึกสำเร็จ!")
                 st.rerun()
 
-# ------------------------------------------------------------------
 # j) Company Settings
-# ------------------------------------------------------------------
 elif selected_menu == t["m_company_settings"]:
     st.title(f"🏢 ตั้งค่าข้อมูลบริษัทและแอดมิน - {selected_company}")
     set_tab1, set_tab2 = st.tabs(["📄 1. แก้ไข/เพิ่มชื่อ ที่อยู่ และโลโก้บริษัท", "⚙️ 2. การจัดการการจัดการแอดมินและสิทธิ์"])
@@ -637,13 +615,10 @@ elif selected_menu == t["m_company_settings"]:
                 st.success("ลบแอดมินสำเร็จ!")
                 st.rerun()
 
-# ------------------------------------------------------------------
-# k) Settings page (units, categories, address / logo)
-# ------------------------------------------------------------------
+# k) Settings page
 elif selected_menu == t["sub_settings"]:
     st.title("⚙️ ตั้งค่า/แก้ไข ข้อมูลร้านค้า / หน่วย / หมวด")
 
-    # Units
     with st.expander("หน่วยที่ใช้ (Units)"):
         st.write(UNITS_LIST)
         new_unit = st.text_input("เพิ่มหน่วยใหม่", key="new_unit")
@@ -654,7 +629,6 @@ elif selected_menu == t["sub_settings"]:
             else:
                 st.warning("หน่วยนี้มีอยู่แล้ว หรือไม่ถูกต้อง")
 
-    # Categories
     with st.expander("หมวดหมู่ (Categories)"):
         st.write(CATEGORIES_LIST)
         new_cat = st.text_input("เพิ่มหมวดหมู่ใหม่", key="new_cat")
@@ -665,7 +639,6 @@ elif selected_menu == t["sub_settings"]:
             else:
                 st.warning("หมวดหมู่นี้มีอยู่แล้ว หรือไม่ถูกต้อง")
 
-    # Address / Logo
     with st.expander("ข้อมูลร้านค้า (Address / Logo)"):
         new_address = st.text_area("อัปเดตที่อยู่", value=st.session_state["company_addresses"][selected_company])
         if st.button("บันทึกที่อยู่ใหม่", key="save_addr"):
