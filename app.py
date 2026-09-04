@@ -351,7 +351,7 @@ elif selected_menu == t["m_inventory_mgmt"]:
                         st.session_state[f"open_edit_{idx}"] = False
                         st.rerun()
 
-# c) Add New Items (Excel & Manual) - อัปเดตเมนูและฟอร์มตามที่ร้องขอ
+# c) Add New Items (Excel & Manual)
 elif selected_menu == t["sub_import_excel"]:
     st.title(f"📥 เพิ่มรายการสินค้าใหม่ - {selected_company}")
     if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
@@ -366,7 +366,6 @@ elif selected_menu == t["sub_import_excel"]:
 
         with tab_imp2:
             with st.form("manual_import_form_tab"):
-                # ทำชื่อร้านค้าเป็น Dropdown จากข้อมูลที่มีอยู่แล้ว หรือใช้ค่าเริ่มต้น
                 existing_suppliers = current_inv["Supplier"].dropna().unique().tolist() if len(current_inv) > 0 else []
                 if not existing_suppliers:
                     existing_suppliers = ["CP Axtra (Makro)", "CP Axtra (Lotus)", "ร้านค้าทั่วไป"]
@@ -424,7 +423,7 @@ elif selected_menu == t["sub_import_excel"]:
                     st.success("บันทึกรับสินค้าแบบแมนนวลสำเร็จ!")
                     st.rerun()
 
-# d) Stock In
+# d) Stock In (อัปเดตตามที่ขอ: ตัวเลือกรูปภาพ/กล้องขนาดกะทัดรัด และแสดงรหัสสินค้าเหนือช่องเลือก)
 elif selected_menu == t["sub_stock_in"]:
     st.title(f"📥 รับสินค้าเข้า (Stock In) - {selected_company}")
     if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
@@ -436,11 +435,30 @@ elif selected_menu == t["sub_stock_in"]:
             supplier_in = st.selectbox("ชื่อร้านค้าที่ซื้อ (Supplier)", existing_suppliers)
 
             st.markdown("**หลักฐานการรับสินค้า (ภาพถ่ายสินค้าและใบเสร็จ)**")
-            cam_photo = st.camera_input("📸 ถ่ายรูปภาพสินค้าและใบเสร็จ")
-            up_photo = st.file_uploader("หรืออัปโหลดรูปภาพ", type=["jpg", "png", "jpeg"])
+            upload_option = st.radio("เลือกวิธีแนบหลักฐาน", ["📂 อัปโหลดไฟล์รูปภาพ", "📸 ถ่ายภาพด้วยกล้อง"], horizontal=True)
+            
+            cam_photo = None
+            up_photo = None
+            if upload_option == "📸 ถ่ายภาพด้วยกล้อง":
+                cam_photo = st.camera_input("ถ่ายรูปภาพสินค้าและใบเสร็จ")
+            else:
+                up_photo = st.file_uploader("เลือกไฟล์รูปภาพ", type=["jpg", "png", "jpeg"])
 
             st.markdown("---")
-            sel_item_in = st.selectbox("เลือกวัตถุดิบรับเข้า", current_inv["Item Name"].tolist() if len(current_inv) > 0 else [])
+            
+            # แสดงรหัสสินค้าและตัวเลือกวัตถุดิบรับเข้า
+            item_options = current_inv["Item Name"].tolist() if len(current_inv) > 0 else []
+            sel_item_in = st.selectbox("เลือกวัตถุดิบรับเข้า", item_options)
+            
+            # ดึงรหัสสินค้ามาแสดงให้เห็น
+            selected_code = "-"
+            if sel_item_in and len(current_inv) > 0:
+                matched_row = current_inv[current_inv["Item Name"] == sel_item_in]
+                if not matched_row.empty:
+                    selected_code = matched_row.iloc[0]["Product Code"]
+            
+            st.markdown(f"🏷️ **รหัสสินค้า (Product Code):** `{selected_code}`")
+
             qty_in = st.number_input("จำนวนรับเข้า", min_value=0.1, value=1.0)
             price_in = st.number_input("ราคาต่อหน่วย", min_value=0.0, value=0.0)
             vat_in = st.selectbox("ประเภทภาษี", VAT_TYPES_LIST)
