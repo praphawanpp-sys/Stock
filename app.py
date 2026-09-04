@@ -244,6 +244,7 @@ with st.sidebar:
 
     t = LANG[st.session_state.lang]
 
+    # จัดลำดับเมนูใหม่ตามที่ขอ (ประวัติการทำรายการอยู่ลำดับที่ 3 นับจากล่างสุด)
     selected_menu = st.radio(
         "Navigation",
         [
@@ -252,10 +253,10 @@ with st.sidebar:
             t["sub_import_excel"],
             t["sub_stock_in"],
             t["sub_stock_out"],
-            t["m_history"],
             pr_menu_label,
-            t["m_eom"],
-            t["m_company_settings"],
+            t["m_history"],         # 3rd from bottom
+            t["m_eom"],             # 2nd from bottom
+            t["m_company_settings"],# bottom
         ],
         label_visibility="collapsed",
     )
@@ -371,7 +372,7 @@ elif selected_menu == t["m_inventory_mgmt"]:
                         st.session_state[f"open_edit_{idx}"] = False
                         st.rerun()
 
-# c) Add New Items with 4 Ordered Tabs matching the requested layout
+# c) Add New Items with 4 Ordered Tabs
 elif selected_menu == t["sub_import_excel"]:
     st.title(f"📥 เพิ่มรายการสินค้าใหม่ - {selected_company}")
     if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
@@ -473,7 +474,6 @@ elif selected_menu == t["sub_import_excel"]:
 
         with tab3:
             st.subheader("หน่วยนับสินค้า (Units)")
-            
             with st.form("unit_mgmt_form"):
                 new_unit = st.text_input("เพิ่มหน่วยใหม่")
                 if st.form_submit_button("➕ เพิ่มหน่วยนับ"):
@@ -486,14 +486,11 @@ elif selected_menu == t["sub_import_excel"]:
 
             st.markdown("---")
             st.write("หน่วยนับปัจจุบัน:")
-            
             for i, u_item in enumerate(st.session_state.units_list):
                 cols = st.columns([3, 1, 1])
                 cols[0].write(f"- {u_item}")
-                
                 edit_key = f"edit_unit_{i}"
                 del_key = f"del_unit_{i}"
-                
                 if cols[1].button("✏️ แก้ไข", key=edit_key):
                     st.session_state[f"show_edit_unit_{i}"] = not st.session_state.get(f"show_edit_unit_{i}", False)
                 if cols[2].button("🗑️ ลบ", key=del_key):
@@ -505,7 +502,7 @@ elif selected_menu == t["sub_import_excel"]:
                         st.warning("ต้องมีหน่วยนับอย่างน้อย 1 รายการ")
                 
                 if st.session_state.get(f"show_edit_unit_{i}", False):
-                    with st.form(f"form_edit_unit_{i}" ):
+                    with st.form(f"form_edit_unit_{i}"):
                         updated_unit_name = st.text_input("แก้ไขชื่อหน่วยนับ", value=u_item)
                         if st.form_submit_button("💾 บันทึก"):
                             if updated_unit_name and updated_unit_name not in st.session_state.units_list:
@@ -518,7 +515,6 @@ elif selected_menu == t["sub_import_excel"]:
 
         with tab4:
             st.subheader("หมวดหมู่สินค้า (Categories)")
-            
             with st.form("cat_mgmt_form"):
                 new_cat = st.text_input("เพิ่มหมวดหมู่ใหม่")
                 if st.form_submit_button("➕ เพิ่มหมวดหมู่"):
@@ -531,14 +527,11 @@ elif selected_menu == t["sub_import_excel"]:
 
             st.markdown("---")
             st.write("หมวดหมู่ปัจจุบัน:")
-            
             for j, c_item in enumerate(st.session_state.categories_list):
                 cols_c = st.columns([3, 1, 1])
                 cols_c[0].write(f"- {c_item}")
-                
                 edit_cat_key = f"edit_cat_{j}"
                 del_cat_key = f"del_cat_{j}"
-                
                 if cols_c[1].button("✏️ แก้ไข", key=edit_cat_key):
                     st.session_state[f"show_edit_cat_{j}"] = not st.session_state.get(f"show_edit_cat_{j}", False)
                 if cols_c[2].button("🗑️ ลบ", key=del_cat_key):
@@ -580,7 +573,7 @@ elif selected_menu == t["sub_stock_in"]:
         with col_h3:
             doc_no = st.text_input("เลขที่เอกสาร (ใบกำกับภาษี/ใบเสร็จ)")
         with col_h4:
-            receiver_in = st.text_input("ผู้รับสินค้าเข้า", value=user_info["Name"])
+            receiver_in = st.text_input("Mr. Owner", value=user_info["Name"])
 
         upload_option = st.radio("เลือกวิธีแนบหลักฐาน", ["📂 อัปโหลดไฟล์รูปภาพ", "📸 ถ่ายภาพด้วยกล้อง"], horizontal=True)
         
@@ -628,7 +621,6 @@ elif selected_menu == t["sub_stock_in"]:
             
             st.markdown(f"🏷️ **รหัสสินค้า (Product Code):** `{selected_code}`")
 
-            # ดึงค่าหน่วยนับเริ่มต้นของสินค้าที่เลือก
             default_item_unit = "หน่วย"
             if sel_item_in and len(current_inv) > 0:
                 mr_unit = current_inv[current_inv["Item Name"] == sel_item_in]
@@ -747,44 +739,86 @@ elif selected_menu == t["sub_stock_out"]:
         else:
             st.info("ยังไม่มีรายการเบิกใหม่ในรอบนี้")
 
-# f) Transaction History
-elif selected_menu == t["m_history"]:
-    st.title(f"📜 ประวัติการทำรายการ - {selected_company}")
-    if len(trans_df) > 0:
-        st.dataframe(trans_df, use_container_width=True)
-    else:
-        st.info("ไม่มีประวัติการทำรายการ")
-
-# g) PR / PO workflow
+# f) PR / PO workflow (ปรับปรุงการสร้าง PR ให้เลือกหัวบิลแล้วเพิ่มทีละรายการลงตะกร้าก่อนกดบันทึก)
 elif pr_menu_label in selected_menu:
     st.title(f"📝 ระบบขอซื้อ (PR) & ใบสั่งซื้อ (PO) - {selected_company}")
     pr_tab1, pr_tab2 = st.tabs(["📄 1. สร้างและติดตามใบขอซื้อ (PR)", "📦 2. ออกใบสั่งซื้อ (PO)"])
 
     with pr_tab1:
         st.subheader("สร้างใบขอซื้อสินค้า (PR)")
-        with st.form("create_pr_form"):
-            pr_supplier = st.selectbox("ร้านค้า / Supplier", current_inv["Supplier"].unique().tolist() if len(current_inv) > 0 else ["CP Axtra (Makro)"])
-            pr_items = st.multiselect("เลือกรายการสินค้าที่ต้องการขอซื้อ", current_inv["Item Name"].tolist() if len(current_inv) > 0 else [])
-            pr_requester = st.text_input("ผู้ขอซื้อ", value=user_info["Name"])
-            
-            submit_pr = st.form_submit_button("📤 ส่งใบขอซื้อ (PR)")
-            if submit_pr and pr_items:
-                new_pr_id = f"PR-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-                new_pr_row = pd.DataFrame([{
-                    "PR_ID": new_pr_id,
-                    "Date": str(datetime.today().date()),
-                    "Supplier": pr_supplier,
-                    "Branch": selected_company,
-                    "Status": "Pending (รออนุมัติ)",
-                    "Requester": pr_requester,
-                    "Items_JSON": str(pr_items)
-                }])
-                st.session_state["purchase_requests"] = pd.concat([st.session_state["purchase_requests"], new_pr_row], ignore_index=True)
-                st.success(f"สร้างใบขอซื้อ {new_pr_id} เรียบร้อยแล้ว!")
-                st.rerun()
+
+        if "temp_pr_cart" not in st.session_state:
+            st.session_state["temp_pr_cart"] = []
+
+        # ส่วนหัวของ PR
+        col_pr1, col_pr2, col_pr3 = st.columns(3)
+        with col_pr1:
+            pr_date = st.date_input("วันที่ขอซื้อ", value=datetime.today(), key="pr_date_input")
+        with col_pr2:
+            existing_suppliers = current_inv["Supplier"].unique().tolist() if len(current_inv) > 0 else ["CP Axtra (Makro)"]
+            pr_supplier = st.selectbox("ร้านค้า / Supplier สำหรับขอซื้อ", existing_suppliers, key="pr_sup_input")
+        with col_pr3:
+            pr_requester = st.text_input("ผู้ขอซื้อ", value=user_info["Name"], key="pr_req_input")
 
         st.markdown("---")
-        st.subheader("รายการใบขอซื้อทั้งหมด")
+        st.write("### เพิ่มรายการสินค้าในใบขอซื้อ")
+        inv_for_pr = current_inv[current_inv["Supplier"] == pr_supplier] if len(current_inv) > 0 else pd.DataFrame()
+        if len(inv_for_pr) == 0:
+            inv_for_pr = current_inv.copy()
+
+        with st.form("form_add_pr_item"):
+            pr_item_name = st.selectbox("เลือกรายการสินค้า", inv_for_pr["Item Name"].tolist() if len(inv_for_pr) > 0 else [])
+            
+            # ดึงหน่วยนับเริ่มต้นของสินค้า
+            default_pr_unit = "หน่วย"
+            if pr_item_name and len(current_inv) > 0:
+                m_u = current_inv[current_inv["Item Name"] == pr_item_name]
+                if not m_u.empty and "Unit" in m_u.columns:
+                    default_pr_unit = str(m_u.iloc[0]["Unit"])
+
+            col_pi1, col_pi2 = st.columns(2)
+            with col_pi1:
+                pr_qty = st.number_input("จำนวนที่ขอซื้อ", min_value=0.1, value=1.0)
+            with col_pi2:
+                pr_unit = st.selectbox("หน่วยนับ", st.session_state.units_list, index=st.session_state.units_list.index(default_pr_unit) if default_pr_unit in st.session_state.units_list else 0, key="pr_unit_select")
+
+            add_to_pr_cart = st.form_submit_button("➕ เพิ่มรายการนี้เข้าตะกร้า PR")
+            if add_to_pr_cart and pr_item_name:
+                st.session_state["temp_pr_cart"].append({
+                    "Item Name": pr_item_name,
+                    "Quantity": pr_qty,
+                    "Unit": pr_unit
+                })
+                st.success(f"เพิ่ม {pr_item_name} ลงในตะกร้า PR แล้ว")
+
+        if len(st.session_state["temp_pr_cart"]) > 0:
+            st.markdown("#### รายการสินค้าในตะกร้า PR ปัจจุบัน")
+            st.dataframe(pd.DataFrame(st.session_state["temp_pr_cart"]), use_container_width=True)
+
+            col_pr_b1, col_pr_b2 = st.columns(2)
+            with col_pr_b1:
+                if st.button("🗑️ ล้างตะกร้า PR"):
+                    st.session_state["temp_pr_cart"] = []
+                    st.rerun()
+            with col_pr_b2:
+                if st.button("💾 บันทึกและส่งใบขอซื้อ (PR) ทั้งหมด"):
+                    new_pr_id = f"PR-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                    new_pr_row = pd.DataFrame([{
+                        "PR_ID": new_pr_id,
+                        "Date": str(pr_date),
+                        "Supplier": pr_supplier,
+                        "Branch": selected_company,
+                        "Status": "Pending (รออนุมัติ)",
+                        "Requester": pr_requester,
+                        "Items_JSON": str(st.session_state["temp_pr_cart"])
+                    }])
+                    st.session_state["purchase_requests"] = pd.concat([st.session_state["purchase_requests"], new_pr_row], ignore_index=True)
+                    st.session_state["temp_pr_cart"] = []
+                    st.success(f"บันทึกใบขอซื้อเลขที่ {new_pr_id} เรียบร้อยแล้ว!")
+                    st.rerun()
+
+        st.markdown("---")
+        st.subheader("ประวัติและสถานะใบขอซื้อทั้งหมด")
         if len(st.session_state["purchase_requests"]) > 0:
             st.dataframe(st.session_state["purchase_requests"], use_container_width=True)
         else:
@@ -818,7 +852,15 @@ elif pr_menu_label in selected_menu:
             st.dataframe(st.session_state["purchase_orders"], use_container_width=True)
         else:
             st.info("ยังไม่มีใบสั่งซื้อในระบบ")
-    
+
+# g) Transaction History (ย้ายมาอยู่ตำแหน่ง 3 นับจากล่างสุด)
+elif selected_menu == t["m_history"]:
+    st.title(f"📜 ประวัติการทำรายการ - {selected_company}")
+    if len(trans_df) > 0:
+        st.dataframe(trans_df, use_container_width=True)
+    else:
+        st.info("ไม่มีประวัติการทำรายการ")
+
 # h) Stock Count / End‑of‑Month
 elif selected_menu == t["m_eom"]:
     st.title(f"📋 รายการสรุปสต็อก & นับสต็อก - {selected_company}")
