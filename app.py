@@ -424,7 +424,7 @@ elif selected_menu == t["sub_import_excel"]:
                     st.success("บันทึกรับสินค้าแบบแมนนวลสำเร็จ!")
                     st.rerun()
 
-# d) Stock In (อัปเดตตามที่ขอ: ช่องค้นหาด้วยรหัสหรือชื่อสินค้า และเพิ่มช่องผู้รับสินค้าเข้า)
+# d) Stock In (อัปเดตตามที่ขอ: 1. กรองสินค้าตามชื่อร้านค้าที่เลือก, 2. ช่องรหัสสินค้าค้นหา/กรอกแล้วดึงชื่ออัตโนมัติ)
 elif selected_menu == t["sub_stock_in"]:
     st.title(f"📥 รับสินค้าเข้า (Stock In) - {selected_company}")
     if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
@@ -447,7 +447,7 @@ elif selected_menu == t["sub_stock_in"]:
             receiver_in = st.text_input("ผู้รับสินค้าเข้า", value=user_info["Name"])
 
         # เลือกวิธีแนบรูปหรือกล้องแบบสลับ
-        upload_option = st.radio("แนบหลักฐานการรับสินค้าเข้า (.ใบเสร็จและรูปภาพสินค้า)", ["📂 อัปโหลดไฟล์รูปภาพ", "📸 ถ่ายภาพด้วยกล้อง"], horizontal=True)
+        upload_option = st.radio("เลือกวิธีแนบหลักฐาน", ["📂 อัปโหลดไฟล์รูปภาพ", "📸 ถ่ายภาพด้วยกล้อง"], horizontal=True)
         
         saved_photo = None
         if upload_option == "📸 ถ่ายภาพด้วยกล้อง":
@@ -462,26 +462,40 @@ elif selected_menu == t["sub_stock_in"]:
         st.markdown("---")
         st.subheader("2. ค้นหาและเพิ่มรายการสินค้าทีละรายการเข้าตะกร้ารับเข้า")
         
-        # เพิ่มช่องค้นหาด้วยรหัสหรือชื่อสินค้าสำหรับตัวเลือก
-        search_query_in = st.text_input("🔍 พิมพ์ค้นหาวัตถุดิบ (จากชื่อสินค้า หรือ รหัสสินค้า Product Code)")
-        
-        filtered_inv_in = current_inv.copy()
-        if search_query_in.strip():
-            sq = search_query_in.strip().lower()
-            filtered_inv_in = filtered_inv_in[
-                filtered_inv_in["Item Name"].str.lower().str.contains(sq, na=False) |
-                filtered_inv_in["Product Code"].str.lower().str.contains(sq, na=False)
-            ]
+        # กรองสินค้าในคลังเฉพาะของ "ร้านค้านั้น" ที่เลือกใน Supplier ก่อน
+        inv_by_supplier = current_inv[current_inv["Supplier"] == supplier_in].copy() if len(current_inv) > 0 else pd.DataFrame()
+        # ถ้าไม่มีสินค้าผูกกับร้านค้านี้โดยตรง ให้ใช้สินค้าทั้งหมดเป็นตัวเลือกเผื่อกรณีสินค้าใหม่/ยังไม่ได้ระบุร้านค้า
+        if len(inv_by_supplier) == 0:
+            inv_by_supplier = current_inv.copy()
+
+        # Input สำหรับพิมพ์รหัสสินค้าเพื่อค้นหาอัตโนมัติ
+        input_code_search = st.text_input("🔍 พิมพ์รหัสสินค้า (Product Code) เพื่อดึงชื่ออัตโนมัติ")
+
+        # ตรวจสอบว่ารหัสสินค้าตรงกับรายการใดในร้านค้านี้หรือไม่
+        matched_by_code = None
+        if input_code_search.strip() and len(inv_by_supplier) > 0:
+            matched_rows = inv_by_supplier[inv_by_supplier["Product Code"].astype(str).str.lower() == input_code_search.strip().lower()]
+            if not matched_rows.empty:
+                matched_by_code = matched_rows.iloc[0]
 
         with st.form("add_item_to_cart_form"):
-            item_options = filtered_inv_in["Item Name"].tolist() if len(filtered_inv_in) > 0 else []
-            sel_item_in = st.selectbox("เลือกวัตถุดิบรับเข้าจากผลการค้นหา", item_options)
+            if matched_by_code is not None:
+                # ถ้าเจอด้วยรหัส ให้ล็อกหรือแสดงชื่อสินค้าอัตโนมัติ
+                sel_item_in = matched_by_code["Item Name"]
+                st.success(f"📌 ระบบพบรหัสสินค้าตรงกับ: **{sel_item_in}**")
+                item_options = [sel_item_in]
+            else:
+                # หากยังไม่ได้พิมพ์รหัส หรือพิมพ์ไม่เจอ ให้แสดงรายการสินค้าทั้งหมดของร้านค้านั้น
+                item_options = inv_by_supplier["Item Name"].tolist() if len(inv_by_supplier) > 0 else []
+                sel_item_in = st.selectbox(f"เลือกวัตถุดิบรับเข้า (จากร้าน: {supplier_in})", item_options)
             
-            selected_code = "-"
-            if sel_item_in and len(current_inv) > 0:
+            selected_code = input_code_search.strip()
+            if sel_item_in and len(current_inv) > 0 and not selected_code:
                 matched_row = current_inv[current_inv["Item Name"] == sel_item_in]
                 if not matched_row.empty:
-                    selected_code = matched_row.iloc[0]["Product Code"]
+                    selected_code = str(matched_row.iloc[0]["Product Code"])
+            elif matched_by_code is not None:
+                selected_code = str(matched_by_code["Product Code"])
             
             st.markdown(f"🏷️ **รหัสสินค้า (Product Code):** `{selected_code}`")
 
