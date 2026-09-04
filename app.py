@@ -738,7 +738,8 @@ elif selected_menu == t["sub_stock_out"]:
             st.dataframe(pd.DataFrame(st.session_state["temp_out_list"]), use_container_width=True)
         else:
             st.info("ยังไม่มีรายการเบิกใหม่ในรอบนี้")
-# f) PR / PO workflow (ปรับปรุงแสดงสถานะสี และเพิ่ม Dropdown เปลี่ยนสถานะด้านขวาสุด)
+            
+# f) PR / PO workflow (ปรับปรุงแสดงยอดราคาสั่งซื้อ, คลิกดูเอกสาร PR, และล็อกสถานะเมื่ออนุมัติ/ปฏิเสธแล้ว)
 elif pr_menu_label in selected_menu:
     st.title(f"📝 ระบบขอซื้อ (PR) & ใบสั่งซื้อ (PO) - {selected_company}")
     pr_tab1, pr_tab2 = st.tabs(["📄 1. สร้างและติดตามใบขอซื้อ (PR)", "📦 2. ออกใบสั่งซื้อ (PO)"])
@@ -782,16 +783,29 @@ elif pr_menu_label in selected_menu:
 
             add_to_pr_cart = st.form_submit_button("➕ เพิ่มรายการนี้เข้าตะกร้า PR")
             if add_to_pr_cart and pr_item_name:
+                # ค้นหาราคาปัจจุบันของสินค้าเพื่อคำนวณยอดเงิน
+                item_price = 0.0
+                if len(current_inv) > 0:
+                    matched_p = current_inv[current_inv["Item Name"] == pr_item_name]
+                    if not matched_p.empty:
+                        item_price = float(matched_p.iloc[0]["Last Price"])
+
                 st.session_state["temp_pr_cart"].append({
                     "Item Name": pr_item_name,
                     "Quantity": pr_qty,
-                    "Unit": pr_unit
+                    "Unit": pr_unit,
+                    "Price": item_price,
+                    "Total": pr_qty * item_price
                 })
                 st.success(f"เพิ่ม {pr_item_name} ลงในตะกร้า PR แล้ว")
 
         if len(st.session_state["temp_pr_cart"]) > 0:
             st.markdown("#### รายการสินค้าในตะกร้า PR ปัจจุบัน")
-            st.dataframe(pd.DataFrame(st.session_state["temp_pr_cart"]), use_container_width=True)
+            temp_df_cart = pd.DataFrame(st.session_state["temp_pr_cart"])
+            st.dataframe(temp_df_cart, use_container_width=True)
+            
+            total_cart_amount = temp_df_cart["Total"].sum()
+            st.markdown(f"### 💵 ยอดราคาสั่งซื้อรวมทั้งหมด: **{total_cart_amount:,.2f} THB**")
 
             col_pr_b1, col_pr_b2 = st.columns(2)
             with col_pr_b1:
@@ -808,7 +822,8 @@ elif pr_menu_label in selected_menu:
                         "Branch": selected_company,
                         "Status": "รอการอนุมัติ",
                         "Requester": pr_requester,
-                        "Items_JSON": str(st.session_state["temp_pr_cart"])
+                        "Items_JSON": str(st.session_state["temp_pr_cart"]),
+                        "Total_Amount": total_cart_amount
                     }])
                     st.session_state["purchase_requests"] = pd.concat([st.session_state["purchase_requests"], new_pr_row], ignore_index=True)
                     st.session_state["temp_pr_cart"] = []
@@ -817,61 +832,119 @@ elif pr_menu_label in selected_menu:
 
         st.markdown("---")
         st.subheader("ประวัติและสถานะใบขอซื้อทั้งหมด")
+
+        # ตรวจสอบว่ามีการคลิกดูเอกสาร PR ใดอยู่หรือไม่
+        if "view_pr_doc_id" not in st.session_state:
+            st.session_state["view_pr_doc_id"] = None
+
+        if st.session_state["view_pr_doc_id"] is not None:
+            doc_id = st.session_state["view_pr_doc_id"]
+            doc_rows = st.session_state["purchase_requests"][st.session_state["purchase_requests"]["PR_ID"] == doc_id]
+            
+            if not doc_rows.empty:
+                d_row = doc_rows.iloc[0]
+                st.markdown(f"""
+                <div style="border: 2px solid #ccc; padding: 20px; border-radius: 10px; background-color: #f9f9f9; color: #333;">
+                    <h2 style="text-align: center; margin-bottom: 0;">ใบขอซื้อสินค้า (PURCHASE REQUEST - PR)</h2>
+                    <p style="text-align: center; color: gray;">{d_row['Branch']}</p>
+                    <hr>
+                    <p><b>เลขที่เอกสาร (PR ID):</b> {d_row['PR_ID']}</p>
+                    <p><b>วันที่ขอซื้อ:</b> {d_row['Date']}</p>
+                    <p><b>ร้านค้า / Supplier:</b> {d_row['Supplier']}</p>
+                    <p><b>ผู้ขอซื้อ:</b> {d_row['Requester']}</p>
+                    <p><b>สถานะ:</b> {d_row['Status']}</p>
+                    <br>
+                    <h4>รายการสินค้า:</h4>
+                """, unsafe_allow_html=True)
+
+                import ast
+                try:
+                    items_list = ast.literal_eval(d_row["Items_JSON"])
+                    st.dataframe(pd.DataFrame(items_list), use_container_width=True)
+                except:
+                    st.write(d_row["Items_JSON"])
+
+                total_amt = d_row.get("Total_Amount", 0.0)
+                st.markdown(f"<h3>ยอดราคาสั่งซื้อรวม: {total_amt:,.2f} THB</h3>", unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
+
+                if st.button("⬅️ ปิดเอกสารและกลับสู่ตารางหลัก"):
+                    st.session_state["view_pr_doc_id"] = None
+                    st.rerun()
+                st.markdown("---")
+
         if len(st.session_state["purchase_requests"]) > 0:
-            # วนลูปแสดงตารางพร้อมปุ่ม Dropdown เปลี่ยนสถานะด้านขวาสุด
             for idx, row in st.session_state["purchase_requests"].iterrows():
-                cols_pr = st.columns([1.5, 1.2, 1.5, 1.5, 1.5, 1.2, 2.2, 2])
+                cols_pr = st.columns([1.5, 1.2, 1.8, 2, 1.2, 1.8, 2])
                 
-                cols_pr[0].write(str(row["PR_ID"]))
+                # เลขที่ PR ทำเป็นปุ่มให้คลิกเข้าไปดูรายละเอียดเอกสาร
+                if cols_pr[0].button(str(row["PR_ID"]), key=f"btn_view_{row['PR_ID']}_{idx}"):
+                    st.session_state["view_pr_doc_id"] = row["PR_ID"]
+                    st.rerun()
+
                 cols_pr[1].write(str(row["Date"]))
                 cols_pr[2].write(str(row["Supplier"]))
                 cols_pr[3].write(str(row["Branch"]))
                 
-                # แสดงสถานะพร้อมสี
-                current_status = str(row["Status"])
-                if "อนุมัติ" in current_status and "รอ" not in current_status:
-                    cols_pr[4].markdown("🟢 **อนุมัติ**")
-                elif "ปฏิเสธ" in current_status:
-                    cols_pr[4].markdown("🔴 **ปฏิเสธ**")
-                else:
-                    cols_pr[4].markdown("🟡 **รอการอนุมัติ**")
-
-                cols_pr[5].write(str(row["Requester"]))
-                cols_pr[6].write(str(row["Items_JSON"]))
+                # คำนวณยอดรวมราคาสั่งซื้อ
+                tot_val = row.get("Total_Amount", 0.0)
+                cols_pr[4].write(f"{tot_val:,.2f} ฿")
                 
-                # Dropdown เลือกเปลี่ยนสถานะที่ด้านขวาสุด
-                status_options = ["รอการอนุมัติ", "อนุมัติ", "ปฏิเสธ"]
-                default_idx = 0
-                if "อนุมัติ" in current_status and "รอ" not in current_status:
-                    default_idx = 1
-                elif "ปฏิเสธ" in current_status:
-                    default_idx = 2
+                cols_pr[5].write(str(row["Requester"]))
+                
+                current_status = str(row["Status"])
+                
+                # ตรวจสอบสิทธิ์การแก้ไข: ถ้าอนุมัติหรือปฏิเสธไปแล้ว ห้ามแก้ (ล็อกสถานะ)
+                is_locked = ("อนุมัติ" in current_status and "รอ" not in current_status) or ("ปฏิเสธ" in current_status)
 
-                new_status_choice = cols_pr[7].selectbox(
-                    "เปลี่ยนสถานะ",
-                    status_options,
-                    index=default_idx,
-                    key=f"status_dropdown_{idx}",
-                    label_visibility="collapsed"
-                )
+                if is_locked:
+                    if "อนุมัติ" in current_status and "รอ" not in current_status:
+                        cols_pr[6].markdown("🟢 **อนุมัติแล้ว (ล็อก)**")
+                    else:
+                        cols_pr[6].markdown("🔴 **ปฏิเสธแล้ว (ล็อก)**")
+                else:
+                    # ถ้ายังเป็น "รอการอนุมัติ" ให้แสดง Dropdown เลือกสถานะทางขวาสุด
+                    status_options = ["รอการอนุมัติ", "อนุมัติ", "ปฏิเสธ"]
+                    new_status_choice = cols_pr[6].selectbox(
+                        "สถานะ",
+                        status_options,
+                        index=0,
+                        key=f"status_dropdown_{idx}",
+                        label_visibility="collapsed"
+                    )
 
-                if new_status_choice != current_status:
-                    st.session_state["purchase_requests"].loc[idx, "Status"] = new_status_choice
-                    # ถ้าเปลี่ยนสถานะเป็นอนุมัติ ให้ระบบสร้าง PO ให้อัตโนมัติด้วย
-                    if new_status_choice == "อนุมัติ":
-                        new_po_id = f"PO-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-                        new_po_row = pd.DataFrame([{
-                            "PO_ID": new_po_id,
-                            "PR_ID": row["PR_ID"],
-                            "Supplier": row["Supplier"],
-                            "Branch": row["Branch"],
-                            "Date": str(datetime.today().date())
-                        }])
-                        st.session_state["purchase_orders"] = pd.concat([st.session_state["purchase_orders"], new_po_row], ignore_index=True)
-                    st.rerun()
+                    if new_status_choice != current_status:
+                        st.session_state["purchase_requests"].loc[idx, "Status"] = new_status_choice
+                        if new_status_choice == "อนุมัติ":
+                            new_po_id = f"PO-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                            new_po_row = pd.DataFrame([{
+                                "PO_ID": new_po_id,
+                                "PR_ID": row["PR_ID"],
+                                "Supplier": row["Supplier"],
+                                "Branch": row["Branch"],
+                                "Date": str(datetime.today().date())
+                            }])
+                            st.session_state["purchase_orders"] = pd.concat([st.session_state["purchase_orders"], new_po_row], ignore_index=True)
+                        st.rerun()
+
                 st.markdown("<hr style='margin: 5px 0;'>", unsafe_allow_html=True)
         else:
             st.info("ยังไม่มีใบขอซื้อในระบบ")
+
+    with pr_tab2:
+        st.subheader("ออกใบสั่งซื้อ (PO) จาก PR ที่อนุมัติแล้ว")
+        approved_prs = st.session_state["purchase_requests"][st.session_state["purchase_requests"]["Status"] == "อนุมัติ"]
+        if len(approved_prs) > 0:
+            st.dataframe(approved_prs, use_container_width=True)
+        else:
+            st.info("ยังไม่มีใบขอซื้อที่ได้รับการอนุมัติในขณะนี้")
+
+        st.markdown("---")
+        st.subheader("ประวัติใบสั่งซื้อ (PO)")
+        if len(st.session_state["purchase_orders"]) > 0:
+            st.dataframe(st.session_state["purchase_orders"], use_container_width=True)
+        else:
+            st.info("ยังไม่มีใบสั่งซื้อในระบบ")
 
     with pr_tab2:
         st.subheader("ออกใบสั่งซื้อ (PO) จาก PR ที่อนุมัติแล้ว")
