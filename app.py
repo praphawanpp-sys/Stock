@@ -53,6 +53,11 @@ if "purchase_orders" not in st.session_state:
         "PO_ID", "PR_ID", "Supplier", "Branch", "Date"
     ])
 
+if "transaction_history" not in st.session_state:
+    st.session_state["transaction_history"] = pd.DataFrame(columns=[
+        "Date", "Branch", "Type", "Item Name", "Quantity", "Unit", "Note"
+    ])
+
 VAT_TYPES_LIST = ["Non Vat", "Vat 7%", "Vat Excluded"]
 
 # ----------------------------------------------------
@@ -303,18 +308,97 @@ elif selected_menu == t["sub_import_excel"]:
                             else:
                                 st.warning("ชื่อหมวดหมู่ว่าง หรือซ้ำกับที่มีอยู่แล้ว")
 
-# d) Stock In
+# d) Stock In (รับสินค้าเข้าสต็อก)
 elif selected_menu == t["sub_stock_in"]:
-    st.title(f"📥 รับสินค้าเข้าสต็อก - {selected_company}")
-    st.info("ระบบรับสินค้าเข้าคลังสินค้า")
+    st.title(f"📥 รับสินค้าเข้าสต็อก (Stock In) - {selected_company}")
+    if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
+        st.warning("กรุณาเลือกบริษัทเฉพาะเจาะจงก่อนทำรายการรับสินค้า")
+    elif len(current_inv) == 0:
+        st.warning("ยังไม่มีรายการสินค้าในระบบ กรุณาเพิ่มรายการสินค้าก่อน")
+    else:
+        with st.form("stock_in_form"):
+            si_date = st.date_input("วันที่รับสินค้า", value=datetime.today())
+            si_item = st.selectbox("เลือกรายการสินค้า", current_inv["Item Name"].tolist())
+            
+            default_unit = "หน่วย"
+            matched_item = current_inv[current_inv["Item Name"] == si_item]
+            if not matched_item.empty:
+                default_unit = str(matched_item.iloc[0]["Unit"])
 
-# e) Stock Out
+            si_qty = st.number_input("จำนวนที่รับเข้า", min_value=0.1, value=1.0)
+            si_unit = st.selectbox("หน่วยนับ", st.session_state.units_list, index=st.session_state.units_list.index(default_unit) if default_unit in st.session_state.units_list else 0)
+            si_note = st.text_input("หมายเหตุ / เลขที่ใบส่งของ")
+
+            submit_si = st.form_submit_button("💾 บันทึกรับสินค้าเข้าสต็อก")
+            if submit_si:
+                inv = st.session_state["company_inventories"][selected_company]
+                idx = inv.index[inv["Item Name"] == si_item][0]
+                inv.loc[idx, "Stock Balance"] += si_qty
+                
+                # บันทึกลงประวัติ
+                new_trans = pd.DataFrame([{
+                    "Date": str(si_date),
+                    "Branch": selected_company,
+                    "Type": "รับเข้า (Stock In)",
+                    "Item Name": si_item,
+                    "Quantity": si_qty,
+                    "Unit": si_unit,
+                    "Note": si_note
+                }])
+                st.session_state["transaction_history"] = pd.concat([st.session_state["transaction_history"], new_trans], ignore_index=True)
+                st.success(f"รับสินค้า '{si_item}' จำนวน {si_qty} {si_unit} เข้าคลังเรียบร้อยแล้ว!")
+                st.rerun()
+
+# e) Stock Out (เบิกสินค้าออกจากสต็อก)
 elif selected_menu == t["sub_stock_out"]:
-    st.title(f"📤 เบิกสินค้าออกจากสต็อก - {selected_company}")
-    st.info("ระบบเบิกสินค้าออกจากคลังสินค้า")
+    st.title(f"📤 เบิกสินค้าออกจากสต็อก (Stock Out) - {selected_company}")
+    if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
+        st.warning("กรุณาเลือกบริษัทเฉพาะเจาะจงก่อนทำรายการเบิกสินค้า")
+    elif len(current_inv) == 0:
+        st.warning("ยังไม่มีรายการสินค้าในระบบ")
+    else:
+        with st.form("stock_out_form"):
+            so_date = st.date_input("วันที่เบิกสินค้า", value=datetime.today())
+            so_item = st.selectbox("เลือกรายการสินค้า", current_inv["Item Name"].tolist())
+            
+            default_unit = "หน่วย"
+            matched_item = current_inv[current_inv["Item Name"] == so_item]
+            current_bal = 0.0
+            if not matched_item.empty:
+                default_unit = str(matched_item.iloc[0]["Unit"])
+                current_bal = float(matched_item.iloc[0]["Stock Balance"])
 
-# f) PR / PO workflow (อัปเดตตามที่ผู้ใช้ต้องการล่าสุด)
-elif pr_menu_label := selected_menu == t["sub_pr_po"] and t["sub_pr_po"]:
+            st.info(f"สต็อกคงเหลือปัจจุบัน: **{current_bal} {default_unit}**")
+
+            so_qty = st.number_input("จำนวนที่ต้องการเบิกออก", min_value=0.1, value=1.0)
+            so_unit = st.selectbox("หน่วยนับ", st.session_state.units_list, index=st.session_state.units_list.index(default_unit) if default_unit in st.session_state.units_list else 0)
+            so_note = st.text_input("หมายเหตุ / ผู้เบิก / แผนกที่ใช้")
+
+            submit_so = st.form_submit_button("💾 บันทึกเบิกสินค้าออก")
+            if submit_so:
+                if so_qty > current_bal:
+                    st.error("จำนวนที่เบิกมากกว่าสต็อกคงเหลือในระบบ!")
+                else:
+                    inv = st.session_state["company_inventories"][selected_company]
+                    idx = inv.index[inv["Item Name"] == so_item][0]
+                    inv.loc[idx, "Stock Balance"] -= so_qty
+                    
+                    # บันทึกลงประวัติ
+                    new_trans = pd.DataFrame([{
+                        "Date": str(so_date),
+                        "Branch": selected_company,
+                        "Type": "เบิกออก (Stock Out)",
+                        "Item Name": so_item,
+                        "Quantity": so_qty,
+                        "Unit": so_unit,
+                        "Note": so_note
+                    }])
+                    st.session_state["transaction_history"] = pd.concat([st.session_state["transaction_history"], new_trans], ignore_index=True)
+                    st.success(f"เบิกสินค้า '{so_item}' จำนวน {so_qty} {so_unit} เรียบร้อยแล้ว!")
+                    st.rerun()
+
+# f) PR / PO workflow
+elif selected_menu == t["sub_pr_po"]:
     st.title(f"📝 ระบบขอซื้อ (PR) & ใบสั่งซื้อ (PO) - {selected_company}")
     pr_tab1, pr_tab2 = st.tabs(["📄 1. สร้างและติดตามใบขอซื้อ (PR)", "📦 2. ออกใบสั่งซื้อ (PO)"])
 
@@ -515,12 +599,18 @@ elif pr_menu_label := selected_menu == t["sub_pr_po"] and t["sub_pr_po"]:
 # g) History
 elif selected_menu == t["sub_history"]:
     st.title(f"⏱️ ประวัติการทำรายการ - {selected_company}")
-    st.info("บันทึกประวัติการทำรายการทั้งหมดในระบบ")
+    if len(st.session_state["transaction_history"]) > 0:
+        st.dataframe(st.session_state["transaction_history"], use_container_width=True)
+    else:
+        st.info("ยังไม่มีประวัติการทำรายการรับ-เบิกสินค้า")
 
 # h) Report
 elif selected_menu == t["sub_report"]:
     st.title(f"📈 รายการสรุปสต็อก & นับสต็อก - {selected_company}")
-    st.info("รายงานสรุปยอดคงเหลือและตรวจสอบสต็อกสินค้า")
+    if len(current_inv) > 0:
+        st.dataframe(current_inv, use_container_width=True)
+    else:
+        st.info("ยังไม่มีข้อมูลในระบบสต็อก")
 
 # i) Settings
 elif selected_menu == t["sub_settings"]:
