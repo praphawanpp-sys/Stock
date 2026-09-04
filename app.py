@@ -38,7 +38,17 @@ CATEGORIES_LIST = [
     "ชีส / Cheese",
     "นม / Milk",
 ]
-UNITS_LIST = ["Box", "Pack", "Bag", "Kg", "Pcs", "Litre", "Bottle", "Can", "Gram"]
+UNITS_LIST = [
+    "Box", 
+    "Pack", 
+    "Bag", 
+    "Kg", 
+    "Pcs", 
+    "Litre", 
+    "Bottle", 
+    "Can", 
+    "Gram",
+]
 VAT_TYPES_LIST = ["Non Vat", "Vat 7%"]
 
 LANG = {
@@ -88,10 +98,15 @@ TRANSLATE_DICT = {
 if "lang" not in st.session_state:
     st.session_state.lang = "th"
 
-if "company_addresses" not in st.session_state:
-    st.session_state.company_addresses = {
-        comp: f"ที่อยู่สำนักงานใหญ่/สาขา ของ {comp}" for comp in REAL_COMPANIES
-    }
+if "company_details" not in st.session_state:
+    st.session_state.company_details = {}
+    for comp in REAL_COMPANIES:
+        st.session_state.company_details[comp] = {
+            "name": comp,
+            "address": f"ที่อยู่สำนักงานใหญ่/สาขา ของ {comp}",
+            "tax_id": "01055xxxxxxxx",
+            "contact": "02-xxx-xxxx / เซลล์: คุณสมชาย (081-234-5678)",
+        }
 
 if "company_logos" not in st.session_state:
     st.session_state.company_logos = {}
@@ -356,10 +371,10 @@ elif selected_menu == t["sub_import_excel"]:
         st.warning("กรุณาเลือก 1 บริษัทเฉพาะเจาะจงก่อนทำรายการ")
     else:
         tab1, tab2, tab3, tab4 = st.tabs([
-            "1. เพิ่มรายการสินค้าเข้าใหม่",
-            "2. เพิ่ม/แก้ไข้อมูลร้านค้า",
+            "1. เพิ่มรายการสินค้าใหม่",
+            "2. เพิ่ม/แก้ไขข้อมูลร้านค้า",
             "3. เพิ่ม/แก้ไขหน่วยนับ (Units)",
-            "4. เพิ่ม/แก้ไหมวดหมู่สินค้า (Categories)"
+            "4. เพิ่ม/แก้ไขหมวดหมู่สินค้า (Categories)"
         ])
 
         with tab1:
@@ -409,17 +424,27 @@ elif selected_menu == t["sub_import_excel"]:
                         st.rerun()
 
         with tab2:
-            st.subheader("ตั้งค่าข้อมูลร้านค้า (ที่อยู่ / โลโก้)")
-            current_addr = st.session_state["company_addresses"].get(selected_company, "")
-            existing_logo = st.session_state["company_logos"].get(selected_company)
-            if existing_logo is not None:
-                st.image(existing_logo, width=150, caption="โลโก้ปัจจุบันของบริษัท")
-            
+            st.subheader("ตั้งค่าข้อมูลร้านค้า")
+            curr_details = st.session_state["company_details"].get(selected_company, {
+                "name": selected_company,
+                "address": "",
+                "tax_id": "",
+                "contact": ""
+            })
+           
             with st.form("company_info_form_in_add"):
-                new_comp_address = st.text_area("ที่อยู่ของร้านค้า / สาขา", value=current_addr)
-                uploaded_logo = st.file_uploader("🖼️ อัปโหลดโลโก้บริษัท (PNG, JPG, JPEG)", type=["png", "jpg", "jpeg"], key="logo_add_page")
+                c_name = st.text_input("1. ชื่อร้านค้า/บริษัท", value=curr_details.get("name", selected_company))
+                c_address = st.text_area("2. ที่อยู่", value=curr_details.get("address", ""))
+                c_tax = st.text_input("3. เลขที่ผู้เสียภาษี", value=curr_details.get("tax_id", ""))
+                c_contact = st.text_input("4. ข้อมูลติดต่อ / เซลล์", value=curr_details.get("contact", ""))
+                
                 if st.form_submit_button("💾 บันทึกข้อมูลร้านค้า"):
-                    st.session_state["company_addresses"][selected_company] = new_comp_address
+                    st.session_state["company_details"][selected_company] = {
+                        "name": c_name,
+                        "address": c_address,
+                        "tax_id": c_tax,
+                        "contact": c_contact
+                    }
                     if uploaded_logo is not None:
                         st.session_state["company_logos"][selected_company] = uploaded_logo
                     st.success("บันทึกข้อมูลร้านค้าเรียบร้อยแล้ว!")
