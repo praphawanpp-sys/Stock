@@ -303,7 +303,7 @@ elif selected_menu == t["sub_import_excel"]:
                             else:
                                 st.warning("ชื่อหมวดหมู่ว่าง หรือซ้ำกับที่มีอยู่แล้ว")
 
-# d) Stock In (รับสินค้าเข้าสต็อกแบบเวอร์ชันล่าสุด: รองรับตะกร้าและการค้นหา)
+# d) Stock In (รับสินค้าเข้าสต็อก - อัปเดตพิมพ์รหัสแล้วดึงข้อมูลอัตโนมัติ)
 elif selected_menu == t["sub_stock_in"]:
     st.title(f"📥 รับสินค้าเข้าสต็อก (Stock In) - {selected_company}")
     if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
@@ -323,18 +323,21 @@ elif selected_menu == t["sub_stock_in"]:
         st.markdown("---")
         st.subheader("เลือกและเพิ่มสินค้าเข้าตะกร้ารับเข้า")
         
+        # ช่องสำหรับพิมพ์ค้นหารหัสหรือชื่อสินค้าเพื่อดึงค่าอัตโนมัติ
+        si_search_query = st.text_input("🔍 พิมพ์รหัสสินค้า (Product Code) หรือ ชื่อสินค้า เพื่อค้นหาและดึงข้อมูลอัตโนมัติ", value="")
+        
+        filtered_inv = current_inv.copy()
+        if si_search_query:
+            filtered_inv = filtered_inv[
+                filtered_inv["Product Code"].str.contains(si_search_query, case=False, na=False) |
+                filtered_inv["Item Name"].str.contains(si_search_query, case=False, na=False)
+            ]
+        
+        si_item_options = filtered_inv["Item Name"].tolist() if len(filtered_inv) > 0 else []
+        
         with st.form("form_add_stock_in_item"):
-            si_search_query = st.text_input("🔍 ค้นหาชื่อสินค้า หรือ รหัสสินค้า")
-            
-            filtered_inv = current_inv.copy()
-            if si_search_query:
-                filtered_inv = filtered_inv[
-                    filtered_inv["Item Name"].str.contains(si_search_query, case=False, na=False) |
-                    filtered_inv["Product Code"].str.contains(si_search_query, case=False, na=False)
-                ]
-            
-            si_item_options = filtered_inv["Item Name"].tolist() if len(filtered_inv) > 0 else []
-            si_item = st.selectbox("เลือกรายการสินค้า", si_item_options)
+            # หากค้นหาแล้วเจอสินค้าตัวแรกตรงกันข้าม หรือตรงเป๊ะ ระบบจะเลือกให้อัตโนมัติทันที
+            si_item = st.selectbox("รายการสินค้า (เลือกอัตโนมัติจากผลค้นหา)", si_item_options)
             
             default_unit = "หน่วย"
             default_price = 0.0
@@ -348,9 +351,10 @@ elif selected_menu == t["sub_stock_in"]:
             with col_sq1:
                 si_qty = st.number_input("จำนวนที่รับเข้า", min_value=0.1, value=1.0)
             with col_sq2:
-                si_unit = st.selectbox("หน่วยนับ", st.session_state.units_list, index=st.session_state.units_list.index(default_unit) if default_unit in st.session_state.units_list else 0)
+                unit_idx = st.session_state.units_list.index(default_unit) if default_unit in st.session_state.units_list else 0
+                si_unit = st.selectbox("หน่วยนับ (ดึงอัตโนมัติ)", st.session_state.units_list, index=unit_idx)
             with col_sq3:
-                si_price = st.number_input("ราคาซื้อต่อหน่วย", min_value=0.0, value=default_price)
+                si_price = st.number_input("ราคาซื้อต่อหน่วย (ดึงอัตโนมัติ)", min_value=0.0, value=default_price)
 
             add_to_si_cart = st.form_submit_button("➕ เพิ่มรายการนี้เข้าตะกร้ารับสินค้า")
             if add_to_si_cart and si_item:
@@ -377,7 +381,7 @@ elif selected_menu == t["sub_stock_in"]:
                     st.session_state["temp_stock_in_cart"] = []
                     st.rerun()
             with col_sb2:
-                if st.button("💾 ยันทึกรับเข้าสต็อกจริง (Update Stock)"):
+                if st.button("💾 บันทึกรับเข้าสต็อกจริง (Update Stock)"):
                     inv = st.session_state["company_inventories"][selected_company]
                     for item in st.session_state["temp_stock_in_cart"]:
                         i_name = item["Item Name"]
@@ -385,14 +389,12 @@ elif selected_menu == t["sub_stock_in"]:
                         i_unit = item["Unit"]
                         i_price = item["Price"]
                         
-                        # อัปเดตสต็อกคงเหลือและราคาล่าสุด
                         idx_match = inv.index[inv["Item Name"] == i_name]
                         if not idx_match.empty:
                             idx = idx_match[0]
                             inv.loc[idx, "Stock Balance"] += i_qty
                             inv.loc[idx, "Last Price"] = i_price
 
-                        # บันทึกลงประวัติ
                         new_trans = pd.DataFrame([{
                             "Date": str(si_date),
                             "Branch": selected_company,
@@ -442,7 +444,6 @@ elif selected_menu == t["sub_stock_out"]:
                     idx = inv.index[inv["Item Name"] == so_item][0]
                     inv.loc[idx, "Stock Balance"] -= so_qty
                     
-                    # บันทึกลงประวัติ
                     new_trans = pd.DataFrame([{
                         "Date": str(so_date),
                         "Branch": selected_company,
