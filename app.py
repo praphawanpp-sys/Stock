@@ -481,6 +481,17 @@ elif selected_menu == t["sub_import_excel"]:
                 
                 edit_key = f"edit_unit_{i}"
                 del_key = f"del_unit_{i}"
+
+                st.markdown("---")
+            with st.form("unit_mgmt_form"):
+                new_unit = st.text_input("เพิ่มหน่วยใหม่")
+                if st.form_submit_button("➕ เพิ่มหน่วยนับ"):
+                    if new_unit and new_unit not in st.session_state.units_list:
+                        st.session_state.units_list.append(new_unit)
+                        st.success(f"เพิ่มหน่วย '{new_unit}' เรียบร้อยแล้ว")
+                        st.rerun()
+                    else:
+                        st.warning("หน่วยนี้มีอยู่แล้ว หรือไม่ถูกต้อง")
                 
                 if cols[1].button("✏️ แก้ไข", key=edit_key):
                     st.session_state[f"show_edit_unit_{i}"] = not st.session_state.get(f"show_edit_unit_{i}", False)
@@ -502,18 +513,7 @@ elif selected_menu == t["sub_import_excel"]:
                                 st.success("แก้ไขหน่วยนับเรียบร้อยแล้ว")
                                 st.rerun()
                             else:
-                                st.warning("ชื่อหน่วยนับว่าง หรือซ้ำกับที่มีอยู่แล้ว")
-
-            st.markdown("---")
-            with st.form("unit_mgmt_form"):
-                new_unit = st.text_input("เพิ่มหน่วยใหม่")
-                if st.form_submit_button("➕ เพิ่มหน่วยนับ"):
-                    if new_unit and new_unit not in st.session_state.units_list:
-                        st.session_state.units_list.append(new_unit)
-                        st.success(f"เพิ่มหน่วย '{new_unit}' เรียบร้อยแล้ว")
-                        st.rerun()
-                    else:
-                        st.warning("หน่วยนี้มีอยู่แล้ว หรือไม่ถูกต้อง")
+                                st.warning("ชื่อหน่วยนับว่าง หรือซ้ำกับที่มีอยู่แล้ว") 
 
         with tab4:
             st.subheader("หมวดหมู่สินค้า (Categories)")
@@ -525,7 +525,18 @@ elif selected_menu == t["sub_import_excel"]:
                 
                 edit_cat_key = f"edit_cat_{j}"
                 del_cat_key = f"del_cat_{j}"
-                
+
+                st.markdown("---")
+            with st.form("cat_mgmt_form"):
+                new_cat = st.text_input("เพิ่มหมวดหมู่ใหม่")
+                if st.form_submit_button("➕ เพิ่มหมวดหมู่"):
+                    if new_cat and new_cat not in st.session_state.categories_list:
+                        st.session_state.categories_list.append(new_cat)
+                        st.success(f"เพิ่มหมวดหมู่ '{new_cat}' เรียบร้อยแล้ว")
+                        st.rerun()
+                    else:
+                        st.warning("หมวดหมู่นี้มีอยู่แล้ว หรือไม่ถูกต้อง")
+                        
                 if cols_c[1].button("✏️ แก้ไข", key=edit_cat_key):
                     st.session_state[f"show_edit_cat_{j}"] = not st.session_state.get(f"show_edit_cat_{j}", False)
                 if cols_c[2].button("🗑️ ลบ", key=del_cat_key):
@@ -547,17 +558,6 @@ elif selected_menu == t["sub_import_excel"]:
                                 st.rerun()
                             else:
                                 st.warning("ชื่อหมวดหมู่ว่าง หรือซ้ำกับที่มีอยู่แล้ว")
-
-            st.markdown("---")
-            with st.form("cat_mgmt_form"):
-                new_cat = st.text_input("เพิ่มหมวดหมู่ใหม่")
-                if st.form_submit_button("➕ เพิ่มหมวดหมู่"):
-                    if new_cat and new_cat not in st.session_state.categories_list:
-                        st.session_state.categories_list.append(new_cat)
-                        st.success(f"เพิ่มหมวดหมู่ '{new_cat}' เรียบร้อยแล้ว")
-                        st.rerun()
-                    else:
-                        st.warning("หมวดหมู่นี้มีอยู่แล้ว หรือไม่ถูกต้อง")
 
 # d) Stock In
 elif selected_menu == t["sub_stock_in"]:
