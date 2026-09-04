@@ -27,18 +27,22 @@ COMPANIES = [
 ]
 REAL_COMPANIES = [c for c in COMPANIES if "ทุกบริษัท" not in c]
 
-CATEGORIES_LIST = [
-    "เนื้อสัตว์/เครื่องปรุง/อื่นๆ / Meat / Seasonings / Others",
-    "ผักและผลไม้ / Vegetables & Fruits",
-    "ทะเล / Seafood",
-    "เนื้อวัว / Beef",
-    "น้ำผลไม้/Soft Drink/อื่นๆ / Juice/Soft Drink/Other",
-    "เบียร์ / Beer",
-    "ไส้กรอก / Sausage",
-    "ชีส / Cheese",
-    "นม / Milk",
-]
-UNITS_LIST = ["Box", "Pack", "Bag", "Kg", "Pcs", "Litre", "Bottle", "Can", "Gram"]
+if "categories_list" not in st.session_state:
+    st.session_state.categories_list = [
+        "เนื้อสัตว์/เครื่องปรุง/อื่นๆ / Meat / Seasonings / Others",
+        "ผักและผลไม้ / Vegetables & Fruits",
+        "ทะเล / Seafood",
+        "เนื้อวัว / Beef",
+        "น้ำผลไม้/Soft Drink/อื่นๆ / Juice/Soft Drink/Other",
+        "เบียร์ / Beer",
+        "ไส้กรอก / Sausage",
+        "ชีส / Cheese",
+        "นม / Milk",
+    ]
+
+if "units_list" not in st.session_state:
+    st.session_state.units_list = ["Box", "Pack", "Bag", "Kg", "Pcs", "Litre", "Bottle", "Can", "Gram"]
+
 VAT_TYPES_LIST = ["Non Vat", "Vat 7%"]
 
 LANG = {
@@ -320,7 +324,7 @@ elif selected_menu == t["m_inventory_mgmt"]:
         st.warning("เลือก 1 บริษัท เพื่อแก้ไขรายการสินค้า")
     else:
         col_m1, col_m2, col_m3 = st.columns(3)
-        all_cats_mgmt = ["ทุกหมวดหมู่ (All Categories)"] + CATEGORIES_LIST
+        all_cats_mgmt = ["ทุกหมวดหมู่ (All Categories)"] + st.session_state.categories_list
         selected_mgmt_cat = col_m1.selectbox("เลือกตามหมวดหมู่", all_cats_mgmt)
         
         suppliers_list_mgmt = ["ทุกร้านค้า/บริษัท (All Suppliers)"] + (current_inv["Supplier"].dropna().unique().tolist() if len(current_inv) > 0 else [])
@@ -398,11 +402,11 @@ elif selected_menu == t["sub_import_excel"]:
                     supplier = st.selectbox("ชื่อร้านค้า (Supplier)", existing_suppliers)
                     sku = st.text_input("รหัสสินค้า")
                     item_name = st.text_input("ชื่อสินค้า")
-                    cat_manual = st.selectbox("หมวดหมู่สินค้า", CATEGORIES_LIST)
+                    cat_manual = st.selectbox("หมวดหมู่สินค้า", st.session_state.categories_list)
                     
                     col_u1, col_u2 = st.columns(2)
                     with col_u1:
-                        unit_manual = st.selectbox("หน่วยนับ", UNITS_LIST)
+                        unit_manual = st.selectbox("หน่วยนับ", st.session_state.units_list)
                     with col_u2:
                         conversion_qty = st.number_input("ปริมาณต่อหน่วย", min_value=0.0, value=1.0)
                         
@@ -470,13 +474,42 @@ elif selected_menu == t["sub_import_excel"]:
         with tab3:
             st.subheader("หน่วยนับสินค้า (Units)")
             st.write("หน่วยนับปัจจุบัน:")
-            for u_item in UNITS_LIST:
-                st.write(f"- {u_item}")
+            
+            for i, u_item in enumerate(st.session_state.units_list):
+                cols = st.columns([3, 1, 1])
+                cols[0].write(f"- {u_item}")
+                
+                edit_key = f"edit_unit_{i}"
+                del_key = f"del_unit_{i}"
+                
+                if cols[1].button("✏️ แก้ไข", key=edit_key):
+                    st.session_state[f"show_edit_unit_{i}"] = not st.session_state.get(f"show_edit_unit_{i}", False)
+                if cols[2].button("🗑️ ลบ", key=del_key):
+                    if len(st.session_state.units_list) > 1:
+                        st.session_state.units_list.pop(i)
+                        st.success("ลบหน่วยนับเรียบร้อยแล้ว")
+                        st.rerun()
+                    else:
+                        st.warning("ต้องมีหน่วยนับอย่างน้อย 1 รายการ")
+                
+                if st.session_state.get(f"show_edit_unit_{i}", False):
+                    with st.form(f"form_edit_unit_{i}" ):
+                        updated_unit_name = st.text_input("แก้ไขชื่อหน่วยนับ", value=u_item)
+                        if st.form_submit_button("💾 บันทึก"):
+                            if updated_unit_name and updated_unit_name not in st.session_state.units_list:
+                                st.session_state.units_list[i] = updated_unit_name
+                                st.session_state[f"show_edit_unit_{i}"] = False
+                                st.success("แก้ไขหน่วยนับเรียบร้อยแล้ว")
+                                st.rerun()
+                            else:
+                                st.warning("ชื่อหน่วยนับว่าง หรือซ้ำกับที่มีอยู่แล้ว")
+
+            st.markdown("---")
             with st.form("unit_mgmt_form"):
                 new_unit = st.text_input("เพิ่มหน่วยใหม่")
                 if st.form_submit_button("➕ เพิ่มหน่วยนับ"):
-                    if new_unit and new_unit not in UNITS_LIST:
-                        UNITS_LIST.append(new_unit)
+                    if new_unit and new_unit not in st.session_state.units_list:
+                        st.session_state.units_list.append(new_unit)
                         st.success(f"เพิ่มหน่วย '{new_unit}' เรียบร้อยแล้ว")
                         st.rerun()
                     else:
@@ -485,13 +518,42 @@ elif selected_menu == t["sub_import_excel"]:
         with tab4:
             st.subheader("หมวดหมู่สินค้า (Categories)")
             st.write("หมวดหมู่ปัจจุบัน:")
-            for c_item in CATEGORIES_LIST:
-                st.write(f"- {c_item}")
+            
+            for j, c_item in enumerate(st.session_state.categories_list):
+                cols_c = st.columns([3, 1, 1])
+                cols_c[0].write(f"- {c_item}")
+                
+                edit_cat_key = f"edit_cat_{j}"
+                del_cat_key = f"del_cat_{j}"
+                
+                if cols_c[1].button("✏️ แก้ไข", key=edit_cat_key):
+                    st.session_state[f"show_edit_cat_{j}"] = not st.session_state.get(f"show_edit_cat_{j}", False)
+                if cols_c[2].button("🗑️ ลบ", key=del_cat_key):
+                    if len(st.session_state.categories_list) > 1:
+                        st.session_state.categories_list.pop(j)
+                        st.success("ลบหมวดหมู่เรียบร้อยแล้ว")
+                        st.rerun()
+                    else:
+                        st.warning("ต้องมีหมวดหมู่อย่างน้อย 1 รายการ")
+                
+                if st.session_state.get(f"show_edit_cat_{j}", False):
+                    with st.form(f"form_edit_cat_{j}"):
+                        updated_cat_name = st.text_input("แก้ไขชื่อหมวดหมู่", value=c_item)
+                        if st.form_submit_button("💾 บันทึก"):
+                            if updated_cat_name and updated_cat_name not in st.session_state.categories_list:
+                                st.session_state.categories_list[j] = updated_cat_name
+                                st.session_state[f"show_edit_cat_{j}"] = False
+                                st.success("แก้ไขหมวดหมู่เรียบร้อยแล้ว")
+                                st.rerun()
+                            else:
+                                st.warning("ชื่อหมวดหมู่ว่าง หรือซ้ำกับที่มีอยู่แล้ว")
+
+            st.markdown("---")
             with st.form("cat_mgmt_form"):
                 new_cat = st.text_input("เพิ่มหมวดหมู่ใหม่")
                 if st.form_submit_button("➕ เพิ่มหมวดหมู่"):
-                    if new_cat and new_cat not in CATEGORIES_LIST:
-                        CATEGORIES_LIST.append(new_cat)
+                    if new_cat and new_cat not in st.session_state.categories_list:
+                        st.session_state.categories_list.append(new_cat)
                         st.success(f"เพิ่มหมวดหมู่ '{new_cat}' เรียบร้อยแล้ว")
                         st.rerun()
                     else:
@@ -646,7 +708,7 @@ elif selected_menu == t["sub_stock_out"]:
         with st.form("stock_out_form_new"):
             sel_item_out = st.selectbox("เลือกวัตถุดิบที่ต้องการเบิก", current_inv["Item Name"].tolist() if len(current_inv) > 0 else [])
             qty_out = st.number_input("จำนวนที่ต้องการเบิก", min_value=0.1, value=1.0)
-            unit_out = st.selectbox("เลือกหน่วยนับ", UNITS_LIST)
+            unit_out = st.selectbox("เลือกหน่วยนับ", st.session_state.units_list)
             date_out = st.date_input("วันที่เบิกสินค้า", value=datetime.today())
             requester_out = st.text_input("ชื่อผู้เบิก")
             department_out = st.text_input("แผนกที่นำไปใช้")
