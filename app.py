@@ -352,7 +352,7 @@ elif selected_menu == t["m_inventory_mgmt"]:
                         st.session_state[f"open_edit_{idx}"] = False
                         st.rerun()
 
-# c) Add New Items (Excel & Manual)
+# c) Add New Items (Excel & Manual) - เอา จำนวนรับเข้า ราคาต่อหน่วย หน่วยนับ ออกตามที่ขอ
 elif selected_menu == t["sub_import_excel"]:
     st.title(f"📥 เพิ่มรายการสินค้าใหม่ - {selected_company}")
     if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
@@ -375,28 +375,23 @@ elif selected_menu == t["sub_import_excel"]:
                 sku = st.text_input("รหัสสินค้า")
                 item_name = st.text_input("ชื่อสินค้า")
                 cat_manual = st.selectbox("หมวดหมู่สินค้า", CATEGORIES_LIST)
-                qty = st.number_input("จำนวนรับเข้า", min_value=0.1)
-                price = st.number_input("ราคาต่อหน่วย", min_value=0.0)
-                unit = st.selectbox("หน่วยนับ", UNITS_LIST)
                 vat_type = st.selectbox("ประเภทภาษี", VAT_TYPES_LIST)
-                submit_manual = st.form_submit_button("💾 บันทึกรับสินค้าเข้าสต็อก")
+                submit_manual = st.form_submit_button("💾 บันทึกเพิ่มรายการสินค้าใหม่")
 
                 if submit_manual:
                     inv = st.session_state["company_inventories"][selected_company]
                     idx_match = inv.index[inv["Item Name"] == item_name]
                     if not idx_match.empty:
                         idx = idx_match[0]
-                        inv.loc[idx, "Stock Balance"] += qty
-                        inv.loc[idx, "Last Price"] = price
                         inv.loc[idx, "Supplier"] = supplier
                     else:
                         new_row = pd.DataFrame([{
                             "Product Code": sku,
                             "Item Name": item_name,
                             "Category": cat_manual,
-                            "Unit": unit,
-                            "Stock Balance": qty,
-                            "Last Price": price,
+                            "Unit": "Pcs",
+                            "Stock Balance": 0.0,
+                            "Last Price": 0.0,
                             "Supplier": supplier,
                             "Vat Type": vat_type,
                         }])
@@ -404,27 +399,10 @@ elif selected_menu == t["sub_import_excel"]:
                             [inv, new_row], ignore_index=True
                         )
 
-                    new_t = {
-                        "Company": selected_company,
-                        "Date": str(datetime.today().date()),
-                        "DocNo": "-",
-                        "Supplier": supplier,
-                        "Item Name": item_name,
-                        "Quantity": qty,
-                        "Price/Unit": price,
-                        "Vat Type": vat_type,
-                        "Total Price": qty * price,
-                        "Type": "IMPORT",
-                        "Receiver": user_info["Name"],
-                        "Department": "-",
-                    }
-                    st.session_state["transactions"] = pd.concat(
-                        [st.session_state["transactions"], pd.DataFrame([new_t])], ignore_index=True
-                    )
-                    st.success("บันทึกรับสินค้าแบบแมนนวลสำเร็จ!")
+                    st.success("บันทึกเพิ่มรายการสินค้าใหม่สำเร็จ!")
                     st.rerun()
 
-# d) Stock In (อัปเดตตามที่ขอ: 1. กรองสินค้าตามชื่อร้านค้าที่เลือก, 2. ช่องรหัสสินค้าค้นหา/กรอกแล้วดึงชื่ออัตโนมัติ)
+# d) Stock In
 elif selected_menu == t["sub_stock_in"]:
     st.title(f"📥 รับสินค้าเข้า (Stock In) - {selected_company}")
     if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
@@ -433,7 +411,6 @@ elif selected_menu == t["sub_stock_in"]:
         if "temp_stock_in_items" not in st.session_state:
             st.session_state["temp_stock_in_items"] = []
 
-        # ส่วนหัวเอกสารรับเข้า
         st.subheader("1. ข้อมูลใบรับสินค้าและผู้รับ")
         col_h1, col_h2, col_h3, col_h4 = st.columns(4)
         with col_h1:
@@ -446,7 +423,6 @@ elif selected_menu == t["sub_stock_in"]:
         with col_h4:
             receiver_in = st.text_input("ผู้รับสินค้าเข้า", value=user_info["Name"])
 
-        # เลือกวิธีแนบรูปหรือกล้องแบบสลับ
         upload_option = st.radio("เลือกวิธีแนบหลักฐาน", ["📂 อัปโหลดไฟล์รูปภาพ", "📸 ถ่ายภาพด้วยกล้อง"], horizontal=True)
         
         saved_photo = None
@@ -462,16 +438,12 @@ elif selected_menu == t["sub_stock_in"]:
         st.markdown("---")
         st.subheader("2. ค้นหาและเพิ่มรายการสินค้าทีละรายการเข้าตะกร้ารับเข้า")
         
-        # กรองสินค้าในคลังเฉพาะของ "ร้านค้านั้น" ที่เลือกใน Supplier ก่อน
         inv_by_supplier = current_inv[current_inv["Supplier"] == supplier_in].copy() if len(current_inv) > 0 else pd.DataFrame()
-        # ถ้าไม่มีสินค้าผูกกับร้านค้านี้โดยตรง ให้ใช้สินค้าทั้งหมดเป็นตัวเลือกเผื่อกรณีสินค้าใหม่/ยังไม่ได้ระบุร้านค้า
         if len(inv_by_supplier) == 0:
             inv_by_supplier = current_inv.copy()
 
-        # Input สำหรับพิมพ์รหัสสินค้าเพื่อค้นหาอัตโนมัติ
         input_code_search = st.text_input("🔍 พิมพ์รหัสสินค้า (Product Code) เพื่อดึงชื่ออัตโนมัติ")
 
-        # ตรวจสอบว่ารหัสสินค้าตรงกับรายการใดในร้านค้านี้หรือไม่
         matched_by_code = None
         if input_code_search.strip() and len(inv_by_supplier) > 0:
             matched_rows = inv_by_supplier[inv_by_supplier["Product Code"].astype(str).str.lower() == input_code_search.strip().lower()]
@@ -480,12 +452,10 @@ elif selected_menu == t["sub_stock_in"]:
 
         with st.form("add_item_to_cart_form"):
             if matched_by_code is not None:
-                # ถ้าเจอด้วยรหัส ให้ล็อกหรือแสดงชื่อสินค้าอัตโนมัติ
                 sel_item_in = matched_by_code["Item Name"]
                 st.success(f"📌 ระบบพบรหัสสินค้าตรงกับ: **{sel_item_in}**")
                 item_options = [sel_item_in]
             else:
-                # หากยังไม่ได้พิมพ์รหัส หรือพิมพ์ไม่เจอ ให้แสดงรายการสินค้าทั้งหมดของร้านค้านั้น
                 item_options = inv_by_supplier["Item Name"].tolist() if len(inv_by_supplier) > 0 else []
                 sel_item_in = st.selectbox(f"เลือกวัตถุดิบรับเข้า (จากร้าน: {supplier_in})", item_options)
             
@@ -524,7 +494,6 @@ elif selected_menu == t["sub_stock_in"]:
                 })
                 st.success(f"เพิ่ม '{sel_item_in}' ลงในรายการแล้ว")
 
-        # แสดงรายการที่รอรับเข้า
         if len(st.session_state["temp_stock_in_items"]) > 0:
             st.markdown("---")
             st.subheader("3. รายการสินค้าที่รอการบันทึกรับเข้า")
@@ -724,7 +693,7 @@ elif selected_menu == t["m_company_settings"]:
                 st.success("ลบแอดมินสำเร็จ!")
                 st.rerun()
 
-# j) Store Settings (Units / Categories / Address) อยู่ในตำแหน่ง 2 นับจากด้านล่าง
+# j) Store Settings (Units / Categories / Address)
 elif selected_menu == t["sub_settings"]:
     st.title("⚙️ ตั้งค่าข้อมูลร้านค้า / หน่วยนับ / หมวดของสินค้า")
 
