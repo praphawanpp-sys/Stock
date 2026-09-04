@@ -303,7 +303,7 @@ elif selected_menu == t["sub_import_excel"]:
                             else:
                                 st.warning("ชื่อหมวดหมู่ว่าง หรือซ้ำกับที่มีอยู่แล้ว")
 
-# d) Stock In (รับสินค้าเข้าสต็อก - แก้ไขช่องค้นหาอยู่นอก Form เพื่อให้ดึงอัตโนมัติทันที)
+# d) Stock In (รับสินค้าเข้าสต็อก - ค้นหาได้ทั้งรหัสและชื่อ)
 elif selected_menu == t["sub_stock_in"]:
     st.title(f"📥 รับสินค้าเข้าสต็อก (Stock In) - {selected_company}")
     if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
@@ -323,32 +323,36 @@ elif selected_menu == t["sub_stock_in"]:
         st.markdown("---")
         st.subheader("เลือกและเพิ่มสินค้าเข้าตะกร้ารับเข้า")
         
-        # ช่องค้นหาอยู่นอก Form เพื่อให้พิมพ์แล้วรีรันหน้าจอทันที
+        # ช่องค้นหารองรับทั้งรหัสสินค้าและชื่อสินค้า
         si_search_query = st.text_input("🔍 พิมพ์รหัสสินค้า (Product Code) หรือ ชื่อสินค้า เพื่อดึงข้อมูลอัตโนมัติ", value="")
         
-        filtered_inv = current_inv.copy()
-        if si_search_query:
-            filtered_inv = filtered_inv[
-                filtered_inv["Product Code"].astype(str).str.contains(si_search_query, case=False, na=False) |
-                filtered_inv["Item Name"].str.contains(si_search_query, case=False, na=False)
-            ]
-        
-        si_item_options = filtered_inv["Item Name"].tolist() if len(filtered_inv) > 0 else []
-        
-        # ดึงข้อมูลจากสินค้าตัวแรกที่ค้นหาเจอมาแสดงเป็นค่าเริ่มต้นอัตโนมัติ
-        selected_item_name = si_item_options[0] if len(si_item_options) > 0 else ""
+        selected_item_name = ""
         default_unit = "หน่วย"
         default_price = 0.0
-        
-        if selected_item_name and len(current_inv) > 0:
-            matched_row = current_inv[current_inv["Item Name"] == selected_item_name]
-            if not matched_row.empty:
-                default_unit = str(matched_row.iloc[0]["Unit"])
-                default_price = float(matched_row.iloc[0]["Last Price"])
+        found_code = ""
+
+        if si_search_query:
+            q = str(si_search_query).strip().lower()
+            res = current_inv[
+                (current_inv["Product Code"].astype(str).str.strip().str.lower() == q) |
+                (current_inv["Item Name"].astype(str).str.lower().str.contains(q, na=False)) |
+                (current_inv["Product Code"].astype(str).str.lower().str.contains(q, na=False))
+            ]
+            if not res.empty:
+                selected_item_name = str(res.iloc[0]["Item Name"])
+                default_unit = str(res.iloc[0]["Unit"])
+                default_price = float(res.iloc[0]["Last Price"])
+                found_code = str(res.iloc[0]["Product Code"])
 
         with st.form("form_add_stock_in_item"):
-            st.markdown(f"**📌 ชื่อสินค้าที่พบอัตโนมัติ:** `{selected_item_name if selected_item_name else 'ไม่พบสินค้าที่ตรงกัน'}`")
-            
+            if si_search_query:
+                if selected_item_name:
+                    st.success(f"✅ พบสินค้า [รหัส: {found_code}] -> **{selected_item_name}**")
+                else:
+                    st.error("❌ ไม่พบสินค้าที่ตรงกับรหัสหรือชื่อนี้")
+            else:
+                st.info("💡 กรุณาพิมพ์รหัสสินค้าหรือชื่อสินค้าในช่องด้านบนเพื่อค้นหา")
+
             col_sq1, col_sq2, col_sq3 = st.columns(3)
             with col_sq1:
                 si_qty = st.number_input("จำนวนที่รับเข้า", min_value=0.1, value=1.0)
@@ -359,16 +363,19 @@ elif selected_menu == t["sub_stock_in"]:
                 si_price = st.number_input("ราคาซื้อต่อหน่วย (ดึงอัตโนมัติ)", min_value=0.0, value=default_price)
 
             add_to_si_cart = st.form_submit_button("➕ เพิ่มรายการนี้เข้าตะกร้ารับสินค้า")
-            if add_to_si_cart and selected_item_name:
-                st.session_state["temp_stock_in_cart"].append({
-                    "Item Name": selected_item_name,
-                    "Quantity": si_qty,
-                    "Unit": si_unit,
-                    "Price": si_price,
-                    "Total": si_qty * si_price
-                })
-                st.success(f"เพิ่ม '{selected_item_name}' ลงในรายการรับเข้าแล้ว")
-                st.rerun()
+            if add_to_si_cart:
+                if selected_item_name:
+                    st.session_state["temp_stock_in_cart"].append({
+                        "Item Name": selected_item_name,
+                        "Quantity": si_qty,
+                        "Unit": si_unit,
+                        "Price": si_price,
+                        "Total": si_qty * si_price
+                    })
+                    st.success(f"เพิ่ม '{selected_item_name}' ลงในรายการรับเข้าแล้ว")
+                    st.rerun()
+                else:
+                    st.error("กรุณาระบุรหัสหรือชื่อสินค้าให้ถูกต้องก่อนเพิ่มลงตะกร้า")
 
         if len(st.session_state["temp_stock_in_cart"]) > 0:
             st.markdown("#### 🛒 รายการสินค้าที่รอรับเข้าสต็อก")
