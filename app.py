@@ -349,108 +349,109 @@ elif selected_menu == t["m_inventory_mgmt"]:
                         st.session_state[f"open_edit_{idx}"] = False
                         st.rerun()
 
-# c) Add New Items (Combined Subsections 1-4)
+# c) Add New Items with 4 Ordered Tabs matching the requested layout
 elif selected_menu == t["sub_import_excel"]:
     st.title(f"📥 เพิ่มรายการสินค้าใหม่ - {selected_company}")
     if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
         st.warning("กรุณาเลือก 1 บริษัทเฉพาะเจาะจงก่อนทำรายการ")
     else:
-        # Step 1: Add New Items (Excel & Manual)
-        st.markdown("### 1. นำเข้าผ่านไฟล์ Excel หรือ เพิ่มรายการสินค้าใหม่แบบแมนนวล")
-        tab_imp1, tab_imp2 = st.tabs(["📄 นำเข้าผ่านไฟล์ Excel", "✍️ เพิ่มรายการแบบกรอกข้อมูล"])
+        tab1, tab2, tab3, tab4 = st.tabs([
+            "1. เพิ่มรายการสินค้าเข้าใหม่",
+            "2. เพิ่ม/แก้ไข้อมูลร้านค้า",
+            "3. เพิ่ม/แก้ไขหน่วยนับ (Units)",
+            "4. เพิ่ม/แก้ไหมวดหมู่สินค้า (Categories)"
+        ])
 
-        with tab_imp1:
-            uploaded_file = st.file_uploader("เลือกไฟล์ Excel สำหรับนำเข้าสต็อก", type=["xlsx", "csv"])
-            if uploaded_file:
-                st.success("อัปโหลดไฟล์สำเร็จ ระบบได้ทำการเพิ่มรายการสินค้าแล้ว")
+        with tab1:
+            st.subheader("เลือกเพิ่มแบบกรอกข้อมูลหรือเพิ่มผ่านไฟล์ Excel ในหน้าเดียวกัน")
+            sub_tab_excel, sub_tab_manual = st.tabs(["📄 นำเข้าผ่านไฟล์ Excel", "✍️ เพิ่มรายการแบบกรอกข้อมูล"])
 
-        with tab_imp2:
-            with st.form("manual_import_form_tab"):
-                existing_suppliers = current_inv["Supplier"].dropna().unique().tolist() if len(current_inv) > 0 else []
-                if not existing_suppliers:
-                    existing_suppliers = ["CP Axtra (Makro)", "CP Axtra (Lotus)", "ร้านค้าทั่วไป"]
-                
-                supplier = st.selectbox("ชื่อร้านค้า (Supplier)", existing_suppliers)
-                sku = st.text_input("รหัสสินค้า")
-                item_name = st.text_input("ชื่อสินค้า")
-                cat_manual = st.selectbox("หมวดหมู่สินค้า", CATEGORIES_LIST)
-                vat_type = st.selectbox("ประเภทภาษี", VAT_TYPES_LIST)
-                submit_manual = st.form_submit_button("💾 บันทึกเพิ่มรายการสินค้าใหม่")
+            with sub_tab_excel:
+                uploaded_file = st.file_uploader("เลือกไฟล์ Excel สำหรับนำเข้าสต็อก", type=["xlsx", "csv"])
+                if uploaded_file:
+                    st.success("อัปโหลดไฟล์สำเร็จ ระบบได้ทำการเพิ่มรายการสินค้าแล้ว")
 
-                if submit_manual:
-                    inv = st.session_state["company_inventories"][selected_company]
-                    idx_match = inv.index[inv["Item Name"] == item_name]
-                    if not idx_match.empty:
-                        idx = idx_match[0]
-                        inv.loc[idx, "Supplier"] = supplier
+            with sub_tab_manual:
+                with st.form("manual_import_form_tab"):
+                    existing_suppliers = current_inv["Supplier"].dropna().unique().tolist() if len(current_inv) > 0 else []
+                    if not existing_suppliers:
+                        existing_suppliers = ["CP Axtra (Makro)", "CP Axtra (Lotus)", "ร้านค้าทั่วไป"]
+                    
+                    supplier = st.selectbox("ชื่อร้านค้า (Supplier)", existing_suppliers)
+                    sku = st.text_input("รหัสสินค้า")
+                    item_name = st.text_input("ชื่อสินค้า")
+                    cat_manual = st.selectbox("หมวดหมู่สินค้า", CATEGORIES_LIST)
+                    vat_type = st.selectbox("ประเภทภาษี", VAT_TYPES_LIST)
+                    submit_manual = st.form_submit_button("💾 บันทึกเพิ่มรายการสินค้าใหม่")
+
+                    if submit_manual:
+                        inv = st.session_state["company_inventories"][selected_company]
+                        idx_match = inv.index[inv["Item Name"] == item_name]
+                        if not idx_match.empty:
+                            idx = idx_match[0]
+                            inv.loc[idx, "Supplier"] = supplier
+                        else:
+                            new_row = pd.DataFrame([{
+                                "Product Code": sku,
+                                "Item Name": item_name,
+                                "Category": cat_manual,
+                                "Unit": "Pcs",
+                                "Stock Balance": 0.0,
+                                "Last Price": 0.0,
+                                "Supplier": supplier,
+                                "Vat Type": vat_type,
+                            }])
+                            st.session_state["company_inventories"][selected_company] = pd.concat(
+                                [inv, new_row], ignore_index=True
+                            )
+
+                        st.success("บันทึกเพิ่มรายการสินค้าใหม่สำเร็จ!")
+                        st.rerun()
+
+        with tab2:
+            st.subheader("ตั้งค่าข้อมูลร้านค้า (ที่อยู่ / โลโก้)")
+            current_addr = st.session_state["company_addresses"].get(selected_company, "")
+            existing_logo = st.session_state["company_logos"].get(selected_company)
+            if existing_logo is not None:
+                st.image(existing_logo, width=150, caption="โลโก้ปัจจุบันของบริษัท")
+            
+            with st.form("company_info_form_in_add"):
+                new_comp_address = st.text_area("ที่อยู่ของร้านค้า / สาขา", value=current_addr)
+                uploaded_logo = st.file_uploader("🖼️ อัปโหลดโลโก้บริษัท (PNG, JPG, JPEG)", type=["png", "jpg", "jpeg"], key="logo_add_page")
+                if st.form_submit_button("💾 บันทึกข้อมูลร้านค้า"):
+                    st.session_state["company_addresses"][selected_company] = new_comp_address
+                    if uploaded_logo is not None:
+                        st.session_state["company_logos"][selected_company] = uploaded_logo
+                    st.success("บันทึกข้อมูลร้านค้าเรียบร้อยแล้ว!")
+                    st.rerun()
+
+        with tab3:
+            st.subheader("หน่วยนับสินค้า (Units)")
+            st.write("หน่วยนับปัจจุบัน:", UNITS_LIST)
+            with st.form("unit_mgmt_form"):
+                new_unit = st.text_input("เพิ่มหน่วยใหม่")
+                if st.form_submit_button("➕ เพิ่มหน่วยนับ"):
+                    if new_unit and new_unit not in UNITS_LIST:
+                        UNITS_LIST.append(new_unit)
+                        st.success(f"เพิ่มหน่วย '{new_unit}' เรียบร้อยแล้ว")
+                        st.rerun()
                     else:
-                        new_row = pd.DataFrame([{
-                            "Product Code": sku,
-                            "Item Name": item_name,
-                            "Category": cat_manual,
-                            "Unit": "Pcs",
-                            "Stock Balance": 0.0,
-                            "Last Price": 0.0,
-                            "Supplier": supplier,
-                            "Vat Type": vat_type,
-                        }])
-                        st.session_state["company_inventories"][selected_company] = pd.concat(
-                            [inv, new_row], ignore_index=True
-                        )
+                        st.warning("หน่วยนี้มีอยู่แล้ว หรือไม่ถูกต้อง")
 
-                    st.success("บันทึกเพิ่มรายการสินค้าใหม่สำเร็จ!")
-                    st.rerun()
-
-        st.markdown("---")
-
-        # Step 2: Store Information (Address & Logo)
-        st.markdown("### 2. ตั้งค่าข้อมูลร้านค้า (ที่อยู่ / โลโก้)")
-        current_addr = st.session_state["company_addresses"].get(selected_company, "")
-        existing_logo = st.session_state["company_logos"].get(selected_company)
-        if existing_logo is not None:
-            st.image(existing_logo, width=150, caption="โลโก้ปัจจุบันของบริษัท")
-        
-        with st.form("company_info_form_in_add"):
-            new_comp_address = st.text_area("ที่อยู่ของร้านค้า / สาขา", value=current_addr)
-            uploaded_logo = st.file_uploader("🖼️ อัปโหลดโลโก้บริษัท (PNG, JPG, JPEG)", type=["png", "jpg", "jpeg"], key="logo_add_page")
-            if st.form_submit_button("💾 บันทึกข้อมูลร้านค้า"):
-                st.session_state["company_addresses"][selected_company] = new_comp_address
-                if uploaded_logo is not None:
-                    st.session_state["company_logos"][selected_company] = uploaded_logo
-                st.success("บันทึกข้อมูลร้านค้าเรียบร้อยแล้ว!")
-                st.rerun()
-
-        st.markdown("---")
-
-        # Step 3: Units Management
-        st.markdown("### 3. หน่วยนับสินค้า (Units)")
-        st.write("หน่วยนับปัจจุบัน:", UNITS_LIST)
-        with st.form("unit_mgmt_form"):
-            new_unit = st.text_input("เพิ่มหน่วยใหม่")
-            if st.form_submit_button("➕ เพิ่มหน่วยนับ"):
-                if new_unit and new_unit not in UNITS_LIST:
-                    UNITS_LIST.append(new_unit)
-                    st.success(f"เพิ่มหน่วย '{new_unit}' เรียบร้อยแล้ว")
-                    st.rerun()
-                else:
-                    st.warning("หน่วยนี้มีอยู่แล้ว หรือไม่ถูกต้อง")
-
-        st.markdown("---")
-
-        # Step 4: Categories Management
-        st.markdown("### 4. หมวดหมู่สินค้า (Categories)")
-        st.write("หมวดหมู่ปัจจุบัน:")
-        for c_item in CATEGORIES_LIST:
-            st.write(f"- {c_item}")
-        with st.form("cat_mgmt_form"):
-            new_cat = st.text_input("เพิ่มหมวดหมู่ใหม่")
-            if st.form_submit_button("➕ เพิ่มหมวดหมู่"):
-                if new_cat and new_cat not in CATEGORIES_LIST:
-                    CATEGORIES_LIST.append(new_cat)
-                    st.success(f"เพิ่มหมวดหมู่ '{new_cat}' เรียบร้อยแล้ว")
-                    st.rerun()
-                else:
-                    st.warning("หมวดหมู่นี้มีอยู่แล้ว หรือไม่ถูกต้อง")
+        with tab4:
+            st.subheader("หมวดหมู่สินค้า (Categories)")
+            st.write("หมวดหมู่ปัจจุบัน:")
+            for c_item in CATEGORIES_LIST:
+                st.write(f"- {c_item}")
+            with st.form("cat_mgmt_form"):
+                new_cat = st.text_input("เพิ่มหมวดหมู่ใหม่")
+                if st.form_submit_button("➕ เพิ่มหมวดหมู่"):
+                    if new_cat and new_cat not in CATEGORIES_LIST:
+                        CATEGORIES_LIST.append(new_cat)
+                        st.success(f"เพิ่มหมวดหมู่ '{new_cat}' เรียบร้อยแล้ว")
+                        st.rerun()
+                    else:
+                        st.warning("หมวดหมู่นี้มีอยู่แล้ว หรือไม่ถูกต้อง")
 
 # d) Stock In
 elif selected_menu == t["sub_stock_in"]:
