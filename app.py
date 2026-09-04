@@ -473,16 +473,7 @@ elif selected_menu == t["sub_import_excel"]:
 
         with tab3:
             st.subheader("หน่วยนับสินค้า (Units)")
-            st.write("หน่วยนับปัจจุบัน:")
             
-            for i, u_item in enumerate(st.session_state.units_list):
-                cols = st.columns([3, 1, 1])
-                cols[0].write(f"- {u_item}")
-                
-                edit_key = f"edit_unit_{i}"
-                del_key = f"del_unit_{i}"
-
-                st.markdown("---")
             with st.form("unit_mgmt_form"):
                 new_unit = st.text_input("เพิ่มหน่วยใหม่")
                 if st.form_submit_button("➕ เพิ่มหน่วยนับ"):
@@ -492,6 +483,16 @@ elif selected_menu == t["sub_import_excel"]:
                         st.rerun()
                     else:
                         st.warning("หน่วยนี้มีอยู่แล้ว หรือไม่ถูกต้อง")
+
+            st.markdown("---")
+            st.write("หน่วยนับปัจจุบัน:")
+            
+            for i, u_item in enumerate(st.session_state.units_list):
+                cols = st.columns([3, 1, 1])
+                cols[0].write(f"- {u_item}")
+                
+                edit_key = f"edit_unit_{i}"
+                del_key = f"del_unit_{i}"
                 
                 if cols[1].button("✏️ แก้ไข", key=edit_key):
                     st.session_state[f"show_edit_unit_{i}"] = not st.session_state.get(f"show_edit_unit_{i}", False)
@@ -513,20 +514,11 @@ elif selected_menu == t["sub_import_excel"]:
                                 st.success("แก้ไขหน่วยนับเรียบร้อยแล้ว")
                                 st.rerun()
                             else:
-                                st.warning("ชื่อหน่วยนับว่าง หรือซ้ำกับที่มีอยู่แล้ว") 
+                                st.warning("ชื่อหน่วยนับว่าง หรือซ้ำกับที่มีอยู่แล้ว")
 
         with tab4:
             st.subheader("หมวดหมู่สินค้า (Categories)")
-            st.write("หมวดหมู่ปัจจุบัน:")
             
-            for j, c_item in enumerate(st.session_state.categories_list):
-                cols_c = st.columns([3, 1, 1])
-                cols_c[0].write(f"- {c_item}")
-                
-                edit_cat_key = f"edit_cat_{j}"
-                del_cat_key = f"del_cat_{j}"
-
-                st.markdown("---")
             with st.form("cat_mgmt_form"):
                 new_cat = st.text_input("เพิ่มหมวดหมู่ใหม่")
                 if st.form_submit_button("➕ เพิ่มหมวดหมู่"):
@@ -536,7 +528,17 @@ elif selected_menu == t["sub_import_excel"]:
                         st.rerun()
                     else:
                         st.warning("หมวดหมู่นี้มีอยู่แล้ว หรือไม่ถูกต้อง")
-                        
+
+            st.markdown("---")
+            st.write("หมวดหมู่ปัจจุบัน:")
+            
+            for j, c_item in enumerate(st.session_state.categories_list):
+                cols_c = st.columns([3, 1, 1])
+                cols_c[0].write(f"- {c_item}")
+                
+                edit_cat_key = f"edit_cat_{j}"
+                del_cat_key = f"del_cat_{j}"
+                
                 if cols_c[1].button("✏️ แก้ไข", key=edit_cat_key):
                     st.session_state[f"show_edit_cat_{j}"] = not st.session_state.get(f"show_edit_cat_{j}", False)
                 if cols_c[2].button("🗑️ ลบ", key=del_cat_key):
