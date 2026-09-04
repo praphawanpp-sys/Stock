@@ -279,6 +279,94 @@ elif selected_menu == t['sub_import_excel']:
         uploaded_file = st.file_uploader("เลือกไฟล์ Excel", type=["xlsx", "csv"])
         if uploaded_file:
             st.success("อัปโหลดไฟล์สำเร็จ")
+            
+# Add to the top‑level navigation (inside the st.radio block)
+t['sub_manual_import'] = "📥 นำเข้าสินค้าแบบแมนนวล (Manual Import)"
+
+# After the "นำเข้าสินค้า (Excel & Manual)" case
+elif selected_menu == t['sub_manual_import']:
+    st.title(f"📥 นำเข้าสินค้าแบบแมนนวล - {selected_company}")
+
+    # Do the same branch check as before
+    if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
+        st.warning("กรุณาเลือก 1 บริษัท เพื่อทำรายการนำเข้าสินค้า")
+    else:
+        # Simple manual form
+        with st.form("manual_import_form"):
+            doc_no = st.text_input("เลขที่เอกสาร (ใบกำกับภาษี/ใบเสร็จรับเงิน/ใบส่งของ)")
+            supplier = st.text_input("ชื่อร้านค้า")
+            sku = st.text_input("รหัสสินค้า")
+            item_name = st.text_input("ชื่อสินค้า")
+            qty = st.number_input("จำนวนรับเข้า", min_value=0.1)
+            price = st.number_input("ราคาต่อหน่วย", min_value=0.0)
+            unit = st.selectbox("หน่วย", UNITS_LIST)
+            vat_type = st.selectbox("ประเภทภาษี", VAT_TYPES_LIST)
+            submit = st.form_submit_button("บันทึกรับสินค้าเข้า")
+
+            if submit:
+                # Find the row
+                inv = st.session_state['company_inventories'][selected_company]
+                idx = inv.index[inv['Item Name'] == item_name]
+                if not idx.empty:
+                    idx = idx[0]
+                    inv.loc[idx, 'Stock Balance'] += qty
+                    inv.loc[idx, 'Last Price'] = price
+                    inv.loc[idx, 'Supplier'] = supplier
+                else:
+                    # New item: create a row
+                    new_row = {
+                        "Product Code": sku,
+                        "Item Name": item_name,
+                        "Category": "",
+                        "Unit": unit,
+                        "Stock Balance": qty,
+                        "Last Price": price,
+                        "Supplier": supplier,
+                        "Vat Type": vat_type
+                    }
+                    st.session_state['company_inventories'][selected_company] = inv.append(new_row, ignore_index=True)
+
+                # Record transaction
+                new_t = {"Company": selected_company,
+                         "Date": str(datetime.today().date()),
+                         "DocNo": doc_no,
+                         "Supplier": supplier,
+                         "Item Name": item_name,
+                         "Quantity": qty,
+                         "Price/Unit": price,
+                         "Vat Type": vat_type,
+                         "Total Price": qty * price,
+                         "Type": "IMPORT",
+                         "Receiver": "-",
+                         "Department": "-"}
+                st.session_state['transactions'] = pd.concat([st.session_state['transactions'],
+                                                             pd.DataFrame([new_t])],
+                                                            ignore_index=True)
+                st.success("บันทึกรับสินค้าสำเร็จ!")
+                st.rerun()
+
+            
+# --------------------------------------------------------------------------------------------------------------------
+# 1.1 Role‑based inventory filtering
+# --------------------------------------------------------------------------------------------------------------------
+def get_visible_inventory():
+    """Return the inventory DataFrame that the current user is allowed to see."""
+    # Identify the user’s role and branch
+    role = user_info['Role']
+    branch = user_info['Branch']
+
+    # If the user is Office, Manager, or Owner: all branches are visible
+    if role in {"Office", "Manager", "Owner"}:
+        # Combine all company inventories
+        return pd.concat(list(st.session_state['company_inventories'].values()), ignore_index=True)
+
+    # If the user is Admin: only their own branch inventory
+    if role == "Admin":
+        return st.session_state['company_inventories'][branch]
+
+    # Default: empty DataFrame
+    return pd.DataFrame(columns=st.session_state['company_inventories'][COMPANIES[0]].columns)
+
 
 # ----------------------------------------------------
 # 6. เมนูย่อย: รับสินค้า (Stock In)
@@ -741,3 +829,44 @@ elif selected_menu == t['m_company_settings']:
                 st.session_state['admins'] = st.session_state['admins'].drop(adm_idx).reset_index(drop=True)
                 st.success("ลบแอดมินสำเร็จ!")
                 st.rerun()
+
+# Add to the navigation list
+t['sub_settings'] = "⚙️ ตั้งค่า/แก้ไข ข้อมูลร้านค้า / หน่วย / หมวด"
+
+# Add UI for this section somewhere after other menu blocks
+elif selected_menu == t['sub_settings']:
+    st.title("⚙️ ตั้งค่า/แก้ไข ข้อมูลร้านค้า / หน่วย / หมวด")
+
+    # 3.1 Edit / add units
+    with st.expander("หน่วยที่ใช้ (Units)"):
+        st.write(UNITS_LIST)
+        new_unit = st.text_input("เพิ่มหน่วยใหม่", key="new_unit")
+        if st.button("เพิ่มหน่วย", key="add_unit"):
+            if new_unit and new_unit not in UNITS_LIST:
+                UNITS_LIST.append(new_unit)
+                st.success(f"เพิ่มหน่วย '{new_unit}' เรียบร้อยแล้ว")
+            else:
+                st.warning("หน่วยนี้มีอยู่แล้ว หรือไม่ถูกต้อง")
+
+    # 3.2 Edit / add categories
+    with st.expander("หมวดหมู่ (Categories)"):
+        st.write(CATEGORIES_LIST)
+        new_cat = st.text_input("เพิ่มหมวดหมู่ใหม่", key="new_cat")
+        if st.button("เพิ่มหมวดหมู่", key="add_cat"):
+            if new_cat and new_cat not in CATEGORIES_LIST:
+                CATEGORIES_LIST.append(new_cat)
+                st.success(f"เพิ่มหมวดหมู่ '{new_cat}' เรียบร้อยแล้ว")
+            else:
+                st.warning("หมวดหมู่นี้มีอยู่แล้ว หรือไม่ถูกต้อง")
+
+    # 3.3 Edit / add store data (address, logo, etc.)
+    with st.expander("ข้อมูลร้านค้า (Address / Logo)") :
+        new_address = st.text_area("อัปเดตที่อยู่", value=st.session_state['company_addresses'][selected_company])
+        if st.button("บันทึกที่อยู่ใหม่", key="save_addr"):
+            st.session_state['company_addresses'][selected_company] = new_address
+            st.success("อัปเดตที่อยู่สำเร็จ")
+
+        uploaded_logo = st.file_uploader("อัปโหลดโลโก้", type=["jpg","png","jpeg"], key="upload_logo")
+        if uploaded_logo:
+            st.session_state['company_logos'][selected_company] = uploaded_logo
+            st.success("อัปโหลดโลโก้สำเร็จ")
