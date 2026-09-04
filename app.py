@@ -372,7 +372,7 @@ elif selected_menu == t["m_inventory_mgmt"]:
                         st.session_state[f"open_edit_{idx}"] = False
                         st.rerun()
 
-# c) Add New Items with 4 Ordered Tabs
+# c) Add New Items with 4 Ordered Tabs (ปรับเปลี่ยนฟิลด์เป็นราคาต่อหน่วย)
 elif selected_menu == t["sub_import_excel"]:
     st.title(f"📥 เพิ่มรายการสินค้าใหม่ - {selected_company}")
     if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
@@ -409,7 +409,7 @@ elif selected_menu == t["sub_import_excel"]:
                     with col_u1:
                         unit_manual = st.selectbox("หน่วยนับ", st.session_state.units_list)
                     with col_u2:
-                        conversion_qty = st.number_input("ปริมาณต่อหน่วย", min_value=0.0, value=1.0)
+                        initial_price = st.number_input("ราคาต่อหน่วย", min_value=0.0, value=0.0)
                         
                     vat_type = st.selectbox("ประเภทภาษี", VAT_TYPES_LIST)
                     submit_manual = st.form_submit_button("💾 บันทึกเพิ่มรายการสินค้าใหม่")
@@ -421,16 +421,16 @@ elif selected_menu == t["sub_import_excel"]:
                             idx = idx_match[0]
                             inv.loc[idx, "Supplier"] = supplier
                             inv.loc[idx, "Unit"] = unit_manual
-                            inv.loc[idx, "Conversion Qty"] = conversion_qty
+                            inv.loc[idx, "Last Price"] = initial_price
                         else:
                             new_row = pd.DataFrame([{
                                 "Product Code": sku,
                                 "Item Name": item_name,
                                 "Category": cat_manual,
                                 "Unit": unit_manual,
-                                "Conversion Qty": conversion_qty,
+                                "Conversion Qty": 1.0,
                                 "Stock Balance": 0.0,
-                                "Last Price": 0.0,
+                                "Last Price": initial_price,
                                 "Supplier": supplier,
                                 "Vat Type": vat_type,
                             }])
@@ -525,6 +525,34 @@ elif selected_menu == t["sub_import_excel"]:
                     else:
                         st.warning("หมวดหมู่นี้มีอยู่แล้ว หรือไม่ถูกต้อง")
 
+            st.markdown("---")
+            st.write("หมวดหมู่ปัจจุบัน:")
+            for j, c_item in enumerate(st.session_state.categories_list):
+                cols_c = st.columns([3, 1, 1])
+                cols_c[0].write(f"- {c_item}")
+                edit_cat_key = f"edit_cat_{j}"
+                del_cat_key = f"del_cat_{j}"
+                if cols_c[1].button("✏️ แก้ไข", key=edit_cat_key):
+                    st.session_state[f"show_edit_cat_{j}"] = not st.session_state.get(f"show_edit_cat_{j}", False)
+                if cols_c[2].button("🗑️ ลบ", key=del_cat_key):
+                    if len(st.session_state.categories_list) > 1:
+                        st.session_state.categories_list.pop(j)
+                        st.success("ลบหมวดหมู่เรียบร้อยแล้ว")
+                        st.rerun()
+                    else:
+                        st.warning("ต้องมีหมวดหมู่อย่างน้อย 1 รายการ")
+                
+                if st.session_state.get(f"show_edit_cat_{j}", False):
+                    with st.form(f"form_edit_cat_{j}"):
+                        updated_cat_name = st.text_input("แก้ไขชื่อหมวดหมู่", value=c_item)
+                        if st.form_submit_button("💾 บันทึก"):
+                            if updated_cat_name and updated_cat_name not in st.session_state.categories_list:
+                                st.session_state.categories_list[j] = updated_cat_name
+                                st.session_state[f"show_edit_cat_{j}"] = False
+                                st.success("แก้ไขหมวดหมู่เรียบร้อยแล้ว")
+                                st.rerun()
+                            else:
+                                st.warning("ชื่อหมวดหมู่ว่าง หรือซ้ำกับที่มีอยู่แล้ว")
             st.markdown("---")
             st.write("หมวดหมู่ปัจจุบัน:")
             for j, c_item in enumerate(st.session_state.categories_list):
