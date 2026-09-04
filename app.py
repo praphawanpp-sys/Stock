@@ -58,6 +58,9 @@ if "transaction_history" not in st.session_state:
         "Date", "Branch", "Type", "Item Name", "Quantity", "Unit", "Note"
     ])
 
+if "temp_stock_in_cart" not in st.session_state:
+    st.session_state["temp_stock_in_cart"] = []
+
 VAT_TYPES_LIST = ["Non Vat", "Vat 7%", "Vat Excluded"]
 
 # ----------------------------------------------------
@@ -136,7 +139,7 @@ elif selected_menu == t["sub_inventory"]:
     else:
         st.info("ยังไม่มีรายการสินค้า")
 
-# c) Add New Items (พร้อมช่องราคาต่อหน่วย)
+# c) Add New Items
 elif selected_menu == t["sub_import_excel"]:
     st.title(f"📥 เพิ่มรายการสินค้าใหม่ - {selected_company}")
     if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
@@ -150,60 +153,52 @@ elif selected_menu == t["sub_import_excel"]:
         ])
 
         with tab1:
-            st.subheader("เลือกเพิ่มแบบกรอกข้อมูลหรือเพิ่มผ่านไฟล์ Excel ในหน้าเดียวกัน")
-            sub_tab_excel, sub_tab_manual = st.tabs(["📄 นำเข้าผ่านไฟล์ Excel", "✍️ เพิ่มรายการแบบกรอกข้อมูล"])
-
-            with sub_tab_excel:
-                uploaded_file = st.file_uploader("เลือกไฟล์ Excel สำหรับนำเข้าสต็อก", type=["xlsx", "csv"])
-                if uploaded_file:
-                    st.success("อัปโหลดไฟล์สำเร็จ ระบบได้ทำการเพิ่มรายการสินค้าแล้ว")
-
-            with sub_tab_manual:
-                with st.form("manual_import_form_tab"):
-                    existing_suppliers = current_inv["Supplier"].dropna().unique().tolist() if len(current_inv) > 0 else []
-                    if not existing_suppliers:
-                        existing_suppliers = ["CP Axtra (Makro)", "CP Axtra (Lotus)", "ร้านค้าทั่วไป"]
+            st.subheader("เพิ่มรายการสินค้าใหม่")
+            with st.form("manual_import_form_tab"):
+                existing_suppliers = current_inv["Supplier"].dropna().unique().tolist() if len(current_inv) > 0 else []
+                if not existing_suppliers:
+                    existing_suppliers = ["CP Axtra (Makro)", "CP Axtra (Lotus)", "ร้านค้าทั่วไป"]
+                
+                supplier = st.selectbox("ชื่อร้านค้า (Supplier)", existing_suppliers)
+                sku = st.text_input("รหัสสินค้า")
+                item_name = st.text_input("ชื่อสินค้า")
+                cat_manual = st.selectbox("หมวดหมู่สินค้า", st.session_state.categories_list)
+                
+                col_u1, col_u2 = st.columns(2)
+                with col_u1:
+                    unit_manual = st.selectbox("หน่วยนับ", st.session_state.units_list)
+                with col_u2:
+                    initial_price = st.number_input("ราคาต่อหน่วย", min_value=0.0, value=0.0)
                     
-                    supplier = st.selectbox("ชื่อร้านค้า (Supplier)", existing_suppliers)
-                    sku = st.text_input("รหัสสินค้า")
-                    item_name = st.text_input("ชื่อสินค้า")
-                    cat_manual = st.selectbox("หมวดหมู่สินค้า", st.session_state.categories_list)
-                    
-                    col_u1, col_u2 = st.columns(2)
-                    with col_u1:
-                        unit_manual = st.selectbox("หน่วยนับ", st.session_state.units_list)
-                    with col_u2:
-                        initial_price = st.number_input("ราคาต่อหน่วย", min_value=0.0, value=0.0)
-                        
-                    vat_type = st.selectbox("ประเภทภาษี", VAT_TYPES_LIST)
-                    submit_manual = st.form_submit_button("💾 บันทึกเพิ่มรายการสินค้าใหม่")
+                vat_type = st.selectbox("ประเภทภาษี", VAT_TYPES_LIST)
+                submit_manual = st.form_submit_button("💾 บันทึกเพิ่มรายการสินค้าใหม่")
 
-                    if submit_manual:
-                        inv = st.session_state["company_inventories"][selected_company]
-                        idx_match = inv.index[inv["Item Name"] == item_name]
-                        if not idx_match.empty:
-                            idx = idx_match[0]
-                            inv.loc[idx, "Supplier"] = supplier
-                            inv.loc[idx, "Unit"] = unit_manual
-                            inv.loc[idx, "Last Price"] = initial_price
-                        else:
-                            new_row = pd.DataFrame([{
-                                "Product Code": sku,
-                                "Item Name": item_name,
-                                "Category": cat_manual,
-                                "Unit": unit_manual,
-                                "Conversion Qty": 1.0,
-                                "Stock Balance": 0.0,
-                                "Last Price": initial_price,
-                                "Supplier": supplier,
-                                "Vat Type": vat_type,
-                            }])
-                            st.session_state["company_inventories"][selected_company] = pd.concat(
-                                [inv, new_row], ignore_index=True
-                            )
+                if submit_manual:
+                    inv = st.session_state["company_inventories"][selected_company]
+                    idx_match = inv.index[inv["Item Name"] == item_name]
+                    if not idx_match.empty:
+                        idx = idx_match[0]
+                        inv.loc[idx, "Supplier"] = supplier
+                        inv.loc[idx, "Unit"] = unit_manual
+                        inv.loc[idx, "Last Price"] = initial_price
+                    else:
+                        new_row = pd.DataFrame([{
+                            "Product Code": sku,
+                            "Item Name": item_name,
+                            "Category": cat_manual,
+                            "Unit": unit_manual,
+                            "Conversion Qty": 1.0,
+                            "Stock Balance": 0.0,
+                            "Last Price": initial_price,
+                            "Supplier": supplier,
+                            "Vat Type": vat_type,
+                        }])
+                        st.session_state["company_inventories"][selected_company] = pd.concat(
+                            [inv, new_row], ignore_index=True
+                        )
 
-                        st.success("บันทึกเพิ่มรายการสินค้าใหม่สำเร็จ!")
-                        st.rerun()
+                    st.success("บันทึกเพิ่มรายการสินค้าใหม่สำเร็จ!")
+                    st.rerun()
 
         with tab2:
             st.subheader("ตั้งค่าข้อมูลร้านค้า (ที่อยู่ / โลโก้)")
@@ -308,7 +303,7 @@ elif selected_menu == t["sub_import_excel"]:
                             else:
                                 st.warning("ชื่อหมวดหมู่ว่าง หรือซ้ำกับที่มีอยู่แล้ว")
 
-# d) Stock In (รับสินค้าเข้าสต็อก)
+# d) Stock In (รับสินค้าเข้าสต็อกแบบเวอร์ชันล่าสุด: รองรับตะกร้าและการค้นหา)
 elif selected_menu == t["sub_stock_in"]:
     st.title(f"📥 รับสินค้าเข้าสต็อก (Stock In) - {selected_company}")
     if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
@@ -316,38 +311,102 @@ elif selected_menu == t["sub_stock_in"]:
     elif len(current_inv) == 0:
         st.warning("ยังไม่มีรายการสินค้าในระบบ กรุณาเพิ่มรายการสินค้าก่อน")
     else:
-        with st.form("stock_in_form"):
+        col_si1, col_si2, col_si3 = st.columns(3)
+        with col_si1:
             si_date = st.date_input("วันที่รับสินค้า", value=datetime.today())
-            si_item = st.selectbox("เลือกรายการสินค้า", current_inv["Item Name"].tolist())
+        with col_si2:
+            existing_suppliers = current_inv["Supplier"].dropna().unique().tolist()
+            si_supplier = st.selectbox("ร้านค้า / Supplier", existing_suppliers if existing_suppliers else ["CP Axtra (Makro)"])
+        with col_si3:
+            si_doc_no = st.text_input("เลขที่ใบส่งของ / Invoice No.")
+
+        st.markdown("---")
+        st.subheader("เลือกและเพิ่มสินค้าเข้าตะกร้ารับเข้า")
+        
+        with st.form("form_add_stock_in_item"):
+            si_search_query = st.text_input("🔍 ค้นหาชื่อสินค้า หรือ รหัสสินค้า")
+            
+            filtered_inv = current_inv.copy()
+            if si_search_query:
+                filtered_inv = filtered_inv[
+                    filtered_inv["Item Name"].str.contains(si_search_query, case=False, na=False) |
+                    filtered_inv["Product Code"].str.contains(si_search_query, case=False, na=False)
+                ]
+            
+            si_item_options = filtered_inv["Item Name"].tolist() if len(filtered_inv) > 0 else []
+            si_item = st.selectbox("เลือกรายการสินค้า", si_item_options)
             
             default_unit = "หน่วย"
-            matched_item = current_inv[current_inv["Item Name"] == si_item]
-            if not matched_item.empty:
-                default_unit = str(matched_item.iloc[0]["Unit"])
+            default_price = 0.0
+            if si_item and len(current_inv) > 0:
+                matched_row = current_inv[current_inv["Item Name"] == si_item]
+                if not matched_row.empty:
+                    default_unit = str(matched_row.iloc[0]["Unit"])
+                    default_price = float(matched_row.iloc[0]["Last Price"])
 
-            si_qty = st.number_input("จำนวนที่รับเข้า", min_value=0.1, value=1.0)
-            si_unit = st.selectbox("หน่วยนับ", st.session_state.units_list, index=st.session_state.units_list.index(default_unit) if default_unit in st.session_state.units_list else 0)
-            si_note = st.text_input("หมายเหตุ / เลขที่ใบส่งของ")
+            col_sq1, col_sq2, col_sq3 = st.columns(3)
+            with col_sq1:
+                si_qty = st.number_input("จำนวนที่รับเข้า", min_value=0.1, value=1.0)
+            with col_sq2:
+                si_unit = st.selectbox("หน่วยนับ", st.session_state.units_list, index=st.session_state.units_list.index(default_unit) if default_unit in st.session_state.units_list else 0)
+            with col_sq3:
+                si_price = st.number_input("ราคาซื้อต่อหน่วย", min_value=0.0, value=default_price)
 
-            submit_si = st.form_submit_button("💾 บันทึกรับสินค้าเข้าสต็อก")
-            if submit_si:
-                inv = st.session_state["company_inventories"][selected_company]
-                idx = inv.index[inv["Item Name"] == si_item][0]
-                inv.loc[idx, "Stock Balance"] += si_qty
-                
-                # บันทึกลงประวัติ
-                new_trans = pd.DataFrame([{
-                    "Date": str(si_date),
-                    "Branch": selected_company,
-                    "Type": "รับเข้า (Stock In)",
+            add_to_si_cart = st.form_submit_button("➕ เพิ่มรายการนี้เข้าตะกร้ารับสินค้า")
+            if add_to_si_cart and si_item:
+                st.session_state["temp_stock_in_cart"].append({
                     "Item Name": si_item,
                     "Quantity": si_qty,
                     "Unit": si_unit,
-                    "Note": si_note
-                }])
-                st.session_state["transaction_history"] = pd.concat([st.session_state["transaction_history"], new_trans], ignore_index=True)
-                st.success(f"รับสินค้า '{si_item}' จำนวน {si_qty} {si_unit} เข้าคลังเรียบร้อยแล้ว!")
-                st.rerun()
+                    "Price": si_price,
+                    "Total": si_qty * si_price
+                })
+                st.success(f"เพิ่ม '{si_item}' ลงในรายการรับเข้าแล้ว")
+
+        if len(st.session_state["temp_stock_in_cart"]) > 0:
+            st.markdown("#### 🛒 รายการสินค้าที่รอรับเข้าสต็อก")
+            cart_df = pd.DataFrame(st.session_state["temp_stock_in_cart"])
+            st.dataframe(cart_df, use_container_width=True)
+            
+            total_si_amount = cart_df["Total"].sum()
+            st.markdown(f"### 💵 มูลค่ารับเข้ารวมทั้งหมด: **{total_si_amount:,.2f} THB**")
+
+            col_sb1, col_sb2 = st.columns(2)
+            with col_sb1:
+                if st.button("🗑️ ล้างตะกร้ารับสินค้า"):
+                    st.session_state["temp_stock_in_cart"] = []
+                    st.rerun()
+            with col_sb2:
+                if st.button("💾 ยันทึกรับเข้าสต็อกจริง (Update Stock)"):
+                    inv = st.session_state["company_inventories"][selected_company]
+                    for item in st.session_state["temp_stock_in_cart"]:
+                        i_name = item["Item Name"]
+                        i_qty = item["Quantity"]
+                        i_unit = item["Unit"]
+                        i_price = item["Price"]
+                        
+                        # อัปเดตสต็อกคงเหลือและราคาล่าสุด
+                        idx_match = inv.index[inv["Item Name"] == i_name]
+                        if not idx_match.empty:
+                            idx = idx_match[0]
+                            inv.loc[idx, "Stock Balance"] += i_qty
+                            inv.loc[idx, "Last Price"] = i_price
+
+                        # บันทึกลงประวัติ
+                        new_trans = pd.DataFrame([{
+                            "Date": str(si_date),
+                            "Branch": selected_company,
+                            "Type": "รับเข้า (Stock In)",
+                            "Item Name": i_name,
+                            "Quantity": i_qty,
+                            "Unit": i_unit,
+                            "Note": f"Invoice: {si_doc_no} / Supplier: {si_supplier}"
+                        }])
+                        st.session_state["transaction_history"] = pd.concat([st.session_state["transaction_history"], new_trans], ignore_index=True)
+
+                    st.session_state["temp_stock_in_cart"] = []
+                    st.success("บันทึกรับสินค้าเข้าสต็อกและปรับปรุงยอดคงเหลือสำเร็จ!")
+                    st.rerun()
 
 # e) Stock Out (เบิกสินค้าออกจากสต็อก)
 elif selected_menu == t["sub_stock_out"]:
@@ -362,8 +421,8 @@ elif selected_menu == t["sub_stock_out"]:
             so_item = st.selectbox("เลือกรายการสินค้า", current_inv["Item Name"].tolist())
             
             default_unit = "หน่วย"
-            matched_item = current_inv[current_inv["Item Name"] == so_item]
             current_bal = 0.0
+            matched_item = current_inv[current_inv["Item Name"] == so_item]
             if not matched_item.empty:
                 default_unit = str(matched_item.iloc[0]["Unit"])
                 current_bal = float(matched_item.iloc[0]["Stock Balance"])
