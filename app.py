@@ -757,8 +757,68 @@ elif selected_menu == t["m_history"]:
 
 # g) PR / PO workflow
 elif pr_menu_label in selected_menu:
-    pass  
+    st.title(f"📝 ระบบขอซื้อ (PR) & ใบสั่งซื้อ (PO) - {selected_company}")
+    pr_tab1, pr_tab2 = st.tabs(["📄 1. สร้างและติดตามใบขอซื้อ (PR)", "📦 2. ออกใบสั่งซื้อ (PO)"])
 
+    with pr_tab1:
+        st.subheader("สร้างใบขอซื้อสินค้า (PR)")
+        with st.form("create_pr_form"):
+            pr_supplier = st.selectbox("ร้านค้า / Supplier", current_inv["Supplier"].unique().tolist() if len(current_inv) > 0 else ["CP Axtra (Makro)"])
+            pr_items = st.multiselect("เลือกรายการสินค้าที่ต้องการขอซื้อ", current_inv["Item Name"].tolist() if len(current_inv) > 0 else [])
+            pr_requester = st.text_input("ผู้ขอซื้อ", value=user_info["Name"])
+            
+            submit_pr = st.form_submit_button("📤 ส่งใบขอซื้อ (PR)")
+            if submit_pr and pr_items:
+                new_pr_id = f"PR-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                new_pr_row = pd.DataFrame([{
+                    "PR_ID": new_pr_id,
+                    "Date": str(datetime.today().date()),
+                    "Supplier": pr_supplier,
+                    "Branch": selected_company,
+                    "Status": "Pending (รออนุมัติ)",
+                    "Requester": pr_requester,
+                    "Items_JSON": str(pr_items)
+                }])
+                st.session_state["purchase_requests"] = pd.concat([st.session_state["purchase_requests"], new_pr_row], ignore_index=True)
+                st.success(f"สร้างใบขอซื้อ {new_pr_id} เรียบร้อยแล้ว!")
+                st.rerun()
+
+        st.markdown("---")
+        st.subheader("รายการใบขอซื้อทั้งหมด")
+        if len(st.session_state["purchase_requests"]) > 0:
+            st.dataframe(st.session_state["purchase_requests"], use_container_width=True)
+        else:
+            st.info("ยังไม่มีใบขอซื้อในระบบ")
+
+    with pr_tab2:
+        st.subheader("ออกใบสั่งซื้อ (PO) จาก PR ที่อนุมัติแล้ว")
+        pending_prs = st.session_state["purchase_requests"][st.session_state["purchase_requests"]["Status"].str.contains("Pending")]
+        if len(pending_prs) > 0:
+            selected_pr_id = st.selectbox("เลือกเลขที่ PR ที่ต้องการอนุมัติออก PO", pending_prs["PR_ID"].tolist())
+            if st.button("✅ อนุมัติและออกใบสั่งซื้อ (PO)"):
+                st.session_state["purchase_requests"].loc[st.session_state["purchase_requests"]["PR_ID"] == selected_pr_id, "Status"] = "Approved (อนุมัติแล้ว)"
+                new_po_id = f"PO-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                pr_row = pending_prs[pending_prs["PR_ID"] == selected_pr_id].iloc[0]
+                new_po_row = pd.DataFrame([{
+                    "PO_ID": new_po_id,
+                    "PR_ID": selected_pr_id,
+                    "Supplier": pr_row["Supplier"],
+                    "Branch": pr_row["Branch"],
+                    "Date": str(datetime.today().date())
+                }])
+                st.session_state["purchase_orders"] = pd.concat([st.session_state["purchase_orders"], new_po_row], ignore_index=True)
+                st.success(f"ออกใบสั่งซื้อ {new_po_id} สำเร็จ!")
+                st.rerun()
+        else:
+            st.info("ไม่มีใบขอซื้อที่รออนุมัติในขณะนี้")
+
+        st.markdown("---")
+        st.subheader("ประวัติใบสั่งซื้อ (PO)")
+        if len(st.session_state["purchase_orders"]) > 0:
+            st.dataframe(st.session_state["purchase_orders"], use_container_width=True)
+        else:
+            st.info("ยังไม่มีใบสั่งซื้อในระบบ")
+    
 # h) Stock Count / End‑of‑Month
 elif selected_menu == t["m_eom"]:
     st.title(f"📋 รายการสรุปสต็อก & นับสต็อก - {selected_company}")
