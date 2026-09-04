@@ -899,9 +899,9 @@ elif pr_menu_label in selected_menu:
 
                 if is_locked:
                     if "อนุมัติ" in current_status and "รอ" not in current_status:
-                        cols_pr[6].markdown("🟢 **อนุมัติแล้ว (ล็อก)**")
+                        cols_pr[6].markdown("🟢 **อนุมัติแล้ว**")
                     else:
-                        cols_pr[6].markdown("🔴 **ปฏิเสธแล้ว (ล็อก)**")
+                        cols_pr[6].markdown("🔴 **ปฏิเสธแล้ว**")
                 else:
                     # ถ้ายังเป็น "รอการอนุมัติ" ให้แสดง Dropdown เลือกสถานะทางขวาสุด
                     status_options = ["รอการอนุมัติ", "อนุมัติ", "ปฏิเสธ"]
