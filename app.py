@@ -373,19 +373,19 @@ elif selected_menu == t["m_inventory_mgmt"]:
 
 # c) Add New Items with 4 Ordered Tabs matching the requested layout
 elif selected_menu == t["sub_import_excel"]:
-    st.title(f"📥 เพิ่มรายการสินค้าใหม่ - {selected_company}")
+    st.title(f"📥 เพิ่มรายการสินค้า/ร้านค้าใหม่ - {selected_company}")
     if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
         st.warning("กรุณาเลือก 1 บริษัทเฉพาะเจาะจงก่อนทำรายการ")
     else:
         tab1, tab2, tab3, tab4 = st.tabs([
-            "1. เพิ่มรายการสินค้าใหม่",
-            "2. เพิ่ม/แก้ไขข้อมูลร้านค้า",
+            "1. เพิ่มรายการวัตถุดิบ/สินค้าใหม่",
+            "2. เพิ่ม/แก้ไขข้อมูลร้านค้าหรือบริษัท",
             "3. เพิ่ม/แก้ไขหน่วยนับ (Units)",
             "4. เพิ่ม/แก้ไขหมวดหมู่สินค้า (Categories)"
         ])
 
         with tab1:
-            st.subheader("เลือกเพิ่มแบบกรอกข้อมูลหรือเพิ่มผ่านไฟล์ Excel ในหน้าเดียวกัน")
+            st.subheader("เพิ่มรายการวัตถุดิบหริอสินค้า")
             sub_tab_excel, sub_tab_manual = st.tabs(["📄 นำเข้าผ่านไฟล์ Excel", "✍️ เพิ่มรายการแบบกรอกข้อมูล"])
 
             with sub_tab_excel:
