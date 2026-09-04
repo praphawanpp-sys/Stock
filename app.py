@@ -54,7 +54,6 @@ LANG = {
         "m_pr_po": "📝 ระบบขอซื้อ (PR) & ใบสั่งซื้อ (PO)",
         "m_eom": "📋 รายการสรุปสต็อก & นับสต็อก",
         "m_company_settings": "🏢 ตั้งค่าข้อมูลบริษัทและแอดมิน",
-        "sub_settings": "⚙️ ตั้งค่าข้อมูลร้านค้า / หน่วย / หมวด",
     },
     "en": {
         "title": "Enterprise Food Cost & Stock Management System",
@@ -68,7 +67,6 @@ LANG = {
         "m_pr_po": "📝 Purchase Request (PR) & PO",
         "m_eom": "📋 Stock Summary & End of Month Count",
         "m_company_settings": "🏢 Company & Admin Settings",
-        "sub_settings": "⚙️ Store Settings / Units / Categories",
     },
 }
 
@@ -245,7 +243,6 @@ with st.sidebar:
             pr_menu_label,
             t["m_eom"],
             t["m_company_settings"],
-            t["sub_settings"],
         ],
         label_visibility="collapsed",
     )
@@ -352,13 +349,15 @@ elif selected_menu == t["m_inventory_mgmt"]:
                         st.session_state[f"open_edit_{idx}"] = False
                         st.rerun()
 
-# c) Add New Items (Excel & Manual) - เอา จำนวนรับเข้า ราคาต่อหน่วย หน่วยนับ ออกตามที่ขอ
+# c) Add New Items (Combined Subsections 1-4)
 elif selected_menu == t["sub_import_excel"]:
     st.title(f"📥 เพิ่มรายการสินค้าใหม่ - {selected_company}")
     if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
-        st.warning("กรุณาเลือก 1 บริษัทเฉพาะเจาะจงก่อนทำรายการเพิ่มสินค้า")
+        st.warning("กรุณาเลือก 1 บริษัทเฉพาะเจาะจงก่อนทำรายการ")
     else:
-        tab_imp1, tab_imp2 = st.tabs(["📄 1. นำเข้าผ่านไฟล์ Excel", "✍️ 2. เพิ่มรายการสินค้าใหม่แบบแมนนวล"])
+        # Step 1: Add New Items (Excel & Manual)
+        st.markdown("### 1. นำเข้าผ่านไฟล์ Excel หรือ เพิ่มรายการสินค้าใหม่แบบแมนนวล")
+        tab_imp1, tab_imp2 = st.tabs(["📄 นำเข้าผ่านไฟล์ Excel", "✍️ เพิ่มรายการแบบกรอกข้อมูล"])
 
         with tab_imp1:
             uploaded_file = st.file_uploader("เลือกไฟล์ Excel สำหรับนำเข้าสต็อก", type=["xlsx", "csv"])
@@ -401,6 +400,57 @@ elif selected_menu == t["sub_import_excel"]:
 
                     st.success("บันทึกเพิ่มรายการสินค้าใหม่สำเร็จ!")
                     st.rerun()
+
+        st.markdown("---")
+
+        # Step 2: Store Information (Address & Logo)
+        st.markdown("### 2. ตั้งค่าข้อมูลร้านค้า (ที่อยู่ / โลโก้)")
+        current_addr = st.session_state["company_addresses"].get(selected_company, "")
+        existing_logo = st.session_state["company_logos"].get(selected_company)
+        if existing_logo is not None:
+            st.image(existing_logo, width=150, caption="โลโก้ปัจจุบันของบริษัท")
+        
+        with st.form("company_info_form_in_add"):
+            new_comp_address = st.text_area("ที่อยู่ของร้านค้า / สาขา", value=current_addr)
+            uploaded_logo = st.file_uploader("🖼️ อัปโหลดโลโก้บริษัท (PNG, JPG, JPEG)", type=["png", "jpg", "jpeg"], key="logo_add_page")
+            if st.form_submit_button("💾 บันทึกข้อมูลร้านค้า"):
+                st.session_state["company_addresses"][selected_company] = new_comp_address
+                if uploaded_logo is not None:
+                    st.session_state["company_logos"][selected_company] = uploaded_logo
+                st.success("บันทึกข้อมูลร้านค้าเรียบร้อยแล้ว!")
+                st.rerun()
+
+        st.markdown("---")
+
+        # Step 3: Units Management
+        st.markdown("### 3. หน่วยนับสินค้า (Units)")
+        st.write("หน่วยนับปัจจุบัน:", UNITS_LIST)
+        with st.form("unit_mgmt_form"):
+            new_unit = st.text_input("เพิ่มหน่วยใหม่")
+            if st.form_submit_button("➕ เพิ่มหน่วยนับ"):
+                if new_unit and new_unit not in UNITS_LIST:
+                    UNITS_LIST.append(new_unit)
+                    st.success(f"เพิ่มหน่วย '{new_unit}' เรียบร้อยแล้ว")
+                    st.rerun()
+                else:
+                    st.warning("หน่วยนี้มีอยู่แล้ว หรือไม่ถูกต้อง")
+
+        st.markdown("---")
+
+        # Step 4: Categories Management
+        st.markdown("### 4. หมวดหมู่สินค้า (Categories)")
+        st.write("หมวดหมู่ปัจจุบัน:")
+        for c_item in CATEGORIES_LIST:
+            st.write(f"- {c_item}")
+        with st.form("cat_mgmt_form"):
+            new_cat = st.text_input("เพิ่มหมวดหมู่ใหม่")
+            if st.form_submit_button("➕ เพิ่มหมวดหมู่"):
+                if new_cat and new_cat not in CATEGORIES_LIST:
+                    CATEGORIES_LIST.append(new_cat)
+                    st.success(f"เพิ่มหมวดหมู่ '{new_cat}' เรียบร้อยแล้ว")
+                    st.rerun()
+                else:
+                    st.warning("หมวดหมู่นี้มีอยู่แล้ว หรือไม่ถูกต้อง")
 
 # d) Stock In
 elif selected_menu == t["sub_stock_in"]:
@@ -636,25 +686,16 @@ elif selected_menu == t["m_eom"]:
 # i) Company Settings & Admins
 elif selected_menu == t["m_company_settings"]:
     st.title(f"🏢 ตั้งค่าข้อมูลบริษัทและแอดมิน - {selected_company}")
-    set_tab1, set_tab2 = st.tabs(["📄 1. แก้ไข/เพิ่มชื่อ ที่อยู่ และโลโก้บริษัท", "⚙️ 2. การจัดการแอดมินและสิทธิ์"])
+    set_tab1, set_tab2 = st.tabs(["📄 1. ข้อมูลบริษัทและโลโก้", "⚙️ 2. การจัดการแอดมินและสิทธิ์"])
 
     with set_tab1:
-        st.subheader("แก้ไขชื่อ ที่อยู่ และอัปโหลดโลโก้บริษัท")
-        current_addr = st.session_state["company_addresses"].get(selected_company, "")
-        existing_logo = st.session_state["company_logos"].get(selected_company)
-        if existing_logo is not None:
-            st.image(existing_logo, width=150, caption="โลโก้ปัจจุบันของบริษัท")
+        st.subheader("แก้ไขชื่อ และโลโก้บริษัท")
         with st.form("company_info_form"):
             new_comp_name = st.text_input("ชื่อบริษัท / สาขา", value=selected_company)
-            new_comp_address = st.text_area("ที่อยู่ของร้านค้า / สาขา", value=current_addr)
             new_tax_id = st.text_input("เลขประจำตัวผู้เสียภาษี (Tax ID)", value="01055xxxxxxxx")
             new_phone = st.text_input("เบอร์โทรศัพท์ติดต่อ", value="02-xxx-xxxx")
-            uploaded_logo = st.file_uploader("🖼️ อัปโหลดโลโก้บริษัท (PNG, JPG, JPEG)", type=["png", "jpg", "jpeg"])
-            if st.form_submit_button("💾 บันทึกข้อมูลบริษัทและโลโก้"):
-                st.session_state["company_addresses"][selected_company] = new_comp_address
-                if uploaded_logo is not None:
-                    st.session_state["company_logos"][selected_company] = uploaded_logo
-                st.success("บันทึกข้อมูลและอัปโหลดโลโก้บริษัทเรียบร้อยแล้ว!")
+            if st.form_submit_button("💾 บันทึกข้อมูลบริษัท"):
+                st.success("บันทึกข้อมูลเรียบร้อยแล้ว!")
                 st.rerun()
 
     with set_tab2:
@@ -692,37 +733,3 @@ elif selected_menu == t["m_company_settings"]:
                 st.session_state["admins"] = st.session_state["admins"].drop(adm_idx).reset_index(drop=True)
                 st.success("ลบแอดมินสำเร็จ!")
                 st.rerun()
-
-# j) Store Settings (Units / Categories / Address)
-elif selected_menu == t["sub_settings"]:
-    st.title("⚙️ ตั้งค่าข้อมูลร้านค้า / หน่วยนับ / หมวดของสินค้า")
-
-    with st.expander("หน่วยที่ใช้ (Units)"):
-        st.write(UNITS_LIST)
-        new_unit = st.text_input("เพิ่มหน่วยใหม่", key="new_unit")
-        if st.button("เพิ่มหน่วย", key="add_unit"):
-            if new_unit and new_unit not in UNITS_LIST:
-                UNITS_LIST.append(new_unit)
-                st.success(f"เพิ่มหน่วย '{new_unit}' เรียบร้อยแล้ว")
-            else:
-                st.warning("หน่วยนี้มีอยู่แล้ว หรือไม่ถูกต้อง")
-
-    with st.expander("หมวดหมู่สินค้า (Categories)"):
-        st.write(CATEGORIES_LIST)
-        new_cat = st.text_input("เพิ่มหมวดหมู่ใหม่", key="new_cat")
-        if st.button("เพิ่มหมวดหมู่", key="add_cat"):
-            if new_cat and new_cat not in CATEGORIES_LIST:
-                CATEGORIES_LIST.append(new_cat)
-                st.success(f"เพิ่มหมวดหมู่ '{new_cat}' เรียบร้อยแล้ว")
-            else:
-                st.warning("หมวดหมู่นี้มีอยู่แล้ว หรือไม่ถูกต้อง")
-
-    with st.expander("ข้อมูลร้านค้า (Address / Logo)"):
-        new_address = st.text_area("อัปเดตที่อยู่", value=st.session_state["company_addresses"].get(selected_company, ""))
-        if st.button("บันทึกที่อยู่ใหม่", key="save_addr"):
-            st.session_state["company_addresses"][selected_company] = new_address
-            st.success("อัปเดตที่อยู่สำเร็จ")
-        uploaded_logo = st.file_uploader("อัปโหลดโลโก้", type=["jpg", "png", "jpeg"], key="upload_logo")
-        if uploaded_logo:
-            st.session_state["company_logos"][selected_company] = uploaded_logo
-            st.success("อัปโหลดโลโก้สำเร็จ")
