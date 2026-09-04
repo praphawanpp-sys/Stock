@@ -452,7 +452,9 @@ elif selected_menu == t["sub_import_excel"]:
 
         with tab3:
             st.subheader("หน่วยนับสินค้า (Units)")
-            st.write("หน่วยนับปัจจุบัน:", UNITS_LIST)
+            st.write("หน่วยนับปัจจุบัน:")
+            for u_item in UNITS_LIST:
+                st.write(f"- {u_item}")
             with st.form("unit_mgmt_form"):
                 new_unit = st.text_input("เพิ่มหน่วยใหม่")
                 if st.form_submit_button("➕ เพิ่มหน่วยนับ"):
