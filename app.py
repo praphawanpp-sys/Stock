@@ -423,34 +423,46 @@ elif selected_menu == t["sub_import_excel"]:
                     st.success("บันทึกรับสินค้าแบบแมนนวลสำเร็จ!")
                     st.rerun()
 
-# d) Stock In (อัปเดตตามที่ขอ: ตัวเลือกรูปภาพ/กล้องขนาดกะทัดรัด และแสดงรหัสสินค้าเหนือช่องเลือก)
+# d) Stock In (อัปเดตตามที่ขอ: วันที่, เลือกร้าน/วันที่/เลขที่เอกสาร แล้วเพิ่มสินค้าทีละรายการก่อนกดบันทึก, กล้องเลือกรูปแบบ toggle และแก้ไขปัญหาไม่แสดงผล)
 elif selected_menu == t["sub_stock_in"]:
     st.title(f"📥 รับสินค้าเข้า (Stock In) - {selected_company}")
     if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
         st.warning("เลือกบริษัทเฉพาะเจาะจงเพื่อทำรายการรับสินค้า")
     else:
-        with st.form("stock_in_form_new"):
-            doc_no = st.text_input("เลขที่เอกสาร (ใบกำกับภาษี/ใบเสร็จรับเงิน/ใบส่งของ)")
+        if "temp_stock_in_items" not in st.session_state:
+            st.session_state["temp_stock_in_items"] = []
+
+        # ส่วนหัวเอกสารรับเข้า
+        st.subheader("1. ข้อมูลใบรับสินค้าและหลักฐาน")
+        col_h1, col_h2, col_h3 = st.columns(3)
+        with col_h1:
+            stock_in_date = st.date_input("วันที่รับเข้า", value=datetime.today())
+        with col_h2:
             existing_suppliers = current_inv["Supplier"].unique().tolist() if len(current_inv) > 0 else ["CP Axtra (Makro)", "CP Axtra (Lotus)", "ร้านค้าทั่วไป"]
             supplier_in = st.selectbox("ชื่อร้านค้าที่ซื้อ (Supplier)", existing_suppliers)
+        with col_h3:
+            doc_no = st.text_input("เลขที่เอกสาร (ใบกำกับภาษี/ใบเสร็จ)")
 
-            st.markdown("**หลักฐานการรับสินค้า (ภาพถ่ายสินค้าและใบเสร็จ)**")
-            upload_option = st.radio("เลือกวิธีแนบหลักฐาน", ["📂 อัปโหลดไฟล์รูปภาพ", "📸 ถ่ายภาพด้วยกล้อง"], horizontal=True)
-            
-            cam_photo = None
-            up_photo = None
-            if upload_option == "📸 ถ่ายภาพด้วยกล้อง":
-                cam_photo = st.camera_input("ถ่ายรูปภาพสินค้าและใบเสร็จ")
-            else:
-                up_photo = st.file_uploader("เลือกไฟล์รูปภาพ", type=["jpg", "png", "jpeg"])
+        # เลือกวิธีแนบรูปหรือกล้องแบบสลับ
+        upload_option = st.radio("เลือกวิธีแนบหลักฐาน", ["📂 อัปโหลดไฟล์รูปภาพ", "📸 ถ่ายภาพด้วยกล้อง"], horizontal=True)
+        
+        saved_photo = None
+        if upload_option == "📸 ถ่ายภาพด้วยกล้อง":
+            cam_photo = st.camera_input("ถ่ายรูปภาพสินค้าและใบเสร็จ")
+            if cam_photo is not None:
+                saved_photo = cam_photo
+        else:
+            up_photo = st.file_uploader("เลือกไฟล์รูปภาพ", type=["jpg", "png", "jpeg"])
+            if up_photo is not None:
+                saved_photo = up_photo
 
-            st.markdown("---")
-            
-            # แสดงรหัสสินค้าและตัวเลือกวัตถุดิบรับเข้า
+        st.markdown("---")
+        st.subheader("2. เพิ่มรายการสินค้าทีละรายการเข้าตระกร้ารับเข้า")
+        
+        with st.form("add_item_to_cart_form"):
             item_options = current_inv["Item Name"].tolist() if len(current_inv) > 0 else []
             sel_item_in = st.selectbox("เลือกวัตถุดิบรับเข้า", item_options)
             
-            # ดึงรหัสสินค้ามาแสดงให้เห็น
             selected_code = "-"
             if sel_item_in and len(current_inv) > 0:
                 matched_row = current_inv[current_inv["Item Name"] == sel_item_in]
@@ -459,35 +471,76 @@ elif selected_menu == t["sub_stock_in"]:
             
             st.markdown(f"🏷️ **รหัสสินค้า (Product Code):** `{selected_code}`")
 
-            qty_in = st.number_input("จำนวนรับเข้า", min_value=0.1, value=1.0)
-            price_in = st.number_input("ราคาต่อหน่วย", min_value=0.0, value=0.0)
-            vat_in = st.selectbox("ประเภทภาษี", VAT_TYPES_LIST)
+            col_sub1, col_sub2, col_sub3 = st.columns(3)
+            with col_sub1:
+                qty_in = st.number_input("จำนวนรับเข้า", min_value=0.1, value=1.0)
+            with col_sub2:
+                default_price = 0.0
+                if sel_item_in and len(current_inv) > 0:
+                    mr = current_inv[current_inv["Item Name"] == sel_item_in]
+                    if not mr.empty:
+                        default_price = float(mr.iloc[0]["Last Price"])
+                price_in = st.number_input("ราคาต่อหน่วย", min_value=0.0, value=default_price)
+            with col_sub3:
+                vat_in = st.selectbox("ประเภทภาษี", VAT_TYPES_LIST)
 
-            submit_in = st.form_submit_button("💾 บันทึกรับสินค้าเข้า")
-            if submit_in and sel_item_in:
-                idx = current_inv[current_inv["Item Name"] == sel_item_in].index[0]
-                st.session_state["company_inventories"][selected_company].loc[idx, "Stock Balance"] += qty_in
-                st.session_state["company_inventories"][selected_company].loc[idx, "Last Price"] = price_in
-                st.session_state["company_inventories"][selected_company].loc[idx, "Supplier"] = supplier_in
-
-                new_t = {
-                    "Company": selected_company,
-                    "Date": str(datetime.today().date()),
-                    "DocNo": doc_no,
-                    "Supplier": supplier_in,
+            add_to_cart_btn = st.form_submit_button("➕ เพิ่มรายการนี้ลงในรายการรอรับเข้า")
+            if add_to_cart_btn and sel_item_in:
+                st.session_state["temp_stock_in_items"].append({
+                    "Product Code": selected_code,
                     "Item Name": sel_item_in,
                     "Quantity": qty_in,
                     "Price/Unit": price_in,
                     "Vat Type": vat_in,
-                    "Total Price": qty_in * price_in,
-                    "Type": "IMPORT",
-                    "Receiver": "-",
-                    "Department": "-",
-                }
-                st.session_state["transactions"] = pd.concat(
-                    [st.session_state["transactions"], pd.DataFrame([new_t])], ignore_index=True
-                )
-                st.success("บันทึกรับสินค้าสำเร็จ!")
+                    "Total Price": qty_in * price_in
+                })
+                st.success(f"เพิ่ม '{sel_item_in}' ลงในรายการแล้ว")
+
+        # แสดงรายการที่รอรับเข้า
+        if len(st.session_state["temp_stock_in_items"]) > 0:
+            st.markdown("---")
+            st.subheader("3. รายการสินค้าที่รอการบันทึกรับเข้า")
+            temp_df = pd.DataFrame(st.session_state["temp_stock_in_items"])
+            st.dataframe(temp_df, use_container_width=True)
+
+            if st.button("🗑️ ล้างรายการที่เลือกทั้งหมด"):
+                st.session_state["temp_stock_in_items"] = []
+                st.rerun()
+
+            if st.button("💾 ยืนยันบันทึกรับสินค้าเข้าสต็อกทั้งหมด"):
+                for itm in st.session_state["temp_stock_in_items"]:
+                    it_name = itm["Item Name"]
+                    it_qty = itm["Quantity"]
+                    it_price = itm["Price/Unit"]
+                    it_vat = itm["Vat Type"]
+
+                    idx_m = current_inv[current_inv["Item Name"] == it_name].index
+                    if len(idx_m) > 0:
+                        idx = idx_m[0]
+                        st.session_state["company_inventories"][selected_company].loc[idx, "Stock Balance"] += it_qty
+                        st.session_state["company_inventories"][selected_company].loc[idx, "Last Price"] = it_price
+                        st.session_state["company_inventories"][selected_company].loc[idx, "Supplier"] = supplier_in
+
+                    new_t = {
+                        "Company": selected_company,
+                        "Date": str(stock_in_date),
+                        "DocNo": doc_no,
+                        "Supplier": supplier_in,
+                        "Item Name": it_name,
+                        "Quantity": it_qty,
+                        "Price/Unit": it_price,
+                        "Vat Type": it_vat,
+                        "Total Price": it_qty * it_price,
+                        "Type": "IMPORT",
+                        "Receiver": "-",
+                        "Department": "-",
+                    }
+                    st.session_state["transactions"] = pd.concat(
+                        [st.session_state["transactions"], pd.DataFrame([new_t])], ignore_index=True
+                    )
+
+                st.session_state["temp_stock_in_items"] = []
+                st.success("บันทึกรับสินค้าเข้าคลังทั้งหมดสำเร็จ!")
                 st.rerun()
 
 # e) Stock Out
@@ -655,7 +708,7 @@ elif selected_menu == t["sub_settings"]:
             else:
                 st.warning("หน่วยนี้มีอยู่แล้ว หรือไม่ถูกต้อง")
 
-    with st.expander("หมวดหมู่สินค้า (Categories)"):
+    with st.expander("`${new_unit}`"):
         st.write(CATEGORIES_LIST)
         new_cat = st.text_input("เพิ่มหมวดหมู่ใหม่", key="new_cat")
         if st.button("เพิ่มหมวดหมู่", key="add_cat"):
