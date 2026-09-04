@@ -38,17 +38,7 @@ CATEGORIES_LIST = [
     "ชีส / Cheese",
     "นม / Milk",
 ]
-UNITS_LIST = [
-    "Box", 
-    "Pack", 
-    "Bag", 
-    "Kg", 
-    "Pcs", 
-    "Litre", 
-    "Bottle", 
-    "Can", 
-    "Gram",
-]
+UNITS_LIST = ["Box", "Pack", "Bag", "Kg", "Pcs", "Litre", "Bottle", "Can", "Gram"]
 VAT_TYPES_LIST = ["Non Vat", "Vat 7%"]
 
 LANG = {
@@ -120,6 +110,7 @@ if "company_inventories" not in st.session_state:
                 "Item Name",
                 "Category",
                 "Unit",
+                "Conversion Qty",
                 "Stock Balance",
                 "Last Price",
                 "Supplier",
@@ -133,6 +124,7 @@ if "company_inventories" not in st.session_state:
                 "Item Name": "นมจืด 1 ลิตร",
                 "Category": "เนื้อสัตว์/เครื่องปรุง/อื่นๆ / Meat / Seasonings / Others",
                 "Unit": "Box",
+                "Conversion Qty": 1.0,
                 "Stock Balance": 25.0,
                 "Last Price": 109.0,
                 "Supplier": "CP Axtra (Makro)",
@@ -143,6 +135,7 @@ if "company_inventories" not in st.session_state:
                 "Item Name": "กระเทียมดัดจุก 500 ก.",
                 "Category": "ผักและผลไม้ / Vegetables & Fruits",
                 "Unit": "Pack",
+                "Conversion Qty": 500.0,
                 "Stock Balance": 10.0,
                 "Last Price": 40.0,
                 "Supplier": "CP Axtra (Lotus)",
@@ -153,6 +146,7 @@ if "company_inventories" not in st.session_state:
                 "Item Name": "คิทแคท ทริกเกอร์ 500 กรัม",
                 "Category": "เนื้อสัตว์/เครื่องปรุง/อื่นๆ / Meat / Seasonings / Others",
                 "Unit": "Bag",
+                "Conversion Qty": 500.0,
                 "Stock Balance": 0.0,
                 "Last Price": 130.0,
                 "Supplier": "กส-สรา ค้าส่ง",
@@ -325,14 +319,20 @@ elif selected_menu == t["m_inventory_mgmt"]:
     if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
         st.warning("เลือก 1 บริษัท เพื่อแก้ไขรายการสินค้า")
     else:
-        col_m1, col_m2 = st.columns(2)
+        col_m1, col_m2, col_m3 = st.columns(3)
         all_cats_mgmt = ["ทุกหมวดหมู่ (All Categories)"] + CATEGORIES_LIST
         selected_mgmt_cat = col_m1.selectbox("เลือกตามหมวดหมู่", all_cats_mgmt)
-        search_mgmt_keyword = col_m2.text_input("🔍 ค้นหาชื่อหรือรหัสสินค้า")
+        
+        suppliers_list_mgmt = ["ทุกร้านค้า/บริษัท (All Suppliers)"] + (current_inv["Supplier"].dropna().unique().tolist() if len(current_inv) > 0 else [])
+        selected_mgmt_supplier = col_m2.selectbox("ค้นหาด้วยร้านค้า/บริษัท", suppliers_list_mgmt)
+        
+        search_mgmt_keyword = col_m3.text_input("🔍 ค้นหาชื่อหรือรหัสสินค้า")
 
         mgmt_filtered = current_inv.copy()
         if selected_mgmt_cat != "ทุกหมวดหมู่ (All Categories)":
             mgmt_filtered = mgmt_filtered[mgmt_filtered["Category"] == selected_mgmt_cat]
+        if selected_mgmt_supplier != "ทุกร้านค้า/บริษัท (All Suppliers)":
+            mgmt_filtered = mgmt_filtered[mgmt_filtered["Supplier"] == selected_mgmt_supplier]
         if search_mgmt_keyword.strip():
             kw = search_mgmt_keyword.strip().lower()
             mgmt_filtered = mgmt_filtered[
@@ -341,14 +341,15 @@ elif selected_menu == t["m_inventory_mgmt"]:
             ]
 
         for idx, row in mgmt_filtered.iterrows():
-            col_r = st.columns([2, 2, 1, 1, 1, 1])
+            col_r = st.columns([2, 2, 1, 1, 1, 1, 1])
             col_r[0].write(row["Item Name"])
             col_r[1].write(row["Category"])
             col_r[2].write(f"{row['Stock Balance']} {row['Unit']}")
-            col_r[3].write(f"{row['Last Price']} ฿")
-            if col_r[4].button("✏️ แก้ไข", key=f"edit_{idx}"):
+            col_r[3].write(f"{row['Conversion Qty']}")
+            col_r[4].write(f"{row['Last Price']} ฿")
+            if col_r[5].button("✏️ แก้ไข", key=f"edit_{idx}"):
                 st.session_state[f"open_edit_{idx}"] = not st.session_state.get(f"open_edit_{idx}", False)
-            if col_r[5].button("🗑️ ลบ", key=f"del_{idx}"):
+            if col_r[6].button("🗑️ ลบ", key=f"del_{idx}"):
                 st.session_state["company_inventories"][selected_company] = current_inv.drop(idx).reset_index(drop=True)
                 st.rerun()
 
@@ -357,10 +358,12 @@ elif selected_menu == t["m_inventory_mgmt"]:
                     new_n = st.text_input("ชื่อ", value=row["Item Name"])
                     new_p = st.number_input("ราคา", value=float(row["Last Price"]))
                     new_b = st.number_input("สต็อก", value=float(row["Stock Balance"]))
+                    new_conv = st.number_input("ปริมาณต่อหน่วย", value=float(row.get("Conversion Qty", 1.0)))
                     if st.form_submit_button("บันทึก"):
                         st.session_state["company_inventories"][selected_company].loc[idx, "Item Name"] = new_n
                         st.session_state["company_inventories"][selected_company].loc[idx, "Last Price"] = new_p
                         st.session_state["company_inventories"][selected_company].loc[idx, "Stock Balance"] = new_b
+                        st.session_state["company_inventories"][selected_company].loc[idx, "Conversion Qty"] = new_conv
                         st.session_state[f"open_edit_{idx}"] = False
                         st.rerun()
 
@@ -396,6 +399,13 @@ elif selected_menu == t["sub_import_excel"]:
                     sku = st.text_input("รหัสสินค้า")
                     item_name = st.text_input("ชื่อสินค้า")
                     cat_manual = st.selectbox("หมวดหมู่สินค้า", CATEGORIES_LIST)
+                    
+                    col_u1, col_u2 = st.columns(2)
+                    with col_u1:
+                        unit_manual = st.selectbox("หน่วยนับ", UNITS_LIST)
+                    with col_u2:
+                        conversion_qty = st.number_input("ปริมาณต่อหน่วย", min_value=0.0, value=1.0)
+                        
                     vat_type = st.selectbox("ประเภทภาษี", VAT_TYPES_LIST)
                     submit_manual = st.form_submit_button("💾 บันทึกเพิ่มรายการสินค้าใหม่")
 
@@ -405,12 +415,15 @@ elif selected_menu == t["sub_import_excel"]:
                         if not idx_match.empty:
                             idx = idx_match[0]
                             inv.loc[idx, "Supplier"] = supplier
+                            inv.loc[idx, "Unit"] = unit_manual
+                            inv.loc[idx, "Conversion Qty"] = conversion_qty
                         else:
                             new_row = pd.DataFrame([{
                                 "Product Code": sku,
                                 "Item Name": item_name,
                                 "Category": cat_manual,
-                                "Unit": "Pcs",
+                                "Unit": unit_manual,
+                                "Conversion Qty": conversion_qty,
                                 "Stock Balance": 0.0,
                                 "Last Price": 0.0,
                                 "Supplier": supplier,
@@ -424,20 +437,24 @@ elif selected_menu == t["sub_import_excel"]:
                         st.rerun()
 
         with tab2:
-            st.subheader("ตั้งค่าข้อมูลร้านค้า")
+            st.subheader("ตั้งค่าข้อมูลร้านค้า (ที่อยู่ / โลโก้)")
             curr_details = st.session_state["company_details"].get(selected_company, {
                 "name": selected_company,
                 "address": "",
                 "tax_id": "",
                 "contact": ""
             })
-           
+            existing_logo = st.session_state["company_logos"].get(selected_company)
+            if existing_logo is not None:
+                st.image(existing_logo, width=150, caption="โลโก้ปัจจุบันของบริษัท")
+            
             with st.form("company_info_form_in_add"):
                 c_name = st.text_input("1. ชื่อร้านค้า/บริษัท", value=curr_details.get("name", selected_company))
                 c_address = st.text_area("2. ที่อยู่", value=curr_details.get("address", ""))
                 c_tax = st.text_input("3. เลขที่ผู้เสียภาษี", value=curr_details.get("tax_id", ""))
                 c_contact = st.text_input("4. ข้อมูลติดต่อ / เซลล์", value=curr_details.get("contact", ""))
                 
+                uploaded_logo = st.file_uploader("🖼️ อัปโหลดโลโก้บริษัท (PNG, JPG, JPEG)", type=["png", "jpg", "jpeg"], key="logo_add_page")
                 if st.form_submit_button("💾 บันทึกข้อมูลร้านค้า"):
                     st.session_state["company_details"][selected_company] = {
                         "name": c_name,
