@@ -206,16 +206,13 @@ with st.sidebar:
     user_role = user_info["Role"]
     user_branch = user_info["Branch"]
 
-    # ควบคุมสิทธิ์การเลือกบริษัทตาม Role
     if user_role == "Admin":
-        # Admin เห็นเฉพาะสาขาของตัวเอง
         if user_branch in REAL_COMPANIES:
             selected_company = st.selectbox("🏢 เลือกบริษัท / สาขา", [user_branch])
         else:
             selected_company = st.selectbox("🏢 เลือกบริษัท / สาขา", REAL_COMPANIES)
         st.warning(f"🔒 สิทธิ์ Admin: เข้าถึงได้เฉพาะสาขา {selected_company}")
     else:
-        # Office, Manager, Owner เลือกดูได้ทุกสาขา
         selected_company = st.selectbox("🏢 เลือกบริษัท / สาขา", COMPANIES)
 
     st.info(f"**{user_info['Name']}**\n\nสิทธิ์: {user_role}")
@@ -236,7 +233,6 @@ with st.sidebar:
 
     t = LANG[st.session_state.lang]
 
-    # จัดเรียงเมนูใหม่ โดยย้าย sub_settings ไปไว้ 2 นับจากด้านล่าง
     selected_menu = st.radio(
         "Navigation",
         [
@@ -249,7 +245,7 @@ with st.sidebar:
             pr_menu_label,
             t["m_eom"],
             t["m_company_settings"],
-            t["sub_settings"],  # อยู่ตำแหน่งรองสุดท้าย (2 นับจากด้านล่าง)
+            t["sub_settings"],
         ],
         label_visibility="collapsed",
     )
@@ -311,51 +307,89 @@ if selected_menu == t["m_dashboard"]:
     else:
         st.info("ไม่มีข้อมูลสินค้า")
 
-# b) Inventory Management
+# b) Inventory Management (ปรับปรุง UI ให้สวยงาม และเพิ่มช่องค้นหาร้านค้า)
 elif selected_menu == t["m_inventory_mgmt"]:
     st.title(f"📦 การจัดการรายการสินค้า - {selected_company}")
     if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
-        st.warning("เลือก 1 บริษัท เพื่อแก้ไขรายการสินค้า")
+        st.warning("⚠️ กรุณาเลือกเฉพาะ 1 บริษัท / สาขา เพื่อจัดการรายการสินค้า")
     else:
-        col_m1, col_m2 = st.columns(2)
+        # แถบตัวกรอง (Category, Supplier, Keyword Search)
+        col_f1, col_f2, col_f3 = st.columns(3)
         all_cats_mgmt = ["ทุกหมวดหมู่ (All Categories)"] + CATEGORIES_LIST
-        selected_mgmt_cat = col_m1.selectbox("เลือกตามหมวดหมู่", all_cats_mgmt)
-        search_mgmt_keyword = col_m2.text_input("🔍 ค้นหาชื่อหรือรหัสสินค้า")
+        selected_mgmt_cat = col_f1.selectbox("📂 กรองตามหมวดหมู่", all_cats_mgmt)
+        
+        suppliers_list = ["ทุกร้านค้า (All Suppliers)"] + (current_inv["Supplier"].dropna().unique().tolist() if len(current_inv) > 0 and "Supplier" in current_inv.columns else [])
+        selected_supplier = col_f2.selectbox("🛒 กรองตามร้านค้า (Supplier)", suppliers_list)
+        
+        search_mgmt_keyword = col_f3.text_input("🔍 ค้นหาชื่อหรือรหัสสินค้า", placeholder="พิมพ์ชื่อหรือรหัส...")
 
         mgmt_filtered = current_inv.copy()
         if selected_mgmt_cat != "ทุกหมวดหมู่ (All Categories)":
             mgmt_filtered = mgmt_filtered[mgmt_filtered["Category"] == selected_mgmt_cat]
+        if selected_supplier != "ทุกร้านค้า (All Suppliers)":
+            mgmt_filtered = mgmt_filtered[mgmt_filtered["Supplier"] == selected_supplier]
         if search_mgmt_keyword.strip():
             kw = search_mgmt_keyword.strip().lower()
             mgmt_filtered = mgmt_filtered[
-                mgmt_filtered["Item Name"].str.lower().str.contains(kw, na=False)
+                mgmt_filtered["Item Name"].str.lower().str.contains(kw, na=False) |
+                mgmt_filtered["Product Code"].str.lower().str.contains(kw, na=False)
             ]
 
-        for idx, row in mgmt_filtered.iterrows():
-            col_r = st.columns([2, 2, 1, 1, 1, 1])
-            col_r[0].write(row["Item Name"])
-            col_r[1].write(row["Category"])
-            col_r[2].write(f"{row['Stock Balance']} {row['Unit']}")
-            col_r[3].write(f"{row['Last Price']} ฿")
-            if col_r[4].button("✏️ แก้ไข", key=f"edit_{idx}"):
-                st.session_state[f"open_edit_{idx}"] = not st.session_state.get(f"open_edit_{idx}", False)
-            if col_r[5].button("🗑️ ลบ", key=f"del_{idx}"):
-                st.session_state["company_inventories"][selected_company] = current_inv.drop(idx).reset_index(drop=True)
-                st.rerun()
+        st.markdown("---")
+        
+        if len(mgmt_filtered) == 0:
+            st.info("🔍 ไม่พบรายการสินค้าที่ตรงกับเงื่อนไขการค้นหา")
+        else:
+            st.markdown(f"**พบรายการทั้งหมด {len(mgmt_filtered)} รายการ**")
+            
+            for idx, row in mgmt_filtered.iterrows():
+                with st.container(border=True):
+                    c1, c2, c3, c4, c5, c6 = st.columns([2.5, 2, 1.2, 1.2, 1.2, 1])
+                    with c1:
+                        st.markdown(f"**{row['Item Name']}**")
+                        st.caption(f"🏷️ รหัส: {row.get('Product Code', '-')} | 🛒 ร้าน: {row.get('Supplier', '-')}")
+                    with c2:
+                        st.markdown(f"<span style='color: #666;'>📁 {row['Category']}</span>", unsafe_allow_html=True)
+                    with c3:
+                        st.metric("📦 คงเหลือ", f"{row['Stock Balance']:,.1f} {row['Unit']}")
+                    with c4:
+                        st.metric("💰 ราคาล่าสุด", f"{row['Last Price']:,.2f} ฿")
+                    with c5:
+                        edit_btn = st.button("✏️ แก้ไข", key=f"edit_btn_{idx}", use_container_width=True)
+                    with c6:
+                        del_btn = st.button("🗑️ ลบ", key=f"del_btn_{idx}", use_container_width=True)
 
-            if st.session_state.get(f"open_edit_{idx}", False):
-                with st.form(f"form_edit_{idx}"):
-                    new_n = st.text_input("ชื่อ", value=row["Item Name"])
-                    new_p = st.number_input("ราคา", value=float(row["Last Price"]))
-                    new_b = st.number_input("สต็อก", value=float(row["Stock Balance"]))
-                    if st.form_submit_button("บันทึก"):
-                        st.session_state["company_inventories"][selected_company].loc[idx, "Item Name"] = new_n
-                        st.session_state["company_inventories"][selected_company].loc[idx, "Last Price"] = new_p
-                        st.session_state["company_inventories"][selected_company].loc[idx, "Stock Balance"] = new_b
-                        st.session_state[f"open_edit_{idx}"] = False
+                    if edit_btn:
+                        st.session_state[f"open_edit_{idx}"] = not st.session_state.get(f"open_edit_{idx}", False)
+                    if del_btn:
+                        st.session_state["company_inventories"][selected_company] = current_inv.drop(idx).reset_index(drop=True)
                         st.rerun()
 
-# c) Import Items (Excel & Manual) - รวมการนำเข้าทั้ง 2 แบบไว้ที่นี่
+                    if st.session_state.get(f"open_edit_{idx}", False):
+                        with st.form(f"form_edit_{idx}"):
+                            st.subheader(f"✏️ แก้ไขสินค้า: {row['Item Name']}")
+                            f_code = st.text_input("รหัสสินค้า", value=str(row.get("Product Code", "")))
+                            f_name = st.text_input("ชื่อสินค้า", value=str(row["Item Name"]))
+                            f_cat = st.selectbox("หมวดหมู่", CATEGORIES_LIST, index=CATEGORIES_LIST.index(row["Category"]) if row["Category"] in CATEGORIES_LIST else 0)
+                            f_unit = st.selectbox("หน่วยนับ", UNITS_LIST, index=UNITS_LIST.index(row["Unit"]) if row["Unit"] in UNITS_LIST else 0)
+                            f_price = st.number_input("ราคาล่าสุด", value=float(row["Last Price"]))
+                            f_stock = st.number_input("สต็อกคงเหลือ", value=float(row["Stock Balance"]))
+                            f_supp = st.text_input("ร้านค้า (Supplier)", value=str(row.get("Supplier", "")))
+                            
+                            if st.form_submit_button("💾 บันทึกการเปลี่ยนแปลง"):
+                                inv_ref = st.session_state["company_inventories"][selected_company]
+                                inv_ref.loc[idx, "Product Code"] = f_code
+                                inv_ref.loc[idx, "Item Name"] = f_name
+                                inv_ref.loc[idx, "Category"] = f_cat
+                                inv_ref.loc[idx, "Unit"] = f_unit
+                                inv_ref.loc[idx, "Last Price"] = f_price
+                                inv_ref.loc[idx, "Stock Balance"] = f_stock
+                                inv_ref.loc[idx, "Supplier"] = f_supp
+                                st.session_state[f"open_edit_{idx}"] = False
+                                st.success("บันทึกข้อมูลสำเร็จ!")
+                                st.rerun()
+
+# c) Import Items (Excel & Manual)
 elif selected_menu == t["sub_import_excel"]:
     st.title(f"📥 นำเข้าสินค้า (Excel & Manual) - {selected_company}")
     if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
@@ -623,7 +657,7 @@ elif selected_menu == t["m_company_settings"]:
                 st.success("ลบแอดมินสำเร็จ!")
                 st.rerun()
 
-# j) Store Settings (Units / Categories / Address) อยู่ในตำแหน่ง 2 นับจากด้านล่าง
+# j) Store Settings (Units / Categories / Address)
 elif selected_menu == t["sub_settings"]:
     st.title("⚙️ ตั้งค่าข้อมูลร้านค้า / หน่วยนับ / หมวดของสินค้า")
 
