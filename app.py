@@ -299,7 +299,7 @@ elif selected_menu == t["sub_import_excel"]:
                         st.success(f"✨ บันทึกเพิ่มรายการสินค้าใหม่ '{item_name}' สำเร็จแล้ว!")
 
     with tab2:
-        st.subheader("ตั้งค่าข้อมูลบริษัท / สาขา (ที่อยู่ / โลโก้)")
+        st.subheader("ตั้งค่าข้อมูลร้านค้า")
         curr_details = st.session_state["company_details"].get(selected_company, {
             "name": selected_company, "address": "", "tax_id": "", "contact": ""
         })
@@ -779,3 +779,28 @@ elif selected_menu == t["sub_report"]:
 elif selected_menu == t["sub_settings"]:
     st.title(f"⚙️ ตั้งค่าข้อมูลบริษัทและแอดมิน - {selected_company}")
     st.info("ตั้งค่าระบบผู้ใช้งานและข้อมูลองค์กร")
+    
+ with tab1:
+        st.subheader("ตั้งค่าข้อมูลบริษัท / สาขา (ที่อยู่ / โลโก้)")
+        curr_details = st.session_state["company_details"].get(selected_company, {
+            "name": selected_company, "address": "", "tax_id": "", "contact": ""
+        })
+        existing_logo = st.session_state["company_logos"].get(selected_company)
+        if existing_logo is not None:
+            st.image(existing_logo, width=150, caption="โลโก้ปัจจุบันของบริษัท")
+        
+        with st.form("company_info_form_in_add"):
+            c_name = st.text_input("1. ชื่อบริษัท/สาขา", value=curr_details.get("name", selected_company))
+            c_address = st.text_area("2. ที่อยู่", value=curr_details.get("address", ""))
+            c_tax = st.text_input("3. เลขที่ผู้เสียภาษี", value=curr_details.get("tax_id", ""))
+            c_contact = st.text_input("4. ข้อมูลติดต่อ / เซลล์", value=curr_details.get("contact", ""))
+            
+            uploaded_logo = st.file_uploader("🖼️ อัปโหลดโลโก้บริษัท (PNG, JPG, JPEG)", type=["png", "jpg", "jpeg"], key="logo_add_page")
+            if st.form_submit_button("💾 บันทึกข้อมูลบริษัท"):
+                st.session_state["company_details"][selected_company] = {
+                    "name": c_name, "address": c_address, "tax_id": c_tax, "contact": c_contact
+                }
+                if uploaded_logo is not None:
+                    st.session_state["company_logos"][selected_company] = uploaded_logo
+                st.success("บันทึกข้อมูลบริษัทเรียบร้อยแล้ว '{item_name}' สำเร็จแล้ว!")
+                st.rerun()
