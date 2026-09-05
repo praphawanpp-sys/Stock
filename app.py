@@ -320,7 +320,7 @@ elif selected_menu == t["sub_import_excel"]:
                 }
                 if uploaded_logo is not None:
                     st.session_state["company_logos"][selected_company] = uploaded_logo
-                st.success(f"✨ บันทึกเพิ่มรายการสินค้าใหม่ '{item_name}' สำเร็จแล้ว!")
+                st.success("บันทึกข้อมูลบริษัทเรียบร้อยแล้ว '{item_name}' สำเร็จแล้ว!")
                 st.rerun()
 
     with tab3:
