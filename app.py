@@ -20,7 +20,12 @@ if "categories_list" not in st.session_state:
 
 if "company_details" not in st.session_state:
     st.session_state["company_details"] = {
-        "Daddy Deli (Head Office)": {"name": "Daddy Deli (Head Office)", "address": "กรุงเทพมหานคร", "tax_id": "01055xxxxxxxx", "contact": "02-xxx-xxxx"}
+        "Daddy Deli": {
+            "name": "Daddy Deli", 
+            "address": "กรุงเทพมหานคร", 
+            "tax_id": "01055xxxxxxxx", 
+            "contact": "02-xxx-xxxx"
+        }
     }
 
 if "company_logos" not in st.session_state:
@@ -28,7 +33,7 @@ if "company_logos" not in st.session_state:
 
 if "company_inventories" not in st.session_state:
     st.session_state["company_inventories"] = {
-        "Daddy Deli (Head Office)": pd.DataFrame([
+        "Daddy Deli": pd.DataFrame([
             {
                 "Product Code": "1950",
                 "Item Name": "นมจืด 2 ลิตร",
@@ -73,9 +78,13 @@ st.sidebar.markdown("### 👤 ผู้ใช้งานปัจจุบั�
 current_user = st.sidebar.selectbox("User", ["owner_master", "staff_procurement"], label_visibility="collapsed")
 user_info = {"Name": "Mr. Owner" if current_user == "owner_master" else "Staff PR", "Role": "Owner" if current_user == "owner_master" else "Staff"}
 
-st.sidebar.markdown("### 🏢 เลือกบริษัท / สาขา")
-company_list_options = ["ทุกบริษัท/สาขา (All Companies / Branches)", "Daddy Deli (Head Office)"]
-selected_company = st.sidebar.selectbox("Company", company_list_options, label_visibility="collapsed")
+# ลบตัวเลือกทุกบริษัทออก ล็อกไว้ที่ Daddy Deli พร้อมแสดงข้อมูลบริษัทครบถ้วน
+selected_company = "Daddy Deli"
+curr_comp_details = st.session_state["company_details"].get(selected_company, {})
+
+st.sidebar.markdown("### 🏢 บริษัท / สาขา")
+st.sidebar.markdown(f"**{curr_comp_details.get('name', 'Daddy Deli')}**")
+st.sidebar.caption(f"ที่อยู่: {curr_comp_details.get('address', '-')}\n\nเลขผู้เสียภาษี: {curr_comp_details.get('tax_id', '-')}\n\nติดต่อ: {curr_comp_details.get('contact', '-')}")
 
 st.sidebar.info(f"**{user_info['Name']}**\n\nสิทธิ์: {user_info['Role']}")
 
@@ -103,15 +112,12 @@ selected_menu = st.sidebar.radio(
     label_visibility="collapsed"
 )
 
-# ดึงข้อมูล Inventory ตามบริษัทที่เลือก
-if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
-    current_inv = pd.concat(list(st.session_state["company_inventories"].values()), ignore_index=True) if st.session_state["company_inventories"] else pd.DataFrame()
-else:
-    if selected_company not in st.session_state["company_inventories"]:
-        st.session_state["company_inventories"][selected_company] = pd.DataFrame(columns=[
-            "Product Code", "Item Name", "Category", "Unit", "Conversion Qty", "Stock Balance", "Last Price", "Supplier", "Vat Type"
-        ])
-    current_inv = st.session_state["company_inventories"][selected_company]
+# ดึงข้อมูล Inventory ของ Daddy Deli
+if selected_company not in st.session_state["company_inventories"]:
+    st.session_state["company_inventories"][selected_company] = pd.DataFrame(columns=[
+        "Product Code", "Item Name", "Category", "Unit", "Conversion Qty", "Stock Balance", "Last Price", "Supplier", "Vat Type"
+    ])
+current_inv = st.session_state["company_inventories"][selected_company]
 
 # ----------------------------------------------------
 # 4. ROUTING LOGIC
@@ -131,184 +137,251 @@ if selected_menu == t["sub_dashboard"]:
     else:
         st.info("ยังไม่มีข้อมูลสินค้าในระบบ")
 
-# b) Inventory Management
+# b) Inventory Management (เพิ่มช่องค้นหาร้านค้า, รหัสสินค้า, ชื่อสินค้า และ Dropdown แก้ไข/ลบหลังชื่อสินค้า)
 elif selected_menu == t["sub_inventory"]:
     st.title(f"📦 การจัดการรายการสินค้า - {selected_company}")
+    
     if len(current_inv) > 0:
-        st.dataframe(current_inv, use_container_width=True)
+        # ช่องค้นหา 3 เงื่อนไข
+        st.markdown("#### 🔍 ค้นหาข้อมูลสินค้า")
+        scol1, scol2, scol3 = st.columns(3)
+        with scol1:
+            search_supplier = st.text_input("ค้นหาตามร้านค้า (Supplier)")
+        with scol2:
+            search_code = st.text_input("ค้นหาตามรหัสสินค้า (Product Code)")
+        with scol3:
+            search_name = st.text_input("ค้นหาตามชื่อสินค้า (Item Name)")
+
+        filtered_df = current_inv.copy()
+        if search_supplier:
+            filtered_df = filtered_df[filtered_df["Supplier"].astype(str).str.contains(search_supplier, case=False, na=False)]
+        if search_code:
+            filtered_df = filtered_df[filtered_df["Product Code"].astype(str).str.contains(search_code, case=False, na=False)]
+        if search_name:
+            filtered_df = filtered_df[filtered_df["Item Name"].astype(str).str.contains(search_name, case=False, na=False)]
+
+        st.markdown("---")
+        st.subheader("รายชื่อสินค้าในระบบและการจัดการ")
+
+        for idx, row in filtered_df.iterrows():
+            cols = st.columns([2.5, 1.5, 1.5, 1, 1, 1, 1.2])
+            cols[0].write(f"**{row['Item Name']}**")
+            cols[1].write(f"รหัส: {row['Product Code']}")
+            cols[2].write(f"ร้าน: {row['Supplier']}")
+            cols[3].write(f"คงเหลือ: {row['Stock Balance']}")
+            cols[4].write(f"หน่วย: {row['Unit']}")
+            cols[5].write(f"ราคา: {row['Last Price']} ฿")
+
+            # Dropdown เลือกจัดการ (แก้ไข/ลบ) ที่ด้านหลังสินค้า
+            action_choice = cols[6].selectbox(
+                "จัดการ", 
+                ["เลือก", "✏️ แก้ไข", "🗑️ ลบ"], 
+                key=f"action_{selected_company}_{idx}",
+                label_visibility="collapsed"
+            )
+
+            if action_choice == "✏️ แก้ไข":
+                st.session_state[f"editing_item_{idx}"] = True
+            elif action_choice == "🗑️ ลบ":
+                st.session_state["company_inventories"][selected_company] = current_inv.drop(idx).reset_index(drop=True)
+                st.success(f"ลบสินค้า '{row['Item Name']}' เรียบร้อยแล้ว")
+                st.rerun()
+
+            # ฟอร์มแก้ไขข้อมูลสินค้า เมื่อเลือก "✏️ แก้ไข"
+            if st.session_state.get(f"editing_item_{idx}", False):
+                with st.form(f"form_edit_item_{idx}"):
+                    st.markdown(f"**กำลังแก้ไขสินค้า:** {row['Item Name']}")
+                    e_code = st.text_input("รหัสสินค้า", value=str(row["Product Code"]))
+                    e_name = st.text_input("ชื่อสินค้า", value=str(row["Item Name"]))
+                    e_supplier = st.text_input("ร้านค้า", value=str(row["Supplier"]))
+                    e_unit = st.selectbox("หน่วยนับ", st.session_state.units_list, index=st.session_state.units_list.index(row["Unit"]) if row["Unit"] in st.session_state.units_list else 0)
+                    e_price = st.number_input("ราคาล่าสุด", value=float(row["Last Price"]))
+                    
+                    col_sub1, col_sub2 = st.columns(2)
+                    with col_sub1:
+                        if st.form_submit_button("💾 บันทึกการแก้ไข"):
+                            st.session_state["company_inventories"][selected_company].loc[idx, "Product Code"] = e_code
+                            st.session_state["company_inventories"][selected_company].loc[idx, "Item Name"] = e_name
+                            st.session_state["company_inventories"][selected_company].loc[idx, "Supplier"] = e_supplier
+                            st.session_state["company_inventories"][selected_company].loc[idx, "Unit"] = e_unit
+                            st.session_state["company_inventories"][selected_company].loc[idx, "Last Price"] = e_price
+                            st.session_state[f"editing_item_{idx}"] = False
+                            st.success("บันทึกการแก้ไขเรียบร้อยแล้ว!")
+                            st.rerun()
+                    with col_sub2:
+                        if st.form_submit_button("❌ ยกเลิก"):
+                            st.session_state[f"editing_item_{idx}"] = False
+                            st.rerun()
+
+            st.markdown("<hr style='margin: 5px 0;'>", unsafe_allow_html=True)
     else:
         st.info("ยังไม่มีรายการสินค้า")
 
 # c) Add New Items
 elif selected_menu == t["sub_import_excel"]:
     st.title(f"📥 เพิ่มรายการสินค้าใหม่ - {selected_company}")
-    if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
-        st.warning("กรุณาเลือก 1 บริษัทเฉพาะเจาะจงก่อนทำรายการ")
-    else:
-        tab1, tab2, tab3, tab4 = st.tabs([
-            "1. เพิ่มรายการสินค้าใหม่",
-            "2. เพิ่ม/แก้ไขข้อมูลร้านค้า",
-            "3. เพิ่ม/แก้ไขหน่วยนับ (Units)",
-            "4. เพิ่ม/แก้ไขหมวดหมู่สินค้า (Categories)"
-        ])
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "1. เพิ่มรายการสินค้าใหม่",
+        "2. เพิ่ม/แก้ไขข้อมูลร้านค้า",
+        "3. เพิ่ม/แก้ไขหน่วยนับ (Units)",
+        "4. เพิ่ม/แก้ไขหมวดหมู่สินค้า (Categories)"
+    ])
 
-        with tab1:
-            st.subheader("เพิ่มรายการสินค้าใหม่")
-            with st.form("manual_import_form_tab"):
-                existing_suppliers = current_inv["Supplier"].dropna().unique().tolist() if len(current_inv) > 0 else []
-                if not existing_suppliers:
-                    existing_suppliers = ["CP Axtra (Makro)", "CP Axtra (Lotus)", "ร้านค้าทั่วไป"]
-                
-                supplier = st.selectbox("ชื่อร้านค้า (Supplier)", existing_suppliers)
-                sku = st.text_input("รหัสสินค้า")
-                item_name = st.text_input("ชื่อสินค้า")
-                cat_manual = st.selectbox("หมวดหมู่สินค้า", st.session_state.categories_list)
-                
-                col_u1, col_u2 = st.columns(2)
-                with col_u1:
-                    unit_manual = st.selectbox("หน่วยนับ", st.session_state.units_list)
-                with col_u2:
-                    initial_price = st.number_input("ราคาต่อหน่วย", min_value=0.0, value=0.0)
-                    
-                vat_type = st.selectbox("ประเภทภาษี", VAT_TYPES_LIST)
-                submit_manual = st.form_submit_button("💾 บันทึกเพิ่มรายการสินค้าใหม่")
-
-                if submit_manual:
-                    inv = st.session_state["company_inventories"][selected_company]
-                    idx_match = inv.index[inv["Item Name"] == item_name]
-                    if not idx_match.empty:
-                        idx = idx_match[0]
-                        inv.loc[idx, "Supplier"] = supplier
-                        inv.loc[idx, "Unit"] = unit_manual
-                        inv.loc[idx, "Last Price"] = initial_price
-                    else:
-                        new_row = pd.DataFrame([{
-                            "Product Code": sku,
-                            "Item Name": item_name,
-                            "Category": cat_manual,
-                            "Unit": unit_manual,
-                            "Conversion Qty": 1.0,
-                            "Stock Balance": 0.0,
-                            "Last Price": initial_price,
-                            "Supplier": supplier,
-                            "Vat Type": vat_type,
-                        }])
-                        st.session_state["company_inventories"][selected_company] = pd.concat(
-                            [inv, new_row], ignore_index=True
-                        )
-
-                    st.success("บันทึกเพิ่มรายการสินค้าใหม่สำเร็จ!")
-                    st.rerun()
-
-        with tab2:
-            st.subheader("ตั้งค่าข้อมูลร้านค้า (ที่อยู่ / โลโก้)")
-            curr_details = st.session_state["company_details"].get(selected_company, {
-                "name": selected_company, "address": "", "tax_id": "", "contact": ""
-            })
-            existing_logo = st.session_state["company_logos"].get(selected_company)
-            if existing_logo is not None:
-                st.image(existing_logo, width=150, caption="โลโก้ปัจจุบันของบริษัท")
+    with tab1:
+        st.subheader("เพิ่มรายการสินค้าใหม่")
+        with st.form("manual_import_form_tab"):
+            existing_suppliers = current_inv["Supplier"].dropna().unique().tolist() if len(current_inv) > 0 else []
+            if not existing_suppliers:
+                existing_suppliers = ["CP Axtra (Makro)", "CP Axtra (Lotus)", "ร้านค้าทั่วไป"]
             
-            with st.form("company_info_form_in_add"):
-                c_name = st.text_input("1. ชื่อร้านค้า/บริษัท", value=curr_details.get("name", selected_company))
-                c_address = st.text_area("2. ที่อยู่", value=curr_details.get("address", ""))
-                c_tax = st.text_input("3. เลขที่ผู้เสียภาษี", value=curr_details.get("tax_id", ""))
-                c_contact = st.text_input("4. ข้อมูลติดต่อ / เซลล์", value=curr_details.get("contact", ""))
+            supplier = st.selectbox("ชื่อร้านค้า (Supplier)", existing_suppliers)
+            sku = st.text_input("รหัสสินค้า")
+            item_name = st.text_input("ชื่อสินค้า")
+            cat_manual = st.selectbox("หมวดหมู่สินค้า", st.session_state.categories_list)
+            
+            col_u1, col_u2 = st.columns(2)
+            with col_u1:
+                unit_manual = st.selectbox("หน่วยนับ", st.session_state.units_list)
+            with col_u2:
+                initial_price = st.number_input("ราคาต่อหน่วย", min_value=0.0, value=0.0)
                 
-                uploaded_logo = st.file_uploader("🖼️ อัปโหลดโลโก้บริษัท (PNG, JPG, JPEG)", type=["png", "jpg", "jpeg"], key="logo_add_page")
-                if st.form_submit_button("💾 บันทึกข้อมูลร้านค้า"):
-                    st.session_state["company_details"][selected_company] = {
-                        "name": c_name, "address": c_address, "tax_id": c_tax, "contact": c_contact
-                    }
-                    if uploaded_logo is not None:
-                        st.session_state["company_logos"][selected_company] = uploaded_logo
-                    st.success("บันทึกข้อมูลร้านค้าเรียบร้อยแล้ว!")
+            vat_type = st.selectbox("ประเภทภาษี", VAT_TYPES_LIST)
+            submit_manual = st.form_submit_button("💾 บันทึกเพิ่มรายการสินค้าใหม่")
+
+            if submit_manual:
+                inv = st.session_state["company_inventories"][selected_company]
+                idx_match = inv.index[inv["Item Name"] == item_name]
+                if not idx_match.empty:
+                    idx = idx_match[0]
+                    inv.loc[idx, "Supplier"] = supplier
+                    inv.loc[idx, "Unit"] = unit_manual
+                    inv.loc[idx, "Last Price"] = initial_price
+                else:
+                    new_row = pd.DataFrame([{
+                        "Product Code": sku,
+                        "Item Name": item_name,
+                        "Category": cat_manual,
+                        "Unit": unit_manual,
+                        "Conversion Qty": 1.0,
+                        "Stock Balance": 0.0,
+                        "Last Price": initial_price,
+                        "Supplier": supplier,
+                        "Vat Type": vat_type,
+                    }])
+                    st.session_state["company_inventories"][selected_company] = pd.concat(
+                        [inv, new_row], ignore_index=True
+                    )
+
+                st.success("บันทึกเพิ่มรายการสินค้าใหม่สำเร็จ!")
+                st.rerun()
+
+    with tab2:
+        st.subheader("ตั้งค่าข้อมูลร้านค้า (ที่อยู่ / โลโก้)")
+        curr_details = st.session_state["company_details"].get(selected_company, {
+            "name": selected_company, "address": "", "tax_id": "", "contact": ""
+        })
+        existing_logo = st.session_state["company_logos"].get(selected_company)
+        if existing_logo is not None:
+            st.image(existing_logo, width=150, caption="โลโก้ปัจจุบันของบริษัท")
+        
+        with st.form("company_info_form_in_add"):
+            c_name = st.text_input("1. ชื่อร้านค้า/บริษัท", value=curr_details.get("name", selected_company))
+            c_address = st.text_area("2. ที่อยู่", value=curr_details.get("address", ""))
+            c_tax = st.text_input("3. เลขที่ผู้เสียภาษี", value=curr_details.get("tax_id", ""))
+            c_contact = st.text_input("4. ข้อมูลติดต่อ / เซลล์", value=curr_details.get("contact", ""))
+            
+            uploaded_logo = st.file_uploader("🖼️ อัปโหลดโลโก้บริษัท (PNG, JPG, JPEG)", type=["png", "jpg", "jpeg"], key="logo_add_page")
+            if st.form_submit_button("💾 บันทึกข้อมูลร้านค้า"):
+                st.session_state["company_details"][selected_company] = {
+                    "name": c_name, "address": c_address, "tax_id": c_tax, "contact": c_contact
+                }
+                if uploaded_logo is not None:
+                    st.session_state["company_logos"][selected_company] = uploaded_logo
+                st.success("บันทึกข้อมูลร้านค้าเรียบร้อยแล้ว!")
+                st.rerun()
+
+    with tab3:
+        st.subheader("หน่วยนับสินค้า (Units)")
+        with st.form("unit_mgmt_form"):
+            new_unit = st.text_input("เพิ่มหน่วยใหม่")
+            if st.form_submit_button("➕ เพิ่มหน่วยนับ"):
+                if new_unit and new_unit not in st.session_state.units_list:
+                    st.session_state.units_list.append(new_unit)
+                    st.success(f"เพิ่มหน่วย '{new_unit}' เรียบร้อยแล้ว")
                     st.rerun()
+                else:
+                    st.warning("หน่วยนี้มีอยู่แล้ว หรือไม่ถูกต้อง")
 
-        with tab3:
-            st.subheader("หน่วยนับสินค้า (Units)")
-            with st.form("unit_mgmt_form"):
-                new_unit = st.text_input("เพิ่มหน่วยใหม่")
-                if st.form_submit_button("➕ เพิ่มหน่วยนับ"):
-                    if new_unit and new_unit not in st.session_state.units_list:
-                        st.session_state.units_list.append(new_unit)
-                        st.success(f"เพิ่มหน่วย '{new_unit}' เรียบร้อยแล้ว")
-                        st.rerun()
-                    else:
-                        st.warning("หน่วยนี้มีอยู่แล้ว หรือไม่ถูกต้อง")
+        st.markdown("---")
+        st.write("หน่วยนับปัจจุบัน:")
+        for i, u_item in enumerate(st.session_state.units_list):
+            cols = st.columns([3, 1, 1])
+            cols[0].write(f"- {u_item}")
+            if cols[1].button("✏️ แก้ไข", key=f"edit_unit_{i}"):
+                st.session_state[f"show_edit_unit_{i}"] = not st.session_state.get(f"show_edit_unit_{i}", False)
+            if cols[2].button("🗑️ ลบ", key=f"del_unit_{i}"):
+                if len(st.session_state.units_list) > 1:
+                    st.session_state.units_list.pop(i)
+                    st.success("ลบหน่วยนับเรียบร้อยแล้ว")
+                    st.rerun()
+                else:
+                    st.warning("ต้องมีหน่วยนับอย่างน้อย 1 รายการ")
+            
+            if st.session_state.get(f"show_edit_unit_{i}", False):
+                with st.form(f"form_edit_unit_{i}"):
+                    updated_unit_name = st.text_input("แก้ไขชื่อหน่วยนับ", value=u_item)
+                    if st.form_submit_button("💾 บันทึก"):
+                        if updated_unit_name and updated_unit_name not in st.session_state.units_list:
+                            st.session_state.units_list[i] = updated_unit_name
+                            st.session_state[f"show_edit_unit_{i}"] = False
+                            st.success("แก้ไขหน่วยนับเรียบร้อยแล้ว")
+                            st.rerun()
+                        else:
+                            st.warning("ชื่อหน่วยนับว่าง หรือซ้ำกับที่มีอยู่แล้ว")
 
-            st.markdown("---")
-            st.write("หน่วยนับปัจจุบัน:")
-            for i, u_item in enumerate(st.session_state.units_list):
-                cols = st.columns([3, 1, 1])
-                cols[0].write(f"- {u_item}")
-                if cols[1].button("✏️ แก้ไข", key=f"edit_unit_{i}"):
-                    st.session_state[f"show_edit_unit_{i}"] = not st.session_state.get(f"show_edit_unit_{i}", False)
-                if cols[2].button("🗑️ ลบ", key=f"del_unit_{i}"):
-                    if len(st.session_state.units_list) > 1:
-                        st.session_state.units_list.pop(i)
-                        st.success("ลบหน่วยนับเรียบร้อยแล้ว")
-                        st.rerun()
-                    else:
-                        st.warning("ต้องมีหน่วยนับอย่างน้อย 1 รายการ")
-                
-                if st.session_state.get(f"show_edit_unit_{i}", False):
-                    with st.form(f"form_edit_unit_{i}"):
-                        updated_unit_name = st.text_input("แก้ไขชื่อหน่วยนับ", value=u_item)
-                        if st.form_submit_button("💾 บันทึก"):
-                            if updated_unit_name and updated_unit_name not in st.session_state.units_list:
-                                st.session_state.units_list[i] = updated_unit_name
-                                st.session_state[f"show_edit_unit_{i}"] = False
-                                st.success("แก้ไขหน่วยนับเรียบร้อยแล้ว")
-                                st.rerun()
-                            else:
-                                st.warning("ชื่อหน่วยนับว่าง หรือซ้ำกับที่มีอยู่แล้ว")
+    with tab4:
+        st.subheader("หมวดหมู่สินค้า (Categories)")
+        with st.form("cat_mgmt_form"):
+            new_cat = st.text_input("เพิ่มหมวดหมู่ใหม่")
+            if st.form_submit_button("➕ เพิ่มหมวดหมู่"):
+                if new_cat and new_cat not in st.session_state.categories_list:
+                    st.session_state.categories_list.append(new_cat)
+                    st.success(f"เพิ่มหมวดหมู่ '{new_cat}' เรียบร้อยแล้ว")
+                    st.rerun()
+                else:
+                    st.warning("หมวดหมู่นี้มีอยู่แล้ว หรือไม่ถูกต้อง")
 
-        with tab4:
-            st.subheader("หมวดหมู่สินค้า (Categories)")
-            with st.form("cat_mgmt_form"):
-                new_cat = st.text_input("เพิ่มหมวดหมู่ใหม่")
-                if st.form_submit_button("➕ เพิ่มหมวดหมู่"):
-                    if new_cat and new_cat not in st.session_state.categories_list:
-                        st.session_state.categories_list.append(new_cat)
-                        st.success(f"เพิ่มหมวดหมู่ '{new_cat}' เรียบร้อยแล้ว")
-                        st.rerun()
-                    else:
-                        st.warning("หมวดหมู่นี้มีอยู่แล้ว หรือไม่ถูกต้อง")
+        st.markdown("---")
+        st.write("หมวดหมู่ปัจจุบัน:")
+        for j, c_item in enumerate(st.session_state.categories_list):
+            cols_c = st.columns([3, 1, 1])
+            cols_c[0].write(f"- {c_item}")
+            if cols_c[1].button("✏️ แก้ไข", key=f"edit_cat_{j}"):
+                st.session_state[f"show_edit_cat_{j}"] = not st.session_state.get(f"show_edit_cat_{j}", False)
+            if cols_c[2].button("🗑️ ลบ", key=f"del_cat_{j}"):
+                if len(st.session_state.categories_list) > 1:
+                    st.session_state.categories_list.pop(j)
+                    st.success("ลบหมวดหมู่เรียบร้อยแล้ว")
+                    st.rerun()
+                else:
+                    st.warning("ต้องมีหมวดหมู่อย่างน้อย 1 รายการ")
+            
+            if st.session_state.get(f"show_edit_cat_{j}", False):
+                with st.form(f"form_edit_cat_{j}"):
+                    updated_cat_name = st.text_input("แก้ไขชื่อหมวดหมู่", value=c_item)
+                    if st.form_submit_button("💾 บันทึก"):
+                        if updated_cat_name and updated_cat_name not in st.session_state.categories_list:
+                            st.session_state.categories_list[j] = updated_cat_name
+                            st.session_state[f"show_edit_cat_{j}"] = False
+                            st.success("แก้ไขหมวดหมู่เรียบร้อยแล้ว")
+                            st.rerun()
+                        else:
+                            st.warning("ชื่อหมวดหมู่ว่าง หรือซ้ำกับที่มีอยู่แล้ว")
 
-            st.markdown("---")
-            st.write("หมวดหมู่ปัจจุบัน:")
-            for j, c_item in enumerate(st.session_state.categories_list):
-                cols_c = st.columns([3, 1, 1])
-                cols_c[0].write(f"- {c_item}")
-                if cols_c[1].button("✏️ แก้ไข", key=f"edit_cat_{j}"):
-                    st.session_state[f"show_edit_cat_{j}"] = not st.session_state.get(f"show_edit_cat_{j}", False)
-                if cols_c[2].button("🗑️ ลบ", key=f"del_cat_{j}"):
-                    if len(st.session_state.categories_list) > 1:
-                        st.session_state.categories_list.pop(j)
-                        st.success("ลบหมวดหมู่เรียบร้อยแล้ว")
-                        st.rerun()
-                    else:
-                        st.warning("ต้องมีหมวดหมู่อย่างน้อย 1 รายการ")
-                
-                if st.session_state.get(f"show_edit_cat_{j}", False):
-                    with st.form(f"form_edit_cat_{j}"):
-                        updated_cat_name = st.text_input("แก้ไขชื่อหมวดหมู่", value=c_item)
-                        if st.form_submit_button("💾 บันทึก"):
-                            if updated_cat_name and updated_cat_name not in st.session_state.categories_list:
-                                st.session_state.categories_list[j] = updated_cat_name
-                                st.session_state[f"show_edit_cat_{j}"] = False
-                                st.success("แก้ไขหมวดหมู่เรียบร้อยแล้ว")
-                                st.rerun()
-                            else:
-                                st.warning("ชื่อหมวดหมู่ว่าง หรือซ้ำกับที่มีอยู่แล้ว")
-
-# d) Stock In (รับสินค้าเข้าสต็อก - ค้นหาได้ทั้งรหัสและชื่อ)
+# d) Stock In (รับสินค้าเข้าสต็อก)
 elif selected_menu == t["sub_stock_in"]:
     st.title(f"📥 รับสินค้าเข้าสต็อก (Stock In) - {selected_company}")
-    if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
-        st.warning("กรุณาเลือกบริษัทเฉพาะเจาะจงก่อนทำรายการรับสินค้า")
-    elif len(current_inv) == 0:
+    if len(current_inv) == 0:
         st.warning("ยังไม่มีรายการสินค้าในระบบ กรุณาเพิ่มรายการสินค้าก่อน")
     else:
         col_si1, col_si2, col_si3 = st.columns(3)
@@ -323,7 +396,6 @@ elif selected_menu == t["sub_stock_in"]:
         st.markdown("---")
         st.subheader("เลือกและเพิ่มสินค้าเข้าตะกร้ารับเข้า")
         
-        # ช่องค้นหารองรับทั้งรหัสสินค้าและชื่อสินค้า
         si_search_query = st.text_input("🔍 พิมพ์รหัสสินค้า (Product Code) หรือ ชื่อสินค้า เพื่อดึงข้อมูลอัตโนมัติ", value="")
         
         selected_item_name = ""
@@ -423,9 +495,7 @@ elif selected_menu == t["sub_stock_in"]:
 # e) Stock Out (เบิกสินค้าออกจากสต็อก)
 elif selected_menu == t["sub_stock_out"]:
     st.title(f"📤 เบิกสินค้าออกจากสต็อก (Stock Out) - {selected_company}")
-    if selected_company == "ทุกบริษัท/สาขา (All Companies / Branches)":
-        st.warning("กรุณาเลือกบริษัทเฉพาะเจาะจงก่อนทำรายการเบิกสินค้า")
-    elif len(current_inv) == 0:
+    if len(current_inv) == 0:
         st.warning("ยังไม่มีรายการสินค้าในระบบ")
     else:
         with st.form("stock_out_form"):
