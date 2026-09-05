@@ -4,66 +4,68 @@ from datetime import datetime
 
 # ตั้งค่าหน้าเว็บ Streamlit
 st.set_page_config(
-    page_title="ระบบขอซื้อ (PR) & ใบสั่งซื้อ (PO) - Daddy Deli",
+    page_title="ระบบขอซื้อ (PR) & ใบสั่งซื้อ (PO)",
     page_icon="📝",
     layout="wide"
 )
 
-# ------------------------------------------------------------------
-# 1. Company list, categories, units, VAT, language dicts
-# ------------------------------------------------------------------
-COMPANIES = [
-    "Daddy Deli (Head Office)",
-    "Harvest Cafe (Branch 0001)",
-    "Taboo By Daddy Deli (Branch 0002)",
-    "Daddy Deli Pattaya Group (Head Office)",
-    "Harvest Bakery And Restaurant (Head Office)",
-    "Daddy Deli Beach House (Head Office)",
-]
-REAL_COMPANIES = [c for c in COMPANIES if "ทุกบริษัท" not in c]
-
-if "categories_list" not in st.session_state:
-    st.session_state.categories_list = [
-        "เนื้อสัตว์/เครื่องปรุง/อื่นๆ / Meat / Seasonings / Others",
-        "ผักและผลไม้ / Vegetables & Fruits",
-        "ทะเล / Seafood",
-        "เนื้อวัว / Beef",
-        "น้ำผลไม้/Soft Drink/อื่นๆ / Juice/Soft Drink/Other",
-        "เบียร์ / Beer",
-        "ไส้กรอก / Sausage",
-        "ชีส / Cheese",
-        "นม / Milk",
-    ]
 # ----------------------------------------------------
-# 2. INITIALIZE SESSION STATES
+# 1. INITIALIZE SESSION STATES
 # ----------------------------------------------------
 if "units_list" not in st.session_state:
-    st.session_state.units_list = ["Box", "Bottle", "Kg", "Pack", "Can", "Piece"]
+    st.session_state.units_list = ["Box", "Bottle", "Kg", "Pack", "Can", "PSc"]
 
 if "categories_list" not in st.session_state:
     st.session_state.categories_list = ["นม / Milk", "เบเกอรี่ / Bakery", "เครื่องดื่ม / Beverage", "วัตถุดิบอาหาร / Ingredients"]
 
+# รายชื่อบริษัท/สาขาใหม่ตามที่คุณต้องการ
+if "companies_list" not in st.session_state:
+    st.session_state.companies_list = [
+        "Daddy Deli (Head Office)",
+        "Harvest Cafe (Branch 0001)",
+        "Taboo By Daddy Deli (Branch 0002)",
+        "Daddy Deli Pattaya Group (Head Office)",
+        "Harvest Bakery And Restaurant (Head Office)",
+        "Daddy Deli Beach House (Head Office)"
+    ]
+
+if "company_details" not in st.session_state:
+    st.session_state["company_details"] = {
+        "Daddy Deli (Head Office)": {"name": "Daddy Deli (Head Office)", "address": "กรุงเทพมหานคร", "tax_id": "01055xxxxxxxx", "contact": "02-xxx-xxxx"},
+        "Harvest Cafe (Branch 0001)": {"name": "Harvest Cafe (Branch 0001)", "address": "สาขา 0001", "tax_id": "01055yyyyyyyy", "contact": "02-yyy-yyyy"},
+        "Taboo By Daddy Deli (Branch 0002)": {"name": "Taboo By Daddy Deli (Branch 0002)", "address": "สาขา 0002", "tax_id": "01055zzzzzzzz", "contact": "02-zzz-zzzz"},
+        "Daddy Deli Pattaya Group (Head Office)": {"name": "Daddy Deli Pattaya Group (Head Office)", "address": "พัทยา ชลบุรี", "tax_id": "01055aaaaaaaa", "contact": "038-aaa-aaaa"},
+        "Harvest Bakery And Restaurant (Head Office)": {"name": "Harvest Bakery And Restaurant (Head Office)", "address": "กรุงเทพมหานคร", "tax_id": "01055bbbbbbbb", "contact": "02-bbb-bbbb"},
+        "Daddy Deli Beach House (Head Office)": {"name": "Daddy Deli Beach House (Head Office)", "address": "ภูเก็ต", "tax_id": "01055cccccccc", "contact": "076-ccc-cccc"}
     }
 
 if "company_logos" not in st.session_state:
     st.session_state["company_logos"] = {}
 
+# กำหนดโครงสร้างข้อมูลสินค้าเริ่มต้นให้ทุกสาขา (สาขาหลักจะมีตัวอย่างสินค้าเริ่มต้น ส่วนสาขาอื่นเตรียมตารางว่างไว้)
 if "company_inventories" not in st.session_state:
-    st.session_state["company_inventories"] = {
-        "Daddy Deli": pd.DataFrame([
-            {
-                "Product Code": "1950",
-                "Item Name": "นมจืด 2 ลิตร",
-                "Category": "นม / Milk",
-                "Unit": "Bottle",
-                "Conversion Qty": 1.0,
-                "Stock Balance": 10.0,
-                "Last Price": 95.0,
-                "Supplier": "CP Axtra (Makro)",
-                "Vat Type": "Non Vat"
-            }
-        ])
-    }
+    initial_demo_df = pd.DataFrame([
+        {
+            "Product Code": "1950",
+            "Item Name": "นมจืด 2 ลิตร",
+            "Category": "นม / Milk",
+            "Unit": "Bottle",
+            "Conversion Qty": 1.0,
+            "Stock Balance": 10.0,
+            "Last Price": 95.0,
+            "Supplier": "CP Axtra (Makro)",
+            "Vat Type": "Non Vat"
+        }
+    ])
+    
+    st.session_state["company_inventories"] = {}
+    for comp in st.session_state.companies_list:
+        if comp == "Daddy Deli (Head Office)":
+            st.session_state["company_inventories"][comp] = initial_demo_df.copy()
+        else:
+            st.session_state["company_inventories"][comp] = pd.DataFrame(columns=[
+                "Product Code", "Item Name", "Category", "Unit", "Conversion Qty", "Stock Balance", "Last Price", "Supplier", "Vat Type"
+            ])
 
 if "purchase_requests" not in st.session_state:
     st.session_state["purchase_requests"] = pd.DataFrame(columns=[
@@ -95,14 +97,12 @@ st.sidebar.markdown("### 👤 ผู้ใช้งานปัจจุบั�
 current_user = st.sidebar.selectbox("User", ["owner_master", "staff_procurement"], label_visibility="collapsed")
 user_info = {"Name": "Mr. Owner" if current_user == "owner_master" else "Staff PR", "Role": "Owner" if current_user == "owner_master" else "Staff"}
 
-# ลบตัวเลือกทุกบริษัทออก ล็อกไว้ที่ Daddy Deli พร้อมแสดงข้อมูลบริษัทครบถ้วน
-selected_company = "Daddy Deli"
+# เลือกบริษัท / สาขา (ไม่มี "ทุกบริษัท/สาขา")
+st.sidebar.markdown("### 🏢 เลือกบริษัท / สาขา")
+selected_company = st.sidebar.selectbox("Company", st.session_state.companies_list, label_visibility="collapsed")
+
 curr_comp_details = st.session_state["company_details"].get(selected_company, {})
-
-st.sidebar.markdown("### 🏢 บริษัท / สาขา")
-st.sidebar.markdown(f"**{curr_comp_details.get('name', 'Daddy Deli')}**")
 st.sidebar.caption(f"ที่อยู่: {curr_comp_details.get('address', '-')}\n\nเลขผู้เสียภาษี: {curr_comp_details.get('tax_id', '-')}\n\nติดต่อ: {curr_comp_details.get('contact', '-')}")
-
 st.sidebar.info(f"**{user_info['Name']}**\n\nสิทธิ์: {user_info['Role']}")
 
 # ----------------------------------------------------
@@ -129,7 +129,7 @@ selected_menu = st.sidebar.radio(
     label_visibility="collapsed"
 )
 
-# ดึงข้อมูล Inventory ของ Daddy Deli
+# ตรวจสอบและสร้าง DataFrame ของบริษัทที่เลือกถ้ายังไม่มี
 if selected_company not in st.session_state["company_inventories"]:
     st.session_state["company_inventories"][selected_company] = pd.DataFrame(columns=[
         "Product Code", "Item Name", "Category", "Unit", "Conversion Qty", "Stock Balance", "Last Price", "Supplier", "Vat Type"
@@ -152,14 +152,13 @@ if selected_menu == t["sub_dashboard"]:
     if len(current_inv) > 0:
         st.dataframe(current_inv, use_container_width=True)
     else:
-        st.info("ยังไม่มีข้อมูลสินค้าในระบบ")
+        st.info("ยังไม่มีข้อมูลสินค้าในระบบสาขานี้")
 
-# b) Inventory Management (เพิ่มช่องค้นหาร้านค้า, รหัสสินค้า, ชื่อสินค้า และ Dropdown แก้ไข/ลบหลังชื่อสินค้า)
+# b) Inventory Management
 elif selected_menu == t["sub_inventory"]:
     st.title(f"📦 การจัดการรายการสินค้า - {selected_company}")
     
     if len(current_inv) > 0:
-        # ช่องค้นหา 3 เงื่อนไข
         st.markdown("#### 🔍 ค้นหาข้อมูลสินค้า")
         scol1, scol2, scol3 = st.columns(3)
         with scol1:
@@ -189,7 +188,6 @@ elif selected_menu == t["sub_inventory"]:
             cols[4].write(f"หน่วย: {row['Unit']}")
             cols[5].write(f"ราคา: {row['Last Price']} ฿")
 
-            # Dropdown เลือกจัดการ (แก้ไข/ลบ) ที่ด้านหลังสินค้า
             action_choice = cols[6].selectbox(
                 "จัดการ", 
                 ["เลือก", "✏️ แก้ไข", "🗑️ ลบ"], 
@@ -198,15 +196,14 @@ elif selected_menu == t["sub_inventory"]:
             )
 
             if action_choice == "✏️ แก้ไข":
-                st.session_state[f"editing_item_{idx}"] = True
+                st.session_state[f"editing_item_{selected_company}_{idx}"] = True
             elif action_choice == "🗑️ ลบ":
                 st.session_state["company_inventories"][selected_company] = current_inv.drop(idx).reset_index(drop=True)
                 st.success(f"ลบสินค้า '{row['Item Name']}' เรียบร้อยแล้ว")
                 st.rerun()
 
-            # ฟอร์มแก้ไขข้อมูลสินค้า เมื่อเลือก "✏️ แก้ไข"
-            if st.session_state.get(f"editing_item_{idx}", False):
-                with st.form(f"form_edit_item_{idx}"):
+            if st.session_state.get(f"editing_item_{selected_company}_{idx}", False):
+                with st.form(f"form_edit_item_{selected_company}_{idx}"):
                     st.markdown(f"**กำลังแก้ไขสินค้า:** {row['Item Name']}")
                     e_code = st.text_input("รหัสสินค้า", value=str(row["Product Code"]))
                     e_name = st.text_input("ชื่อสินค้า", value=str(row["Item Name"]))
@@ -222,12 +219,12 @@ elif selected_menu == t["sub_inventory"]:
                             st.session_state["company_inventories"][selected_company].loc[idx, "Supplier"] = e_supplier
                             st.session_state["company_inventories"][selected_company].loc[idx, "Unit"] = e_unit
                             st.session_state["company_inventories"][selected_company].loc[idx, "Last Price"] = e_price
-                            st.session_state[f"editing_item_{idx}"] = False
+                            st.session_state[f"editing_item_{selected_company}_{idx}"] = False
                             st.success("บันทึกการแก้ไขเรียบร้อยแล้ว!")
                             st.rerun()
                     with col_sub2:
                         if st.form_submit_button("❌ ยกเลิก"):
-                            st.session_state[f"editing_item_{idx}"] = False
+                            st.session_state[f"editing_item_{selected_company}_{idx}"] = False
                             st.rerun()
 
             st.markdown("<hr style='margin: 5px 0;'>", unsafe_allow_html=True)
@@ -293,7 +290,7 @@ elif selected_menu == t["sub_import_excel"]:
                 st.rerun()
 
     with tab2:
-        st.subheader("ตั้งค่าข้อมูลร้านค้า (ที่อยู่ / โลโก้)")
+        st.subheader("ตั้งค่าข้อมูลบริษัท / สาขา (ที่อยู่ / โลโก้)")
         curr_details = st.session_state["company_details"].get(selected_company, {
             "name": selected_company, "address": "", "tax_id": "", "contact": ""
         })
@@ -302,19 +299,19 @@ elif selected_menu == t["sub_import_excel"]:
             st.image(existing_logo, width=150, caption="โลโก้ปัจจุบันของบริษัท")
         
         with st.form("company_info_form_in_add"):
-            c_name = st.text_input("1. ชื่อร้านค้า/บริษัท", value=curr_details.get("name", selected_company))
+            c_name = st.text_input("1. ชื่อบริษัท/สาขา", value=curr_details.get("name", selected_company))
             c_address = st.text_area("2. ที่อยู่", value=curr_details.get("address", ""))
             c_tax = st.text_input("3. เลขที่ผู้เสียภาษี", value=curr_details.get("tax_id", ""))
             c_contact = st.text_input("4. ข้อมูลติดต่อ / เซลล์", value=curr_details.get("contact", ""))
             
             uploaded_logo = st.file_uploader("🖼️ อัปโหลดโลโก้บริษัท (PNG, JPG, JPEG)", type=["png", "jpg", "jpeg"], key="logo_add_page")
-            if st.form_submit_button("💾 บันทึกข้อมูลร้านค้า"):
+            if st.form_submit_button("💾 บันทึกข้อมูลบริษัท"):
                 st.session_state["company_details"][selected_company] = {
                     "name": c_name, "address": c_address, "tax_id": c_tax, "contact": c_contact
                 }
                 if uploaded_logo is not None:
                     st.session_state["company_logos"][selected_company] = uploaded_logo
-                st.success("บันทึกข้อมูลร้านค้าเรียบร้อยแล้ว!")
+                st.success("บันทึกข้อมูลบริษัทเรียบร้อยแล้ว!")
                 st.rerun()
 
     with tab3:
@@ -395,7 +392,7 @@ elif selected_menu == t["sub_import_excel"]:
                         else:
                             st.warning("ชื่อหมวดหมู่ว่าง หรือซ้ำกับที่มีอยู่แล้ว")
 
-# d) Stock In (รับสินค้าเข้าสต็อก)
+# d) Stock In
 elif selected_menu == t["sub_stock_in"]:
     st.title(f"📥 รับสินค้าเข้าสต็อก (Stock In) - {selected_company}")
     if len(current_inv) == 0:
@@ -509,7 +506,7 @@ elif selected_menu == t["sub_stock_in"]:
                     st.success("บันทึกรับสินค้าเข้าสต็อกและปรับปรุงยอดคงเหลือสำเร็จ!")
                     st.rerun()
 
-# e) Stock Out (เบิกสินค้าออกจากสต็อก)
+# e) Stock Out
 elif selected_menu == t["sub_stock_out"]:
     st.title(f"📤 เบิกสินค้าออกจากสต็อก (Stock Out) - {selected_company}")
     if len(current_inv) == 0:
