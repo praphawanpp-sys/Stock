@@ -13,7 +13,7 @@ st.set_page_config(
 # 1. INITIALIZE SESSION STATES
 # ----------------------------------------------------
 if "units_list" not in st.session_state:
-    st.session_state.units_list = ["Box", "Bottle", "Kg", "Pack", "Can", "PSc"]
+    st.session_state.units_list = ["Box", "Bottle", "Kg", "Pack", "Can", "Piece"]
 
 if "categories_list" not in st.session_state:
     st.session_state.categories_list = ["นม / Milk", "เบเกอรี่ / Bakery", "เครื่องดื่ม / Beverage", "วัตถุดิบอาหาร / Ingredients"]
@@ -42,7 +42,7 @@ if "company_details" not in st.session_state:
 if "company_logos" not in st.session_state:
     st.session_state["company_logos"] = {}
 
-# กำหนดโครงสร้างข้อมูลสินค้าเริ่มต้นให้ทุกสาขา (สาขาหลักจะมีตัวอย่างสินค้าเริ่มต้น ส่วนสาขาอื่นเตรียมตารางว่างไว้)
+# กำหนดโครงสร้างข้อมูลสินค้าเริ่มต้นให้ทุกสาขา
 if "company_inventories" not in st.session_state:
     initial_demo_df = pd.DataFrame([
         {
@@ -97,7 +97,7 @@ st.sidebar.markdown("### 👤 ผู้ใช้งานปัจจุบั�
 current_user = st.sidebar.selectbox("User", ["owner_master", "staff_procurement"], label_visibility="collapsed")
 user_info = {"Name": "Mr. Owner" if current_user == "owner_master" else "Staff PR", "Role": "Owner" if current_user == "owner_master" else "Staff"}
 
-# เลือกบริษัท / สาขา (ไม่มี "ทุกบริษัท/สาขา")
+# เลือกบริษัท / สาขา
 st.sidebar.markdown("### 🏢 เลือกบริษัท / สาขา")
 selected_company = st.sidebar.selectbox("Company", st.session_state.companies_list, label_visibility="collapsed")
 
@@ -129,7 +129,6 @@ selected_menu = st.sidebar.radio(
     label_visibility="collapsed"
 )
 
-# ตรวจสอบและสร้าง DataFrame ของบริษัทที่เลือกถ้ายังไม่มี
 if selected_company not in st.session_state["company_inventories"]:
     st.session_state["company_inventories"][selected_company] = pd.DataFrame(columns=[
         "Product Code", "Item Name", "Category", "Unit", "Conversion Qty", "Stock Balance", "Last Price", "Supplier", "Vat Type"
@@ -154,41 +153,46 @@ if selected_menu == t["sub_dashboard"]:
     else:
         st.info("ยังไม่มีข้อมูลสินค้าในระบบสาขานี้")
 
-# b) Inventory Management
+# b) Inventory Management (อัปเดตตามคำขอ)
 elif selected_menu == t["sub_inventory"]:
     st.title(f"📦 การจัดการรายการสินค้า - {selected_company}")
+    st.caption("สรุปสินค้าทั้งหมดของบริษัท/สาขานั้นๆ ว่ามีสินค้าอะไรบ้าง")
     
     if len(current_inv) > 0:
         st.markdown("#### 🔍 ค้นหาข้อมูลสินค้า")
         scol1, scol2, scol3 = st.columns(3)
         with scol1:
-            search_supplier = st.text_input("ค้นหาตามร้านค้า (Supplier)")
+            search_supplier = st.text_input("ค้นหาตามชื่อร้านค้า (Supplier)")
         with scol2:
             search_code = st.text_input("ค้นหาตามรหัสสินค้า (Product Code)")
         with scol3:
-            search_name = st.text_input("ค้นหาตามชื่อสินค้า (Item Name)")
+            # ดึงหมวดหมู่ทั้งหมดที่มีอยู่ในตารางมาให้เลือกค้นหา หรือกรองแบบอิสระ
+            cat_options = ["ทั้งหมด"] + current_inv["Category"].dropna().unique().tolist()
+            search_category = st.selectbox("ค้นหาตามหมวดหมู่ (Category)", cat_options)
 
         filtered_df = current_inv.copy()
         if search_supplier:
             filtered_df = filtered_df[filtered_df["Supplier"].astype(str).str.contains(search_supplier, case=False, na=False)]
         if search_code:
             filtered_df = filtered_df[filtered_df["Product Code"].astype(str).str.contains(search_code, case=False, na=False)]
-        if search_name:
-            filtered_df = filtered_df[filtered_df["Item Name"].astype(str).str.contains(search_name, case=False, na=False)]
+        if search_category != "ทั้งหมด":
+            filtered_df = filtered_df[filtered_df["Category"] == search_category]
 
         st.markdown("---")
         st.subheader("รายชื่อสินค้าในระบบและการจัดการ")
 
         for idx, row in filtered_df.iterrows():
-            cols = st.columns([2.5, 1.5, 1.5, 1, 1, 1, 1.2])
+            cols = st.columns([2.2, 1.2, 1.2, 1.2, 0.9, 0.9, 0.9, 1.3])
             cols[0].write(f"**{row['Item Name']}**")
             cols[1].write(f"รหัส: {row['Product Code']}")
             cols[2].write(f"ร้าน: {row['Supplier']}")
-            cols[3].write(f"คงเหลือ: {row['Stock Balance']}")
-            cols[4].write(f"หน่วย: {row['Unit']}")
-            cols[5].write(f"ราคา: {row['Last Price']} ฿")
+            cols[3].write(f"หมวด: {row['Category']}")
+            cols[4].write(f"คงเหลือ: {row['Stock Balance']}")
+            cols[5].write(f"หน่วย: {row['Unit']}")
+            cols[6].write(f"ราคา: {row['Last Price']} ฿")
 
-            action_choice = cols[6].selectbox(
+            # ดรอปดาวน์ "แก้ไข/ลบ" เล็กๆ ด้านหลังรายการสินค้า
+            action_choice = cols[7].selectbox(
                 "จัดการ", 
                 ["เลือก", "✏️ แก้ไข", "🗑️ ลบ"], 
                 key=f"action_{selected_company}_{idx}",
@@ -208,6 +212,7 @@ elif selected_menu == t["sub_inventory"]:
                     e_code = st.text_input("รหัสสินค้า", value=str(row["Product Code"]))
                     e_name = st.text_input("ชื่อสินค้า", value=str(row["Item Name"]))
                     e_supplier = st.text_input("ร้านค้า", value=str(row["Supplier"]))
+                    e_cat = st.selectbox("หมวดหมู่สินค้า", st.session_state.categories_list, index=st.session_state.categories_list.index(row["Category"]) if row["Category"] in st.session_state.categories_list else 0)
                     e_unit = st.selectbox("หน่วยนับ", st.session_state.units_list, index=st.session_state.units_list.index(row["Unit"]) if row["Unit"] in st.session_state.units_list else 0)
                     e_price = st.number_input("ราคาล่าสุด", value=float(row["Last Price"]))
                     
@@ -217,6 +222,7 @@ elif selected_menu == t["sub_inventory"]:
                             st.session_state["company_inventories"][selected_company].loc[idx, "Product Code"] = e_code
                             st.session_state["company_inventories"][selected_company].loc[idx, "Item Name"] = e_name
                             st.session_state["company_inventories"][selected_company].loc[idx, "Supplier"] = e_supplier
+                            st.session_state["company_inventories"][selected_company].loc[idx, "Category"] = e_cat
                             st.session_state["company_inventories"][selected_company].loc[idx, "Unit"] = e_unit
                             st.session_state["company_inventories"][selected_company].loc[idx, "Last Price"] = e_price
                             st.session_state[f"editing_item_{selected_company}_{idx}"] = False
@@ -268,6 +274,7 @@ elif selected_menu == t["sub_import_excel"]:
                 if not idx_match.empty:
                     idx = idx_match[0]
                     inv.loc[idx, "Supplier"] = supplier
+                    inv.loc[idx, "Category"] = cat_manual
                     inv.loc[idx, "Unit"] = unit_manual
                     inv.loc[idx, "Last Price"] = initial_price
                 else:
