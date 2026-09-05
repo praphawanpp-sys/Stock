@@ -269,32 +269,34 @@ elif selected_menu == t["sub_import_excel"]:
             submit_manual = st.form_submit_button("💾 บันทึกเพิ่มรายการสินค้าใหม่")
 
             if submit_manual:
-                inv = st.session_state["company_inventories"][selected_company]
-                idx_match = inv.index[inv["Item Name"] == item_name]
-                if not idx_match.empty:
-                    idx = idx_match[0]
-                    inv.loc[idx, "Supplier"] = supplier
-                    inv.loc[idx, "Category"] = cat_manual
-                    inv.loc[idx, "Unit"] = unit_manual
-                    inv.loc[idx, "Last Price"] = initial_price
+                if not sku.strip() or not item_name.strip():
+                    st.error("⚠️ กรุณากรอกรหัสสินค้าและชื่อสินค้าให้ครบถ้วนก่อนบันทึก")
                 else:
-                    new_row = pd.DataFrame([{
-                        "Product Code": sku,
-                        "Item Name": item_name,
-                        "Category": cat_manual,
-                        "Unit": unit_manual,
-                        "Conversion Qty": 1.0,
-                        "Stock Balance": 0.0,
-                        "Last Price": initial_price,
-                        "Supplier": supplier,
-                        "Vat Type": vat_type,
-                    }])
-                    st.session_state["company_inventories"][selected_company] = pd.concat(
-                        [inv, new_row], ignore_index=True
-                    )
-
-                st.success("บันทึกเพิ่มรายการสินค้าใหม่สำเร็จ!")
-                st.rerun()
+                    inv = st.session_state["company_inventories"][selected_company]
+                    idx_match = inv.index[inv["Item Name"] == item_name]
+                    if not idx_match.empty:
+                        idx = idx_match[0]
+                        inv.loc[idx, "Supplier"] = supplier
+                        inv.loc[idx, "Category"] = cat_manual
+                        inv.loc[idx, "Unit"] = unit_manual
+                        inv.loc[idx, "Last Price"] = initial_price
+                        st.success(f"🎉 อัปเดตข้อมูลสินค้า '{item_name}' เรียบร้อยแล้ว!")
+                    else:
+                        new_row = pd.DataFrame([{
+                            "Product Code": sku,
+                            "Item Name": item_name,
+                            "Category": cat_manual,
+                            "Unit": unit_manual,
+                            "Conversion Qty": 1.0,
+                            "Stock Balance": 0.0,
+                            "Last Price": initial_price,
+                            "Supplier": supplier,
+                            "Vat Type": vat_type,
+                        }])
+                        st.session_state["company_inventories"][selected_company] = pd.concat(
+                            [inv, new_row], ignore_index=True
+                        )
+                        st.success(f"✨ บันทึกเพิ่มรายการสินค้าใหม่ '{item_name}' สำเร็จแล้ว!")
 
     with tab2:
         st.subheader("ตั้งค่าข้อมูลบริษัท / สาขา (ที่อยู่ / โลโก้)")
@@ -318,7 +320,7 @@ elif selected_menu == t["sub_import_excel"]:
                 }
                 if uploaded_logo is not None:
                     st.session_state["company_logos"][selected_company] = uploaded_logo
-                st.success("บันทึกข้อมูลบริษัทเรียบร้อยแล้ว!")
+                st.success(f"✨ บันทึกเพิ่มรายการสินค้าใหม่ '{item_name}' สำเร็จแล้ว!")
                 st.rerun()
 
     with tab3:
