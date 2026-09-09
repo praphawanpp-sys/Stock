@@ -86,8 +86,29 @@ if "temp_stock_in_cart" not in st.session_state:
 VAT_TYPES_LIST = ["Non Vat", "Vat 7%", "Vat Excluded"]
 
 # ----------------------------------------------------
-# 2. DICTIONARY TRANSLATIONS (ระบบแปลภาษา)
+# 2. DICTIONARY TRANSLATIONS & MAPPINGS (ระบบแปลภาษาและคำศัพท์)
 # ----------------------------------------------------
+item_translations = {
+    "นมจืด 2 ลิตร": "Fresh Milk 2 Liters"
+}
+
+category_translations = {
+    "นม / Milk": "Milk",
+    "เบเกอรี่ / Bakery": "Bakery",
+    "เครื่องดื่ม / Beverage": "Beverage",
+    "วัตถุดิบอาหาร / Ingredients": "Food Ingredients"
+}
+
+def translate_item_name(name, lang):
+    if lang == "English":
+        return item_translations.get(name, name)
+    return name
+
+def translate_category(cat, lang):
+    if lang == "English":
+        return category_translations.get(cat, cat)
+    return cat
+
 texts = {
     "ไทย (Thai)": {
         "user_title": "👤 ผู้ใช้งานปัจจุบัน (Current User)",
@@ -102,7 +123,6 @@ texts = {
         "m7": "⏱️ ประวัติการทำรายการ",
         "m8": "📈 รายการสรุปสต็อก & นับสต็อก",
         "m9": "⚙️ ตั้งค่าข้อมูลบริษัทและแอดมิน",
-        # หน้า 3: เพิ่มรายการสินค้าใหม่
         "add_item_title": "เพิ่มรายการสินค้าใหม่",
         "tab_add": "1. เพิ่มรายการสินค้าใหม่",
         "tab_store": "2. เพิ่ม/แก้ไขข้อมูลร้านค้า",
@@ -133,7 +153,6 @@ texts = {
         "m7": "⏱️ Transaction History",
         "m8": "📈 Stock Summary & Count",
         "m9": "⚙️ Settings",
-        # Page 3: Add New Items
         "add_item_title": "Add New Items",
         "tab_add": "1. Add New Items",
         "tab_store": "2. Store Info Setup",
@@ -194,6 +213,12 @@ if selected_company not in st.session_state["company_inventories"]:
     ])
 current_inv = st.session_state["company_inventories"][selected_company]
 
+# แปลงภาษาของข้อมูลใน DataFrame ตามภาษาที่เลือกแสดงผล
+display_inv = current_inv.copy()
+if len(display_inv) > 0 and lang == "English":
+    display_inv["Item Name"] = display_inv["Item Name"].apply(lambda x: translate_item_name(x, lang))
+    display_inv["Category"] = display_inv["Category"].apply(lambda x: translate_category(x, lang))
+
 # ----------------------------------------------------
 # 5. ROUTING LOGIC
 # ----------------------------------------------------
@@ -202,13 +227,13 @@ current_inv = st.session_state["company_inventories"][selected_company]
 if selected_menu == t_ui["m1"]:
     st.title(f"{t_ui['m1']} - {selected_company}")
     col1, col2, col3 = st.columns(3)
-    col1.metric("Total Items" if lang == "English" else "จำนวนรายการสินค้าทั้งหมด", f"{len(current_inv)}")
+    col1.metric("Total Items" if lang == "English" else "จำนวนรายการสินค้าทั้งหมด", f"{len(display_inv)}")
     col2.metric("Total PRs" if lang == "English" else "ใบขอซื้อ (PR) ทั้งหมด", f"{len(st.session_state['purchase_requests'])}")
     col3.metric("Total POs" if lang == "English" else "ใบสั่งซื้อ (PO) ทั้งหมด", f"{len(st.session_state['purchase_orders'])}")
     st.markdown("---")
     st.subheader("Current Inventory" if lang == "English" else "รายการสินค้าในระบบปัจจุบัน")
-    if len(current_inv) > 0:
-        st.dataframe(current_inv, use_container_width=True)
+    if len(display_inv) > 0:
+        st.dataframe(display_inv, use_container_width=True)
     else:
         st.info("No items in this branch." if lang == "English" else "ยังไม่มีข้อมูลสินค้าในระบบสาขานี้")
 
@@ -217,7 +242,7 @@ elif selected_menu == t_ui["m2"]:
     st.title(f"{t_ui['m2']} - {selected_company}")
     st.caption("Summary of all items in this branch." if lang == "English" else "สรุปสินค้าทั้งหมดของบริษัท/สาขานั้นๆ ว่ามีสินค้าอะไรบ้าง")
     
-    if len(current_inv) > 0:
+    if len(display_inv) > 0:
         st.markdown("#### 🔍 Search Products" if lang == "English" else "#### 🔍 ค้นหาข้อมูลสินค้า")
         scol1, scol2, scol3 = st.columns(3)
         with scol1:
@@ -225,10 +250,10 @@ elif selected_menu == t_ui["m2"]:
         with scol2:
             search_code = st.text_input("Product Code" if lang == "English" else "ค้นหาตามรหัสสินค้า (Product Code)")
         with scol3:
-            cat_options = ["All" if lang == "English" else "ทั้งหมด"] + current_inv["Category"].dropna().unique().tolist()
+            cat_options = ["All" if lang == "English" else "ทั้งหมด"] + display_inv["Category"].dropna().unique().tolist()
             search_category = st.selectbox("Category" if lang == "English" else "ค้นหาตามหมวดหมู่ (Category)", cat_options)
 
-        filtered_df = current_inv.copy()
+        filtered_df = display_inv.copy()
         if search_supplier:
             filtered_df = filtered_df[filtered_df["Supplier"].astype(str).str.contains(search_supplier, case=False, na=False)]
         if search_code:
@@ -269,8 +294,8 @@ elif selected_menu == t_ui["m2"]:
                     e_code = st.text_input("Product Code", value=str(row["Product Code"]))
                     e_name = st.text_input("Item Name", value=str(row["Item Name"]))
                     e_supplier = st.text_input("Supplier", value=str(row["Supplier"]))
-                    e_cat = st.selectbox("Category", st.session_state.categories_list, index=st.session_state.categories_list.index(row["Category"]) if row["Category"] in st.session_state.categories_list else 0)
-                    e_unit = st.selectbox("Unit", st.session_state.units_list, index=st.session_state.units_list.index(row["Unit"]) if row["Unit"] in st.session_state.units_list else 0)
+                    e_cat = st.selectbox("Category", st.session_state.categories_list, index=st.session_state.categories_list.index(current_inv.loc[idx, "Category"]) if current_inv.loc[idx, "Category"] in st.session_state.categories_list else 0)
+                    e_unit = st.selectbox("Unit", st.session_state.units_list, index=st.session_state.units_list.index(current_inv.loc[idx, "Unit"]) if current_inv.loc[idx, "Unit"] in st.session_state.units_list else 0)
                     e_price = st.number_input("Last Price", value=float(row["Last Price"]))
                     
                     col_sub1, col_sub2 = st.columns(2)
@@ -442,7 +467,8 @@ elif selected_menu == t_ui["m4"]:
         with st.form("form_add_stock_in_item"):
             if si_search_query:
                 if selected_item_name:
-                    st.success(f"Found [Code: {found_code}] -> **{selected_item_name}**")
+                    display_name_matched = translate_item_name(selected_item_name, lang)
+                    st.success(f"Found [Code: {found_code}] -> **{display_name_matched}**")
                 else:
                     st.error("Item not found.")
             else:
@@ -475,6 +501,8 @@ elif selected_menu == t_ui["m4"]:
         if len(st.session_state["temp_stock_in_cart"]) > 0:
             st.markdown("#### Cart")
             cart_df = pd.DataFrame(st.session_state["temp_stock_in_cart"])
+            if lang == "English":
+                cart_df["Item Name"] = cart_df["Item Name"].apply(lambda x: translate_item_name(x, lang))
             st.dataframe(cart_df, use_container_width=True)
             
             total_si_amount = cart_df["Total"].sum()
@@ -521,9 +549,16 @@ elif selected_menu == t_ui["m5"]:
     if len(current_inv) == 0:
         st.warning("No items available.")
     else:
+        # แปลชื่อสินค้าในตัวเลือก Dropdown เบิกออกตามภาษา
+        item_options = current_inv["Item Name"].tolist()
+        display_item_options = [translate_item_name(x, lang) for x in item_options]
+
         with st.form("stock_out_form"):
             so_date = st.date_input("Date", value=datetime.today())
-            so_item = st.selectbox("Select Item", current_inv["Item Name"].tolist())
+            selected_display_item = st.selectbox("Select Item", display_item_options)
+            
+            # แปลงกลับเป็นชื่อจริงในระบบเพื่อค้นหาข้อมูล
+            so_item = item_options[display_item_options.index(selected_display_item)]
             
             default_unit = "หน่วย"
             current_bal = 0.0
@@ -579,15 +614,18 @@ elif selected_menu == t_ui["m6"]:
 elif selected_menu == t_ui["m7"]:
     st.title(f"{t_ui['m7']} - {selected_company}")
     if len(st.session_state["transaction_history"]) > 0:
-        st.dataframe(st.session_state["transaction_history"], use_container_width=True)
+        hist_df = st.session_state["transaction_history"].copy()
+        if lang == "English":
+            hist_df["Item Name"] = hist_df["Item Name"].apply(lambda x: translate_item_name(x, lang))
+        st.dataframe(hist_df, use_container_width=True)
     else:
         st.info("No transaction history.")
 
 # เมนูที่ 8: รายการสรุปสต็อก & นับสต็อก
 elif selected_menu == t_ui["m8"]:
     st.title(f"{t_ui['m8']} - {selected_company}")
-    if len(current_inv) > 0:
-        st.dataframe(current_inv, use_container_width=True)
+    if len(display_inv) > 0:
+        st.dataframe(display_inv, use_container_width=True)
     else:
         st.info("No stock data.")
 
