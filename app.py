@@ -442,7 +442,7 @@ elif selected_menu == t_ui["m4"]:
             existing_suppliers = current_inv["Supplier"].dropna().unique().tolist()
             si_supplier = st.selectbox("ร้านค้า / Supplier", existing_suppliers if existing_suppliers else ["CP Axtra (Makro)"])
         with col_si3:
-            si_doc_no = st.text_input("เลขที่ใบส่งของ / Invoice No.")
+            si_doc_no = st.text_input("เลขที่ใบส่งของ/ใบเสร็จรับเงิน/ใบกำกับภาษี")
 
         st.markdown("---")
         st.subheader("เลือกและเพิ่มสินค้าเข้าตะกร้ารับเข้า")
