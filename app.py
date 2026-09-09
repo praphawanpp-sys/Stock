@@ -28,6 +28,31 @@ if "companies_list" not in st.session_state:
         "Harvest Bakery And Restaurant"
     ]
 
+# เพิ่มการกำหนดสิทธิ์ผู้ใช้งานและสาขาที่รับผิดชอบ
+if "users_db" not in st.session_state:
+    st.session_state.users_db = {
+        "owner_master": {
+            "name": "Mr. Owner", 
+            "role": "Owner", 
+            "branches": st.session_state.companies_list
+        },
+        "manager_general": {
+            "name": "General Manager", 
+            "role": "Manager", 
+            "branches": st.session_state.companies_list
+        },
+        "admin_daddy_deli": {
+            "name": "Admin Daddy Deli", 
+            "role": "Admin", 
+            "branches": ["Daddy Deli"]
+        },
+        "admin_pattaya": {
+            "name": "Admin Pattaya Group", 
+            "role": "Admin", 
+            "branches": ["Daddy Deli Pattaya Group"]
+        }
+    }
+
 if "company_details" not in st.session_state:
     st.session_state["company_details"] = {
         "Daddy Deli": {
@@ -122,7 +147,7 @@ if "temp_stock_in_cart" not in st.session_state:
 VAT_TYPES_LIST = ["Non Vat", "Vat 7%", "Vat Excluded"]
 
 # ----------------------------------------------------
-# 2. DICTIONARY TRANSLATIONS & MAPPINGS (ระบบแปลภาษาและคำศัพท์)
+# 2. DICTIONARY TRANSLATIONS & MAPPINGS
 # ----------------------------------------------------
 item_translations = {
     "นมจืด 2 ลิตร": "Fresh Milk 2 Liters"
@@ -207,24 +232,29 @@ texts = {
 }
 
 # ----------------------------------------------------
-# 3. SIDEBAR CONFIGURATION
+# 3. SIDEBAR CONFIGURATION & ROLE-BASED ACCESS CONTROL
 # ----------------------------------------------------
 st.sidebar.markdown("### 🌐 ภาษา / Language")
 lang = st.sidebar.selectbox("Language", ["ไทย (Thai)", "English"], label_visibility="collapsed")
 t_ui = texts[lang]
 
 st.sidebar.markdown(f"### {t_ui['user_title']}")
-current_user = st.sidebar.selectbox("User", ["owner_master", "staff_procurement"], label_visibility="collapsed")
-user_info = {"Name": "Mr. Owner" if current_user == "owner_master" else "Staff PR", "Role": "Owner" if current_user == "owner_master" else "Staff"}
+current_user_key = st.sidebar.selectbox("User", list(st.session_state.users_db.keys()), label_visibility="collapsed")
+current_user_data = st.session_state.users_db[current_user_key]
+
+user_role = current_user_data["role"]
+allowed_branches = current_user_data["branches"]
 
 st.sidebar.markdown(f"### {t_ui['company_title']}")
-selected_company = st.sidebar.selectbox("Company", st.session_state.companies_list, label_visibility="collapsed")
+# กรองรายชื่อบริษัทตามสิทธิ์ของผู้ใช้งาน (Owner / Manager เห็นทั้งหมด, Admin เห็นเฉพาะที่กำหนด)
+selected_company = st.sidebar.selectbox("Company", allowed_branches, label_visibility="collapsed")
 
 curr_comp_details = st.session_state["company_details"].get(selected_company, {})
 comp_display_name = curr_comp_details.get('name_en' if lang == 'English' else 'name', selected_company)
+
 st.sidebar.markdown(f"**{comp_display_name}**")
 st.sidebar.caption(f"Address: {curr_comp_details.get('address', '-')}\n\nTax ID: {curr_comp_details.get('tax_id', '-')}\n\nContact: {curr_comp_details.get('contact', '-')}")
-st.sidebar.info(f"**{user_info['Name']}**\n\nRole: {user_info['Role']}")
+st.sidebar.info(f"**{current_user_data['name']}**\n\nRole: **{user_role}**\n\nAccess Branches: {', '.join(allowed_branches)}")
 
 # ----------------------------------------------------
 # 4. MAIN NAVIGATION MENU
@@ -249,7 +279,6 @@ if selected_company not in st.session_state["company_inventories"]:
     ])
 current_inv = st.session_state["company_inventories"][selected_company]
 
-# แปลงภาษาของข้อมูลใน DataFrame ตามภาษาที่เลือกแสดงผล
 display_inv = current_inv.copy()
 if len(display_inv) > 0 and lang == "English":
     display_inv["Item Name"] = display_inv["Item Name"].apply(lambda x: translate_item_name(x, lang))
@@ -259,7 +288,6 @@ if len(display_inv) > 0 and lang == "English":
 # 5. ROUTING LOGIC
 # ----------------------------------------------------
 
-# เมนูที่ 1: แดชบอร์ดภาพรวม
 if selected_menu == t_ui["m1"]:
     st.title(f"{t_ui['m1']} - {comp_display_name}")
     col1, col2, col3 = st.columns(3)
@@ -273,7 +301,6 @@ if selected_menu == t_ui["m1"]:
     else:
         st.info("No items in this branch." if lang == "English" else "ยังไม่มีข้อมูลสินค้าในระบบสาขานี้")
 
-# เมนูที่ 2: การจัดการรายการสินค้า
 elif selected_menu == t_ui["m2"]:
     st.title(f"{t_ui['m2']} - {comp_display_name}")
     st.caption("Summary of all items in this branch." if lang == "English" else "สรุปสินค้าทั้งหมดของบริษัท/สาขานั้นๆ ว่ามีสินค้าอะไรบ้าง")
@@ -355,7 +382,6 @@ elif selected_menu == t_ui["m2"]:
     else:
         st.info("No items available." if lang == "English" else "ยังไม่มีรายการสินค้า")
 
-# เมนูที่ 3: เพิ่มรายการสินค้าใหม่ (ปรับให้เหลือแท็บเฉพาะสินค้า หน่วยนับ และหมวดหมู่)
 elif selected_menu == t_ui["m3"]:
     st.title(f"{t_ui['m3']} - {comp_display_name}")
     tab1, tab2, tab3 = st.tabs([
@@ -437,7 +463,6 @@ elif selected_menu == t_ui["m3"]:
                 else:
                     st.warning("Category already exists or invalid.")
 
-# เมนูที่ 4: รับสินค้า (Stock In)
 elif selected_menu == t_ui["m4"]:
     st.title(f"{t_ui['m4']} - {comp_display_name}")
     if len(current_inv) == 0:
@@ -554,7 +579,6 @@ elif selected_menu == t_ui["m4"]:
                     st.success("Stock updated successfully!")
                     st.rerun()
 
-# เมนูที่ 5: เบิกสินค้า (Stock Out)
 elif selected_menu == t_ui["m5"]:
     st.title(f"{t_ui['m5']} - {comp_display_name}")
     if len(current_inv) == 0:
@@ -604,7 +628,6 @@ elif selected_menu == t_ui["m5"]:
                     st.success("Stock out successful!")
                     st.rerun()
 
-# เมนูที่ 6: ระบบขอซื้อ (PR) & ใบสั่งซื้อ (PO)
 elif selected_menu == t_ui["m6"]:
     st.title(f"{t_ui['m6']} - {comp_display_name}")
     pr_tab1, pr_tab2 = st.tabs(["📄 1. PR", "📦 2. PO"])
@@ -619,7 +642,6 @@ elif selected_menu == t_ui["m6"]:
         st.subheader("Purchase Orders (PO)")
         st.info("PO system active.")
 
-# เมนูที่ 7: ประวัติการทำรายการ
 elif selected_menu == t_ui["m7"]:
     st.title(f"{t_ui['m7']} - {comp_display_name}")
     if len(st.session_state["transaction_history"]) > 0:
@@ -630,7 +652,6 @@ elif selected_menu == t_ui["m7"]:
     else:
         st.info("No transaction history.")
 
-# เมนูที่ 8: รายการสรุปสต็อก & นับสต็อก
 elif selected_menu == t_ui["m8"]:
     st.title(f"{t_ui['m8']} - {comp_display_name}")
     if len(display_inv) > 0:
@@ -638,7 +659,6 @@ elif selected_menu == t_ui["m8"]:
     else:
         st.info("No stock data.")
 
-# เมนูที่ 9: ตั้งค่าข้อมูลบริษัทและแอดมิน (ย้ายหน้าตั้งค่าบริษัทมาไว้ที่นี่เรียบร้อยแล้ว)
 elif selected_menu == t_ui["m9"]:
     st.title(f"{t_ui['m9']} - {comp_display_name}")
     
@@ -650,11 +670,11 @@ elif selected_menu == t_ui["m9"]:
         st.image(existing_logo, width=150, caption="Company Logo" if lang == "English" else "โลโก้ปัจจุบันของบริษัท")
     
     with st.form("company_info_form_in_settings"):
-        c_name = st.text_input("Company Name (TH)" if lang == "English" else "1. ชื่อร้าน", value=curr_details.get("name", selected_company))
-        c_name_en = st.text_input("Company Name (EN)" if lang == "English" else "ชื่อบริษัท/สาขา", value=curr_details.get("name_en", ""))
+        c_name = st.text_input("Company Name (TH)" if lang == "English" else "1. ชื่อบริษัท/สาขา (ภาษาไทย)", value=curr_details.get("name", selected_company))
+        c_name_en = st.text_input("Company Name (EN)" if lang == "English" else "ชื่อบริษัท/สาขา (ภาษาอังกฤษ)", value=curr_details.get("name_en", ""))
         c_address = st.text_area("Address" if lang == "English" else "2. ที่อยู่", value=curr_details.get("address", ""))
         c_tax = st.text_input("Tax ID" if lang == "English" else "3. เลขที่ผู้เสียภาษี", value=curr_details.get("tax_id", ""))
-        c_contact = st.text_input("Contact" if lang == "English" else "4. ข้อมูลแอดมิน/ผู้ดูแล", value=curr_details.get("contact", ""))
+        c_contact = st.text_input("Contact" if lang == "English" else "4. ข้อมูลติดต่อ / เซลล์", value=curr_details.get("contact", ""))
         
         uploaded_logo = st.file_uploader("Upload Logo", type=["png", "jpg", "jpeg"], key="logo_settings_page")
         if st.form_submit_button("Save Store Info" if lang == "English" else "💾 บันทึกข้อมูลบริษัท"):
