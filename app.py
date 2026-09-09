@@ -161,9 +161,8 @@ texts = {
         "m9": "⚙️ ตั้งค่าข้อมูลบริษัทและแอดมิน",
         "add_item_title": "เพิ่มรายการสินค้าใหม่",
         "tab_add": "1. เพิ่มรายการสินค้าใหม่",
-        "tab_store": "2. เพิ่ม/แก้ไขข้อมูลร้านค้า",
-        "tab_unit": "3. เพิ่ม/แก้ไขหน่วยนับ (Units)",
-        "tab_cat": "4. เพิ่ม/แก้ไขหมวดหมู่สินค้า (Categories)",
+        "tab_unit": "2. เพิ่ม/แก้ไขหน่วยนับ (Units)",
+        "tab_cat": "3. เพิ่ม/แก้ไขหมวดหมู่สินค้า (Categories)",
         "lbl_supplier": "ชื่อร้านค้า (Supplier)",
         "lbl_sku": "รหัสสินค้า",
         "lbl_item_name": "ชื่อสินค้า",
@@ -191,9 +190,8 @@ texts = {
         "m9": "⚙️ Settings",
         "add_item_title": "Add New Items",
         "tab_add": "1. Add New Items",
-        "tab_store": "2. Store Info Setup",
-        "tab_unit": "3. Manage Units",
-        "tab_cat": "4. Manage Categories",
+        "tab_unit": "2. Manage Units",
+        "tab_cat": "3. Manage Categories",
         "lbl_supplier": "Supplier Name",
         "lbl_sku": "Product Code",
         "lbl_item_name": "Item Name",
@@ -357,11 +355,11 @@ elif selected_menu == t_ui["m2"]:
     else:
         st.info("No items available." if lang == "English" else "ยังไม่มีรายการสินค้า")
 
-# เมนูที่ 3: เพิ่มรายการสินค้าใหม่
+# เมนูที่ 3: เพิ่มรายการสินค้าใหม่ (ปรับให้เหลือแท็บเฉพาะสินค้า หน่วยนับ และหมวดหมู่)
 elif selected_menu == t_ui["m3"]:
     st.title(f"{t_ui['m3']} - {comp_display_name}")
-    tab1, tab2, tab3, tab4 = st.tabs([
-        t_ui["tab_add"], t_ui["tab_store"], t_ui["tab_unit"], t_ui["tab_cat"]
+    tab1, tab2, tab3 = st.tabs([
+        t_ui["tab_add"], t_ui["tab_unit"], t_ui["tab_cat"]
     ])
 
     with tab1:
@@ -416,32 +414,6 @@ elif selected_menu == t_ui["m3"]:
                         st.success(t_ui["success_save"])
 
     with tab2:
-        st.subheader("Store Info" if lang == "English" else "ตั้งค่าข้อมูลบริษัท / สาขา (ที่อยู่ / โลโก้)")
-        curr_details = st.session_state["company_details"].get(selected_company, {
-            "name": selected_company, "address": "", "tax_id": "", "contact": ""
-        })
-        existing_logo = st.session_state["company_logos"].get(selected_company)
-        if existing_logo is not None:
-            st.image(existing_logo, width=150, caption="Company Logo" if lang == "English" else "โลโก้ปัจจุบันของบริษัท")
-        
-        with st.form("company_info_form_in_add"):
-            c_name = st.text_input("Company Name (TH)" if lang == "English" else "1. ชื่อบริษัท/สาขา (ภาษาไทย)", value=curr_details.get("name", selected_company))
-            c_name_en = st.text_input("Company Name (EN)" if lang == "English" else "ชื่อบริษัท/สาขา (ภาษาอังกฤษ)", value=curr_details.get("name_en", ""))
-            c_address = st.text_area("Address" if lang == "English" else "2. ที่อยู่", value=curr_details.get("address", ""))
-            c_tax = st.text_input("Tax ID" if lang == "English" else "3. เลขที่ผู้เสียภาษี", value=curr_details.get("tax_id", ""))
-            c_contact = st.text_input("Contact" if lang == "English" else "4. ข้อมูลติดต่อ / เซลล์", value=curr_details.get("contact", ""))
-            
-            uploaded_logo = st.file_uploader("Upload Logo", type=["png", "jpg", "jpeg"], key="logo_add_page")
-            if st.form_submit_button("Save Store Info" if lang == "English" else "💾 บันทึกข้อมูลบริษัท"):
-                st.session_state["company_details"][selected_company] = {
-                    "name": c_name, "name_en": c_name_en, "address": c_address, "tax_id": c_tax, "contact": c_contact
-                }
-                if uploaded_logo is not None:
-                    st.session_state["company_logos"][selected_company] = uploaded_logo
-                st.success("Saved!" if lang == "English" else "บันทึกข้อมูลบริษัทเรียบร้อยแล้ว!")
-                st.rerun()
-
-    with tab3:
         st.subheader("Units Management" if lang == "English" else "หน่วยนับสินค้า (Units)")
         with st.form("unit_mgmt_form"):
             new_unit = st.text_input("New Unit" if lang == "English" else "เพิ่มหน่วยใหม่")
@@ -453,7 +425,7 @@ elif selected_menu == t_ui["m3"]:
                 else:
                     st.warning("Unit already exists or invalid.")
 
-    with tab4:
+    with tab3:
         st.subheader("Categories Management" if lang == "English" else "หมวดหมู่สินค้า (Categories)")
         with st.form("cat_mgmt_form"):
             new_cat = st.text_input("New Category" if lang == "English" else "เพิ่มหมวดหมู่ใหม่")
@@ -666,7 +638,30 @@ elif selected_menu == t_ui["m8"]:
     else:
         st.info("No stock data.")
 
-# เมนูที่ 9: ตั้งค่าข้อมูลบริษัทและแอดมิน
+# เมนูที่ 9: ตั้งค่าข้อมูลบริษัทและแอดมิน (ย้ายหน้าตั้งค่าบริษัทมาไว้ที่นี่เรียบร้อยแล้ว)
 elif selected_menu == t_ui["m9"]:
     st.title(f"{t_ui['m9']} - {comp_display_name}")
-    st.info("Settings panel.")
+    
+    curr_details = st.session_state["company_details"].get(selected_company, {
+        "name": selected_company, "address": "", "tax_id": "", "contact": ""
+    })
+    existing_logo = st.session_state["company_logos"].get(selected_company)
+    if existing_logo is not None:
+        st.image(existing_logo, width=150, caption="Company Logo" if lang == "English" else "โลโก้ปัจจุบันของบริษัท")
+    
+    with st.form("company_info_form_in_settings"):
+        c_name = st.text_input("Company Name (TH)" if lang == "English" else "1. ชื่อร้าน", value=curr_details.get("name", selected_company))
+        c_name_en = st.text_input("Company Name (EN)" if lang == "English" else "ชื่อบริษัท/สาขา", value=curr_details.get("name_en", ""))
+        c_address = st.text_area("Address" if lang == "English" else "2. ที่อยู่", value=curr_details.get("address", ""))
+        c_tax = st.text_input("Tax ID" if lang == "English" else "3. เลขที่ผู้เสียภาษี", value=curr_details.get("tax_id", ""))
+        c_contact = st.text_input("Contact" if lang == "English" else "4. ข้อมูลแอดมิน/ผู้ดูแล", value=curr_details.get("contact", ""))
+        
+        uploaded_logo = st.file_uploader("Upload Logo", type=["png", "jpg", "jpeg"], key="logo_settings_page")
+        if st.form_submit_button("Save Store Info" if lang == "English" else "💾 บันทึกข้อมูลบริษัท"):
+            st.session_state["company_details"][selected_company] = {
+                "name": c_name, "name_en": c_name_en, "address": c_address, "tax_id": c_tax, "contact": c_contact
+            }
+            if uploaded_logo is not None:
+                st.session_state["company_logos"][selected_company] = uploaded_logo
+            st.success("Saved!" if lang == "English" else "บันทึกข้อมูลบริษัทเรียบร้อยแล้ว!")
+            st.rerun()
