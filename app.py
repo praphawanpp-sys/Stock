@@ -18,16 +18,6 @@ if "units_list" not in st.session_state:
 if "categories_list" not in st.session_state:
     st.session_state.categories_list = ["นม / Milk", "เบเกอรี่ / Bakery", "เครื่องดื่ม / Beverage", "วัตถุดิบอาหาร / Ingredients"]
 
-if "companies_list" not in st.session_state:
-    st.session_state.companies_list = [
-        "Daddy Deli",
-        "Daddy Deli Beach House",
-        "Daddy Deli Pattaya Group",
-        "Harvest Cafe",
-        "Taboo By Daddy Deli",
-        "Harvest Bakery And Restaurant"
-    ]
-
 if "company_details" not in st.session_state:
     st.session_state["company_details"] = {
         "Daddy Deli": {
