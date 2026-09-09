@@ -18,6 +18,16 @@ if "units_list" not in st.session_state:
 if "categories_list" not in st.session_state:
     st.session_state.categories_list = ["นม / Milk", "เบเกอรี่ / Bakery", "เครื่องดื่ม / Beverage", "วัตถุดิบอาหาร / Ingredients"]
 
+if "companies_list" not in st.session_state:
+    st.session_state.companies_list = [
+        "Daddy Deli",
+        "Daddy Deli Beach House",
+        "Daddy Deli Pattaya Group",
+        "Harvest Cafe",
+        "Taboo By Daddy Deli",
+        "Harvest Bakery And Restaurant"
+    ]
+
 if "company_details" not in st.session_state:
     st.session_state["company_details"] = {
         "Daddy Deli": {
@@ -25,53 +35,43 @@ if "company_details" not in st.session_state:
             "name_en": "The Lake Lodge Group Co.,Ltd. ( Head Office )",
             "address": "No.17 Moo.7 Hin Lek Fai Subdistrict, Hua Hin District, Prachuap Khiri Khan Province 77110",
             "tax_id": "0775565003672",
-            "contact": "-"
+            "contact": "0775565003672"
         },
         "Daddy Deli Beach House": {
             "name": "บริษัท แดดดี้ส์ เดลี่ บีชเฮ้าส์ จำกัด ( สำนักงานใหญ่ )",
             "name_en": "Daddy Deli Beach House Co.,Ltd. ( Head Office )",
             "address": "No.19 Soi Moo Ban Khaotao, Nong Kae, Hua Hin, Prachuap Khiri Khan Province 77110",
             "tax_id": "0775569000872",
-            "contact": "-"
+            "contact": "0775569000872"
         },
         "Daddy Deli Pattaya Group": {
             "name": "บริษัท แดดดี้ส์ เดลี่ พัทยา กรุ๊ป จำกัด ( สำนักงานใหญ่ )",
             "name_en": "Daddy Deli Pattaya Group Co.,Ltd. ( Head Office )",
             "address": "No.391/116 Moo 10, Nong Prue Subdistrict, Bang Lamung District, Chonburi Province 20150",
             "tax_id": "0205569016935",
-            "contact": "-"
+            "contact": "0205569016935"
         },
         "Harvest Cafe": {
             "name": "บริษัท เดอะ เล็ค ล็อดจ์ กรุ๊ป จำกัด ( สาขา 0001 )",
             "name_en": "The Lake Lodge Group Co.,Ltd. ( Branch 0001 )",
             "address": "779 Village No.7 Hin Lek Fai Subdistrict, Hua Hin District, Prachuap Khiri Khan Province 77110",
             "tax_id": "0775565003672",
-            "contact": "-"
+            "contact": "0775565003672"
         },
         "Taboo By Daddy Deli": {
             "name": "บริษัท เดอะ เล็ค ล็อดจ์ กรุ๊ป จำกัด ( สาขา 0002 )",
             "name_en": "The Lake Lodge Group Co.,Ltd. ( Branch 0002 )",
             "address": "No.10/238 Soi Moo Ban Samor Phrong, Hua Hin District, Prachuap Khiri Khan Province 77110",
             "tax_id": "0775565003672",
-            "contact": "-"
+            "contact": "0775565003672"
         },
         "Harvest Bakery And Restaurant": {
             "name": "บริษัท ฮาร์เวสต์ เบเกอรี่ แอนด์ เรสเตอรองต์ จำกัด ( สำนักงานใหญ่ )",
             "name_en": "Harvest Bakery And Restaurant Co.,Ltd. ( Head Office )",
             "address": "779 Village No.7 Hin Lek Fai Subdistrict, Hua Hin District, Prachuap Khiri Khan Province 77110",
             "tax_id": "0775569002727",
-            "contact": "-"
+            "contact": "0775569002727"
         }
-    }
-
-if "company_details" not in st.session_state:
-    st.session_state["company_details"] = {
-        "Daddy Deli (Head Office)": {"name": "Daddy Deli (Head Office)", "address": "กรุงเทพมหานคร", "tax_id": "01055xxxxxxxx", "contact": "02-xxx-xxxx"},
-        "Harvest Cafe (Branch 0001)": {"name": "Harvest Cafe (Branch 0001)", "address": "สาขา 0001", "tax_id": "01055yyyyyyyy", "contact": "02-yyy-yyyy"},
-        "Taboo By Daddy Deli (Branch 0002)": {"name": "Taboo By Daddy Deli (Branch 0002)", "address": "สาขา 0002", "tax_id": "01055zzzzzzzz", "contact": "02-zzz-zzzz"},
-        "Daddy Deli Pattaya Group (Head Office)": {"name": "Daddy Deli Pattaya Group (Head Office)", "address": "พัทยา ชลบุรี", "tax_id": "01055aaaaaaaa", "contact": "038-aaa-aaaa"},
-        "Harvest Bakery And Restaurant (Head Office)": {"name": "Harvest Bakery And Restaurant (Head Office)", "address": "กรุงเทพมหานคร", "tax_id": "01055bbbbbbbb", "contact": "02-bbb-bbbb"},
-        "Daddy Deli Beach House (Head Office)": {"name": "Daddy Deli Beach House (Head Office)", "address": "ภูเก็ต", "tax_id": "01055cccccccc", "contact": "076-ccc-cccc"}
     }
 
 if "company_logos" not in st.session_state:
@@ -94,7 +94,7 @@ if "company_inventories" not in st.session_state:
     
     st.session_state["company_inventories"] = {}
     for comp in st.session_state.companies_list:
-        if comp == "Daddy Deli (Head Office)":
+        if comp == "Daddy Deli":
             st.session_state["company_inventories"][comp] = initial_demo_df.copy()
         else:
             st.session_state["company_inventories"][comp] = pd.DataFrame(columns=[
@@ -223,6 +223,8 @@ st.sidebar.markdown(f"### {t_ui['company_title']}")
 selected_company = st.sidebar.selectbox("Company", st.session_state.companies_list, label_visibility="collapsed")
 
 curr_comp_details = st.session_state["company_details"].get(selected_company, {})
+comp_display_name = curr_comp_details.get('name_en' if lang == 'English' else 'name', selected_company)
+st.sidebar.markdown(f"**{comp_display_name}**")
 st.sidebar.caption(f"Address: {curr_comp_details.get('address', '-')}\n\nTax ID: {curr_comp_details.get('tax_id', '-')}\n\nContact: {curr_comp_details.get('contact', '-')}")
 st.sidebar.info(f"**{user_info['Name']}**\n\nRole: {user_info['Role']}")
 
@@ -261,7 +263,7 @@ if len(display_inv) > 0 and lang == "English":
 
 # เมนูที่ 1: แดชบอร์ดภาพรวม
 if selected_menu == t_ui["m1"]:
-    st.title(f"{t_ui['m1']} - {selected_company}")
+    st.title(f"{t_ui['m1']} - {comp_display_name}")
     col1, col2, col3 = st.columns(3)
     col1.metric("Total Items" if lang == "English" else "จำนวนรายการสินค้าทั้งหมด", f"{len(display_inv)}")
     col2.metric("Total PRs" if lang == "English" else "ใบขอซื้อ (PR) ทั้งหมด", f"{len(st.session_state['purchase_requests'])}")
@@ -275,7 +277,7 @@ if selected_menu == t_ui["m1"]:
 
 # เมนูที่ 2: การจัดการรายการสินค้า
 elif selected_menu == t_ui["m2"]:
-    st.title(f"{t_ui['m2']} - {selected_company}")
+    st.title(f"{t_ui['m2']} - {comp_display_name}")
     st.caption("Summary of all items in this branch." if lang == "English" else "สรุปสินค้าทั้งหมดของบริษัท/สาขานั้นๆ ว่ามีสินค้าอะไรบ้าง")
     
     if len(display_inv) > 0:
@@ -357,7 +359,7 @@ elif selected_menu == t_ui["m2"]:
 
 # เมนูที่ 3: เพิ่มรายการสินค้าใหม่
 elif selected_menu == t_ui["m3"]:
-    st.title(f"{t_ui['m3']} - {selected_company}")
+    st.title(f"{t_ui['m3']} - {comp_display_name}")
     tab1, tab2, tab3, tab4 = st.tabs([
         t_ui["tab_add"], t_ui["tab_store"], t_ui["tab_unit"], t_ui["tab_cat"]
     ])
@@ -423,7 +425,8 @@ elif selected_menu == t_ui["m3"]:
             st.image(existing_logo, width=150, caption="Company Logo" if lang == "English" else "โลโก้ปัจจุบันของบริษัท")
         
         with st.form("company_info_form_in_add"):
-            c_name = st.text_input("Company Name" if lang == "English" else "1. ชื่อบริษัท/สาขา", value=curr_details.get("name", selected_company))
+            c_name = st.text_input("Company Name (TH)" if lang == "English" else "1. ชื่อบริษัท/สาขา (ภาษาไทย)", value=curr_details.get("name", selected_company))
+            c_name_en = st.text_input("Company Name (EN)" if lang == "English" else "ชื่อบริษัท/สาขา (ภาษาอังกฤษ)", value=curr_details.get("name_en", ""))
             c_address = st.text_area("Address" if lang == "English" else "2. ที่อยู่", value=curr_details.get("address", ""))
             c_tax = st.text_input("Tax ID" if lang == "English" else "3. เลขที่ผู้เสียภาษี", value=curr_details.get("tax_id", ""))
             c_contact = st.text_input("Contact" if lang == "English" else "4. ข้อมูลติดต่อ / เซลล์", value=curr_details.get("contact", ""))
@@ -431,7 +434,7 @@ elif selected_menu == t_ui["m3"]:
             uploaded_logo = st.file_uploader("Upload Logo", type=["png", "jpg", "jpeg"], key="logo_add_page")
             if st.form_submit_button("Save Store Info" if lang == "English" else "💾 บันทึกข้อมูลบริษัท"):
                 st.session_state["company_details"][selected_company] = {
-                    "name": c_name, "address": c_address, "tax_id": c_tax, "contact": c_contact
+                    "name": c_name, "name_en": c_name_en, "address": c_address, "tax_id": c_tax, "contact": c_contact
                 }
                 if uploaded_logo is not None:
                     st.session_state["company_logos"][selected_company] = uploaded_logo
@@ -464,7 +467,7 @@ elif selected_menu == t_ui["m3"]:
 
 # เมนูที่ 4: รับสินค้า (Stock In)
 elif selected_menu == t_ui["m4"]:
-    st.title(f"{t_ui['m4']} - {selected_company}")
+    st.title(f"{t_ui['m4']} - {comp_display_name}")
     if len(current_inv) == 0:
         st.warning("No items available." if lang == "English" else "ยังไม่มีรายการสินค้าในระบบ กรุณาเพิ่มรายการสินค้าก่อน")
     else:
@@ -581,11 +584,10 @@ elif selected_menu == t_ui["m4"]:
 
 # เมนูที่ 5: เบิกสินค้า (Stock Out)
 elif selected_menu == t_ui["m5"]:
-    st.title(f"{t_ui['m5']} - {selected_company}")
+    st.title(f"{t_ui['m5']} - {comp_display_name}")
     if len(current_inv) == 0:
         st.warning("No items available.")
     else:
-        # แปลชื่อสินค้าในตัวเลือก Dropdown เบิกออกตามภาษา
         item_options = current_inv["Item Name"].tolist()
         display_item_options = [translate_item_name(x, lang) for x in item_options]
 
@@ -593,7 +595,6 @@ elif selected_menu == t_ui["m5"]:
             so_date = st.date_input("Date", value=datetime.today())
             selected_display_item = st.selectbox("Select Item", display_item_options)
             
-            # แปลงกลับเป็นชื่อจริงในระบบเพื่อค้นหาข้อมูล
             so_item = item_options[display_item_options.index(selected_display_item)]
             
             default_unit = "หน่วย"
@@ -633,7 +634,7 @@ elif selected_menu == t_ui["m5"]:
 
 # เมนูที่ 6: ระบบขอซื้อ (PR) & ใบสั่งซื้อ (PO)
 elif selected_menu == t_ui["m6"]:
-    st.title(f"{t_ui['m6']} - {selected_company}")
+    st.title(f"{t_ui['m6']} - {comp_display_name}")
     pr_tab1, pr_tab2 = st.tabs(["📄 1. PR", "📦 2. PO"])
 
     with pr_tab1:
@@ -648,7 +649,7 @@ elif selected_menu == t_ui["m6"]:
 
 # เมนูที่ 7: ประวัติการทำรายการ
 elif selected_menu == t_ui["m7"]:
-    st.title(f"{t_ui['m7']} - {selected_company}")
+    st.title(f"{t_ui['m7']} - {comp_display_name}")
     if len(st.session_state["transaction_history"]) > 0:
         hist_df = st.session_state["transaction_history"].copy()
         if lang == "English":
@@ -659,7 +660,7 @@ elif selected_menu == t_ui["m7"]:
 
 # เมนูที่ 8: รายการสรุปสต็อก & นับสต็อก
 elif selected_menu == t_ui["m8"]:
-    st.title(f"{t_ui['m8']} - {selected_company}")
+    st.title(f"{t_ui['m8']} - {comp_display_name}")
     if len(display_inv) > 0:
         st.dataframe(display_inv, use_container_width=True)
     else:
@@ -667,5 +668,5 @@ elif selected_menu == t_ui["m8"]:
 
 # เมนูที่ 9: ตั้งค่าข้อมูลบริษัทและแอดมิน
 elif selected_menu == t_ui["m9"]:
-    st.title(f"{t_ui['m9']} - {selected_company}")
+    st.title(f"{t_ui['m9']} - {comp_display_name}")
     st.info("Settings panel.")
