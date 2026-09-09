@@ -28,73 +28,85 @@ if "companies_list" not in st.session_state:
         "Harvest Bakery And Restaurant"
     ]
 
-# เพิ่มการกำหนดสิทธิ์ผู้ใช้งานและสาขาที่รับผิดชอบ
 if "users_db" not in st.session_state:
     st.session_state.users_db = {
         "owner_master": {
-            "name": "Mr. Owner", 
+            "name": "คุณเจ้าของ (Owner)", 
+            "phone": "081-111-1111",
+            "email": "owner@daddydeli.com",
             "role": "Owner", 
-            "branches": st.session_state.companies_list
+            "branches": st.session_state.companies_list  
         },
         "manager_general": {
-            "name": "General Manager", 
+            "name": "ผู้จัดการทั่วไป (Manager)", 
+            "phone": "082-222-2222",
+            "email": "manager@daddydeli.com",
             "role": "Manager", 
-            "branches": st.session_state.companies_list
+            "branches": st.session_state.companies_list  
         },
         "admin_daddy_deli": {
-            "name": "Admin Daddy Deli", 
+            "name": "แอดมิน (เฉพาะ Daddy Deli)", 
+            "phone": "083-333-3333",
+            "email": "admin1@daddydeli.com",
             "role": "Admin", 
-            "branches": ["Daddy Deli"]
-        },
-        "admin_pattaya": {
-            "name": "Admin Pattaya Group", 
-            "role": "Admin", 
-            "branches": ["Daddy Deli Pattaya Group"]
+            "branches": ["Daddy Deli"]  
         }
     }
 
 if "company_details" not in st.session_state:
     st.session_state["company_details"] = {
         "Daddy Deli": {
+            "shop_name": "Daddy Deli Hua Hin",
             "name": "บริษัท เดอะ เล็ค ล็อดจ์ กรุ๊ป จำกัด ( สำนักงานใหญ่ )",
-            "name_en": "The Lake Lodge Group Co.,Ltd. ( Head Office )",
             "address": "No.17 Moo.7 Hin Lek Fai Subdistrict, Hua Hin District, Prachuap Khiri Khan Province 77110",
             "tax_id": "0775565003672",
+            "admin_contact": "คุณแอดมิน (083-333-3333)",
+            "role_permission": "Admin (เฉพาะสาขา)",
             "contact": "0775565003672"
         },
         "Daddy Deli Beach House": {
+            "shop_name": "Daddy Deli Beach House",
             "name": "บริษัท แดดดี้ส์ เดลี่ บีชเฮ้าส์ จำกัด ( สำนักงานใหญ่ )",
-            "name_en": "Daddy Deli Beach House Co.,Ltd. ( Head Office )",
             "address": "No.19 Soi Moo Ban Khaotao, Nong Kae, Hua Hin, Prachuap Khiri Khan Province 77110",
             "tax_id": "0775569000872",
+            "admin_contact": "-",
+            "role_permission": "Manager",
             "contact": "0775569000872"
         },
         "Daddy Deli Pattaya Group": {
+            "shop_name": "Daddy Deli Pattaya",
             "name": "บริษัท แดดดี้ส์ เดลี่ พัทยา กรุ๊ป จำกัด ( สำนักงานใหญ่ )",
-            "name_en": "Daddy Deli Pattaya Group Co.,Ltd. ( Head Office )",
             "address": "No.391/116 Moo 10, Nong Prue Subdistrict, Bang Lamung District, Chonburi Province 20150",
             "tax_id": "0205569016935",
+            "admin_contact": "-",
+            "role_permission": "Manager",
             "contact": "0205569016935"
         },
         "Harvest Cafe": {
+            "shop_name": "Harvest Cafe",
             "name": "บริษัท เดอะ เล็ค ล็อดจ์ กรุ๊ป จำกัด ( สาขา 0001 )",
-            "name_en": "The Lake Lodge Group Co.,Ltd. ( Branch 0001 )",
             "address": "779 Village No.7 Hin Lek Fai Subdistrict, Hua Hin District, Prachuap Khiri Khan Province 77110",
             "tax_id": "0775565003672",
+            "admin_contact": "-",
+            "role_permission": "Manager",
             "contact": "0775565003672"
         },
         "Taboo By Daddy Deli": {
+            "shop_name": "Taboo",
             "name": "บริษัท เดอะ เล็ค ล็อดจ์ กรุ๊ป จำกัด ( สาขา 0002 )",
-            "name_en": "The Lake Lodge Group Co.,Ltd. ( Branch 0002 )",
             "address": "No.10/238 Soi Moo Ban Samor Phrong, Hua Hin District, Prachuap Khiri Khan Province 77110",
             "tax_id": "0775565003672",
+            "admin_contact": "-",
+            "role_permission": "Manager",
             "contact": "0775565003672"
         },
         "Harvest Bakery And Restaurant": {
+            "shop_name": "Harvest Bakery",
             "name": "บริษัท ฮาร์เวสต์ เบเกอรี่ แอนด์ เรสเตอรองต์ จำกัด ( สำนักงานใหญ่ )",
-            "name_en": "Harvest Bakery And Restaurant Co.,Ltd. ( Head Office )",
             "address": "779 Village No.7 Hin Lek Fai Subdistrict, Hua Hin District, Prachuap Khiri Khan Province 77110",
             "tax_id": "0775569002727",
+            "admin_contact": "-",
+            "role_permission": "Manager",
             "contact": "0775569002727"
         }
     }
@@ -183,22 +195,7 @@ texts = {
         "m6": "📝 ระบบขอซื้อ (PR) & ใบสั่งซื้อ (PO)",
         "m7": "⏱️ ประวัติการทำรายการ",
         "m8": "📈 รายการสรุปสต็อก & นับสต็อก",
-        "m9": "⚙️ ตั้งค่าข้อมูลบริษัทและแอดมิน",
-        "add_item_title": "เพิ่มรายการสินค้าใหม่",
-        "tab_add": "1. เพิ่มรายการสินค้าใหม่",
-        "tab_unit": "2. เพิ่ม/แก้ไขหน่วยนับ (Units)",
-        "tab_cat": "3. เพิ่ม/แก้ไขหมวดหมู่สินค้า (Categories)",
-        "lbl_supplier": "ชื่อร้านค้า (Supplier)",
-        "lbl_sku": "รหัสสินค้า",
-        "lbl_item_name": "ชื่อสินค้า",
-        "lbl_category": "หมวดหมู่สินค้า",
-        "lbl_unit": "หน่วยนับ",
-        "lbl_price": "ราคาต่อหน่วย",
-        "lbl_vat": "ประเภทภาษี",
-        "btn_save": "💾 บันทึกเพิ่มรายการสินค้าใหม่",
-        "err_fill": "⚠️ กรุณากรอกรหัสสินค้าและชื่อสินค้าให้ครบถ้วนก่อนบันทึก",
-        "success_update": "🎉 อัปเดตข้อมูลสินค้าเรียบร้อยแล้ว!",
-        "success_save": "✨ บันทึกเพิ่มรายการสินค้าใหม่สำเร็จแล้ว!"
+        "m9": "⚙️ ตั้งค่าข้อมูลบริษัทและแอดมิน"
     },
     "English": {
         "user_title": "👤 Current User",
@@ -212,22 +209,7 @@ texts = {
         "m6": "📝 PR & PO System",
         "m7": "⏱️ Transaction History",
         "m8": "📈 Stock Summary & Count",
-        "m9": "⚙️ Settings",
-        "add_item_title": "Add New Items",
-        "tab_add": "1. Add New Items",
-        "tab_unit": "2. Manage Units",
-        "tab_cat": "3. Manage Categories",
-        "lbl_supplier": "Supplier Name",
-        "lbl_sku": "Product Code",
-        "lbl_item_name": "Item Name",
-        "lbl_category": "Category",
-        "lbl_unit": "Unit",
-        "lbl_price": "Price per Unit",
-        "lbl_vat": "VAT Type",
-        "btn_save": "💾 Save New Item",
-        "err_fill": "⚠️ Please fill in Product Code and Item Name completely.",
-        "success_update": "🎉 Item data updated successfully!",
-        "success_save": "✨ New item saved successfully!"
+        "m9": "⚙️ Settings"
     }
 }
 
@@ -246,14 +228,13 @@ user_role = current_user_data["role"]
 allowed_branches = current_user_data["branches"]
 
 st.sidebar.markdown(f"### {t_ui['company_title']}")
-# กรองรายชื่อบริษัทตามสิทธิ์ของผู้ใช้งาน (Owner / Manager เห็นทั้งหมด, Admin เห็นเฉพาะที่กำหนด)
 selected_company = st.sidebar.selectbox("Company", allowed_branches, label_visibility="collapsed")
 
 curr_comp_details = st.session_state["company_details"].get(selected_company, {})
-comp_display_name = curr_comp_details.get('name_en' if lang == 'English' else 'name', selected_company)
+comp_display_name = curr_comp_details.get('shop_name', selected_company)
 
 st.sidebar.markdown(f"**{comp_display_name}**")
-st.sidebar.caption(f"Address: {curr_comp_details.get('address', '-')}\n\nTax ID: {curr_comp_details.get('tax_id', '-')}\n\nContact: {curr_comp_details.get('contact', '-')}")
+st.sidebar.caption(f"Address: {curr_comp_details.get('address', '-')}\n\nTax ID: {curr_comp_details.get('tax_id', '-')}")
 st.sidebar.info(f"**{current_user_data['name']}**\n\nRole: **{user_role}**\n\nAccess Branches: {', '.join(allowed_branches)}")
 
 # ----------------------------------------------------
@@ -384,304 +365,115 @@ elif selected_menu == t_ui["m2"]:
 
 elif selected_menu == t_ui["m3"]:
     st.title(f"{t_ui['m3']} - {comp_display_name}")
-    tab1, tab2, tab3 = st.tabs([
-        t_ui["tab_add"], t_ui["tab_unit"], t_ui["tab_cat"]
-    ])
-
-    with tab1:
-        st.subheader(t_ui["add_item_title"])
-        with st.form("manual_import_form_tab"):
-            existing_suppliers = current_inv["Supplier"].dropna().unique().tolist() if len(current_inv) > 0 else []
-            if not existing_suppliers:
-                existing_suppliers = ["CP Axtra (Makro)", "CP Axtra (Lotus)", "General Store"]
-            
-            supplier = st.selectbox(t_ui["lbl_supplier"], existing_suppliers)
-            sku = st.text_input(t_ui["lbl_sku"])
-            item_name = st.text_input(t_ui["lbl_item_name"])
-            cat_manual = st.selectbox(t_ui["lbl_category"], st.session_state.categories_list)
-            
-            col_u1, col_u2 = st.columns(2)
-            with col_u1:
-                unit_manual = st.selectbox(t_ui["lbl_unit"], st.session_state.units_list)
-            with col_u2:
-                initial_price = st.number_input(t_ui["lbl_price"], min_value=0.0, value=0.0)
-                
-            vat_type = st.selectbox(t_ui["lbl_vat"], VAT_TYPES_LIST)
-            submit_manual = st.form_submit_button(t_ui["btn_save"])
-
-            if submit_manual:
-                if not sku.strip() or not item_name.strip():
-                    st.error(t_ui["err_fill"])
-                else:
-                    inv = st.session_state["company_inventories"][selected_company]
-                    idx_match = inv.index[inv["Item Name"] == item_name]
-                    if not idx_match.empty:
-                        idx = idx_match[0]
-                        inv.loc[idx, "Supplier"] = supplier
-                        inv.loc[idx, "Category"] = cat_manual
-                        inv.loc[idx, "Unit"] = unit_manual
-                        inv.loc[idx, "Last Price"] = initial_price
-                        st.success(t_ui["success_update"])
-                    else:
-                        new_row = pd.DataFrame([{
-                            "Product Code": sku,
-                            "Item Name": item_name,
-                            "Category": cat_manual,
-                            "Unit": unit_manual,
-                            "Conversion Qty": 1.0,
-                            "Stock Balance": 0.0,
-                            "Last Price": initial_price,
-                            "Supplier": supplier,
-                            "Vat Type": vat_type,
-                        }])
-                        st.session_state["company_inventories"][selected_company] = pd.concat(
-                            [inv, new_row], ignore_index=True
-                        )
-                        st.success(t_ui["success_save"])
-
-    with tab2:
-        st.subheader("Units Management" if lang == "English" else "หน่วยนับสินค้า (Units)")
-        with st.form("unit_mgmt_form"):
-            new_unit = st.text_input("New Unit" if lang == "English" else "เพิ่มหน่วยใหม่")
-            if st.form_submit_button("Add Unit" if lang == "English" else "➕ เพิ่มหน่วยนับ"):
-                if new_unit and new_unit not in st.session_state.units_list:
-                    st.session_state.units_list.append(new_unit)
-                    st.success("Added unit successfully.")
-                    st.rerun()
-                else:
-                    st.warning("Unit already exists or invalid.")
-
-    with tab3:
-        st.subheader("Categories Management" if lang == "English" else "หมวดหมู่สินค้า (Categories)")
-        with st.form("cat_mgmt_form"):
-            new_cat = st.text_input("New Category" if lang == "English" else "เพิ่มหมวดหมู่ใหม่")
-            if st.form_submit_button("Add Category" if lang == "English" else "➕ เพิ่มหมวดหมู่"):
-                if new_cat and new_cat not in st.session_state.categories_list:
-                    st.session_state.categories_list.append(new_cat)
-                    st.success("Added category successfully.")
-                    st.rerun()
-                else:
-                    st.warning("Category already exists or invalid.")
+    st.info("เพิ่มรายการสินค้าใหม่")
 
 elif selected_menu == t_ui["m4"]:
     st.title(f"{t_ui['m4']} - {comp_display_name}")
-    if len(current_inv) == 0:
-        st.warning("No items available." if lang == "English" else "ยังไม่มีรายการสินค้าในระบบ กรุณาเพิ่มรายการสินค้าก่อน")
-    else:
-        col_si1, col_si2, col_si3 = st.columns(3)
-        with col_si1:
-            si_date = st.date_input("Date" if lang == "English" else "วันที่รับสินค้า", value=datetime.today())
-        with col_si2:
-            existing_suppliers = current_inv["Supplier"].dropna().unique().tolist()
-            si_supplier = st.selectbox("Supplier", existing_suppliers if existing_suppliers else ["CP Axtra (Makro)"])
-        with col_si3:
-            si_doc_no = st.text_input("Invoice No.")
-
-        st.markdown("---")
-        st.subheader("Stock In Cart" if lang == "English" else "เลือกและเพิ่มสินค้าเข้าตะกร้ารับเข้า")
-        
-        si_search_query = st.text_input("Search Product Code or Name" if lang == "English" else "🔍 พิมพ์รหัสสินค้า (Product Code) หรือ ชื่อสินค้า เพื่อดึงข้อมูลอัตโนมัติ", value="")
-        
-        selected_item_name = ""
-        default_unit = "หน่วย"
-        default_price = 0.0
-        found_code = ""
-
-        if si_search_query:
-            q = str(si_search_query).strip().lower()
-            res = current_inv[
-                (current_inv["Product Code"].astype(str).str.strip().str.lower() == q) |
-                (current_inv["Item Name"].astype(str).str.lower().str.contains(q, na=False)) |
-                (current_inv["Product Code"].astype(str).str.lower().str.contains(q, na=False))
-            ]
-            if not res.empty:
-                selected_item_name = str(res.iloc[0]["Item Name"])
-                default_unit = str(res.iloc[0]["Unit"])
-                default_price = float(res.iloc[0]["Last Price"])
-                found_code = str(res.iloc[0]["Product Code"])
-
-        with st.form("form_add_stock_in_item"):
-            if si_search_query:
-                if selected_item_name:
-                    display_name_matched = translate_item_name(selected_item_name, lang)
-                    st.success(f"Found [Code: {found_code}] -> **{display_name_matched}**")
-                else:
-                    st.error("Item not found.")
-            else:
-                st.info("Please type product code or name.")
-
-            col_sq1, col_sq2, col_sq3 = st.columns(3)
-            with col_sq1:
-                si_qty = st.number_input("Quantity", min_value=0.1, value=1.0)
-            with col_sq2:
-                unit_idx = st.session_state.units_list.index(default_unit) if default_unit in st.session_state.units_list else 0
-                si_unit = st.selectbox("Unit", st.session_state.units_list, index=unit_idx)
-            with col_sq3:
-                si_price = st.number_input("Price", min_value=0.0, value=default_price)
-
-            add_to_si_cart = st.form_submit_button("Add to Stock In Cart" if lang == "English" else "➕ เพิ่มรายการนี้เข้าตะกร้ารับสินค้า")
-            if add_to_si_cart:
-                if selected_item_name:
-                    st.session_state["temp_stock_in_cart"].append({
-                        "Item Name": selected_item_name,
-                        "Quantity": si_qty,
-                        "Unit": si_unit,
-                        "Price": si_price,
-                        "Total": si_qty * si_price
-                    })
-                    st.success("Added!")
-                    st.rerun()
-                else:
-                    st.error("Invalid item.")
-
-        if len(st.session_state["temp_stock_in_cart"]) > 0:
-            st.markdown("#### Cart")
-            cart_df = pd.DataFrame(st.session_state["temp_stock_in_cart"])
-            if lang == "English":
-                cart_df["Item Name"] = cart_df["Item Name"].apply(lambda x: translate_item_name(x, lang))
-            st.dataframe(cart_df, use_container_width=True)
-            
-            total_si_amount = cart_df["Total"].sum()
-            st.markdown(f"### Total: **{total_si_amount:,.2f} THB**")
-
-            col_sb1, col_sb2 = st.columns(2)
-            with col_sb1:
-                if st.button("Clear Cart"):
-                    st.session_state["temp_stock_in_cart"] = []
-                    st.rerun()
-            with col_sb2:
-                if st.button("Confirm Stock In"):
-                    inv = st.session_state["company_inventories"][selected_company]
-                    for item in st.session_state["temp_stock_in_cart"]:
-                        i_name = item["Item Name"]
-                        i_qty = item["Quantity"]
-                        i_unit = item["Unit"]
-                        i_price = item["Price"]
-                        
-                        idx_match = inv.index[inv["Item Name"] == i_name]
-                        if not idx_match.empty:
-                            idx = idx_match[0]
-                            inv.loc[idx, "Stock Balance"] += i_qty
-                            inv.loc[idx, "Last Price"] = i_price
-
-                        new_trans = pd.DataFrame([{
-                            "Date": str(si_date),
-                            "Branch": selected_company,
-                            "Type": "Stock In",
-                            "Item Name": i_name,
-                            "Quantity": i_qty,
-                            "Unit": i_unit,
-                            "Note": f"Invoice: {si_doc_no} / Supplier: {si_supplier}"
-                        }])
-                        st.session_state["transaction_history"] = pd.concat([st.session_state["transaction_history"], new_trans], ignore_index=True)
-
-                    st.session_state["temp_stock_in_cart"] = []
-                    st.success("Stock updated successfully!")
-                    st.rerun()
 
 elif selected_menu == t_ui["m5"]:
     st.title(f"{t_ui['m5']} - {comp_display_name}")
-    if len(current_inv) == 0:
-        st.warning("No items available.")
-    else:
-        item_options = current_inv["Item Name"].tolist()
-        display_item_options = [translate_item_name(x, lang) for x in item_options]
-
-        with st.form("stock_out_form"):
-            so_date = st.date_input("Date", value=datetime.today())
-            selected_display_item = st.selectbox("Select Item", display_item_options)
-            
-            so_item = item_options[display_item_options.index(selected_display_item)]
-            
-            default_unit = "หน่วย"
-            current_bal = 0.0
-            matched_item = current_inv[current_inv["Item Name"] == so_item]
-            if not matched_item.empty:
-                default_unit = str(matched_item.iloc[0]["Unit"])
-                current_bal = float(matched_item.iloc[0]["Stock Balance"])
-
-            st.info(f"Current Stock: **{current_bal} {default_unit}**")
-
-            so_qty = st.number_input("Quantity", min_value=0.1, value=1.0)
-            so_unit = st.selectbox("Unit", st.session_state.units_list, index=st.session_state.units_list.index(default_unit) if default_unit in st.session_state.units_list else 0)
-            so_note = st.text_input("Note / Department")
-
-            submit_so = st.form_submit_button("Confirm Stock Out")
-            if submit_so:
-                if so_qty > current_bal:
-                    st.error("Insufficient stock!")
-                else:
-                    inv = st.session_state["company_inventories"][selected_company]
-                    idx = inv.index[inv["Item Name"] == so_item][0]
-                    inv.loc[idx, "Stock Balance"] -= so_qty
-                    
-                    new_trans = pd.DataFrame([{
-                        "Date": str(so_date),
-                        "Branch": selected_company,
-                        "Type": "Stock Out",
-                        "Item Name": so_item,
-                        "Quantity": so_qty,
-                        "Unit": so_unit,
-                        "Note": so_note
-                    }])
-                    st.session_state["transaction_history"] = pd.concat([st.session_state["transaction_history"], new_trans], ignore_index=True)
-                    st.success("Stock out successful!")
-                    st.rerun()
 
 elif selected_menu == t_ui["m6"]:
     st.title(f"{t_ui['m6']} - {comp_display_name}")
-    pr_tab1, pr_tab2 = st.tabs(["📄 1. PR", "📦 2. PO"])
-
-    with pr_tab1:
-        st.subheader("Create PR")
-        if "temp_pr_cart" not in st.session_state:
-            st.session_state["temp_pr_cart"] = []
-        st.info("PR system active.")
-
-    with pr_tab2:
-        st.subheader("Purchase Orders (PO)")
-        st.info("PO system active.")
 
 elif selected_menu == t_ui["m7"]:
     st.title(f"{t_ui['m7']} - {comp_display_name}")
-    if len(st.session_state["transaction_history"]) > 0:
-        hist_df = st.session_state["transaction_history"].copy()
-        if lang == "English":
-            hist_df["Item Name"] = hist_df["Item Name"].apply(lambda x: translate_item_name(x, lang))
-        st.dataframe(hist_df, use_container_width=True)
-    else:
-        st.info("No transaction history.")
 
 elif selected_menu == t_ui["m8"]:
     st.title(f"{t_ui['m8']} - {comp_display_name}")
-    if len(display_inv) > 0:
-        st.dataframe(display_inv, use_container_width=True)
-    else:
-        st.info("No stock data.")
 
 elif selected_menu == t_ui["m9"]:
     st.title(f"{t_ui['m9']} - {comp_display_name}")
     
-    curr_details = st.session_state["company_details"].get(selected_company, {
-        "name": selected_company, "address": "", "tax_id": "", "contact": ""
-    })
-    existing_logo = st.session_state["company_logos"].get(selected_company)
-    if existing_logo is not None:
-        st.image(existing_logo, width=150, caption="Company Logo" if lang == "English" else "โลโก้ปัจจุบันของบริษัท")
-    
-    with st.form("company_info_form_in_settings"):
-        c_name = st.text_input("Company Name (TH)" if lang == "English" else "1. ชื่อบริษัท/สาขา (ภาษาไทย)", value=curr_details.get("name", selected_company))
-        c_name_en = st.text_input("Company Name (EN)" if lang == "English" else "ชื่อบริษัท/สาขา (ภาษาอังกฤษ)", value=curr_details.get("name_en", ""))
-        c_address = st.text_area("Address" if lang == "English" else "2. ที่อยู่", value=curr_details.get("address", ""))
-        c_tax = st.text_input("Tax ID" if lang == "English" else "3. เลขที่ผู้เสียภาษี", value=curr_details.get("tax_id", ""))
-        c_contact = st.text_input("Contact" if lang == "English" else "4. ข้อมูลติดต่อ / เซลล์", value=curr_details.get("contact", ""))
+    # เพิ่มแท็บตั้งค่าข้อมูลบริษัท/สาขา และ แท็บเพิ่มแอดมิน/ผู้ดูแล ตามข้อกำหนดใหม่
+    tab_comp, tab_admin = st.tabs(["🏢 1. ตั้งค่าข้อมูลบริษัท/สาขา", "👤 2. เพิ่มแอดมิน/ผู้ดูแล"])
+
+    with tab_comp:
+        curr_details = st.session_state["company_details"].get(selected_company, {
+            "shop_name": selected_company, "name": "", "address": "", "tax_id": "", "admin_contact": "", "role_permission": ""
+        })
+        existing_logo = st.session_state["company_logos"].get(selected_company)
+        if existing_logo is not None:
+            st.image(existing_logo, width=150, caption="โลโก้ปัจจุบันของบริษัท/สาขา")
         
-        uploaded_logo = st.file_uploader("Upload Logo", type=["png", "jpg", "jpeg"], key="logo_settings_page")
-        if st.form_submit_button("Save Store Info" if lang == "English" else "💾 บันทึกข้อมูลบริษัท"):
-            st.session_state["company_details"][selected_company] = {
-                "name": c_name, "name_en": c_name_en, "address": c_address, "tax_id": c_tax, "contact": c_contact
-            }
-            if uploaded_logo is not None:
-                st.session_state["company_logos"][selected_company] = uploaded_logo
-            st.success("Saved!" if lang == "English" else "บันทึกข้อมูลบริษัทเรียบร้อยแล้ว!")
-            st.rerun()
+        with st.form("company_info_form_ordered"):
+            # 1. ชื่อร้าน
+            c_shop_name = st.text_input("1. ชื่อร้าน", value=curr_details.get("shop_name", selected_company))
+            # 2. ชื่อบริษัท/สาขา
+            c_name = st.text_input("2. ชื่อบริษัท/สาขา", value=curr_details.get("name", ""))
+            # 3. ที่อยู่
+            c_address = st.text_area("3. ที่อยู่", value=curr_details.get("address", ""))
+            # 4. เลขที่ผู้เสียภาษี
+            c_tax = st.text_input("4. เลขที่ผู้เสียภาษี", value=curr_details.get("tax_id", ""))
+            # 5. ข้อมูลแอดมิน/ผู้ดูแล
+            c_admin_contact = st.text_input("5. ข้อมูลแอดมิน/ผู้ดูแล", value=curr_details.get("admin_contact", ""))
+            # 6. กำหนดสิทธิ
+            c_role_permission = st.selectbox("6. กำหนดสิทธิ", ["เจ้ายอด (Owner) - ดูข้อมูลได้ทุกบริษัท/สาขา", "Manager - ดูข้อมูลได้ทุกบริษัท/สาขา", "Admin - ดูได้แค่บริษัท/สาขา ที่กำหนด"], index=0)
+            # 7. โลโก้บริษัท/สาขา
+            uploaded_logo = st.file_uploader("7. โลโก้บริษัท/สาขา", type=["png", "jpg", "jpeg"], key="logo_settings_page_v2")
+
+            if st.form_submit_button("💾 บันทึกข้อมูลบริษัท/สาขา"):
+                st.session_state["company_details"][selected_company] = {
+                    "shop_name": c_shop_name,
+                    "name": c_name,
+                    "address": c_address,
+                    "tax_id": c_tax,
+                    "admin_contact": c_admin_contact,
+                    "role_permission": c_role_permission,
+                    "contact": c_tax
+                }
+                if uploaded_logo is not None:
+                    st.session_state["company_logos"][selected_company] = uploaded_logo
+                st.success("บันทึกข้อมูลบริษัท/สาขาเรียบร้อยแล้ว!")
+                st.rerun()
+
+    with tab_admin:
+        st.subheader("เพิ่มแอดมิน/ผู้ดูแลระบบใหม่")
+        with st.form("add_admin_form"):
+            # 1. ชื่อแอดมิน/ผู้ดูแล
+            new_admin_name = st.text_input("1. ชื่อแอดมิน/ผู้ดูแล")
+            # 2. เบอร์โทร
+            new_admin_phone = st.text_input("2. เบอร์โทร")
+            # 3. อีเมลล์
+            new_admin_email = st.text_input("3. อีเมลล์")
+            # 4. สิทธิในการดูแล (ทำเป็นดรอปดาวน์ตามเงื่อนไข)
+            new_admin_role = st.selectbox(
+                "4. สิทธิในการดูแล",
+                [
+                    "เจ้าของ = ดูข้อมูลได้ทุกบริษัท/สาขา",
+                    "Manager = ดูข้อมูลได้ทุกบริษัท/สาขา",
+                    "Admin = ดูได้แค่บริษัท/สาขา ที่กำหนด"
+                ]
+            )
+            # 5. บริษัท/สาขา ที่ดูแล (ทำเป็นดรอปดาวน์ 6 สาขาตามที่กำหนด)
+            new_admin_branch = st.selectbox(
+                "5. บริษัท/สาขา ที่ดูแล",
+                st.session_state.companies_list
+            )
+
+            submit_admin = st.form_submit_button("💾 บันทึกผู้ดูแลระบบใหม่")
+            if submit_admin:
+                if not new_admin_name.strip() or not new_admin_email.strip():
+                    st.error("⚠️ กรุณากรอกชื่อและอีเมลล์ให้ครบถ้วน")
+                else:
+                    # แปลงสิทธิให้ตรงกับระบบภายใน
+                    if "เจ้าของ" in new_admin_role:
+                        role_key = "Owner"
+                        assigned_branches = st.session_state.companies_list
+                    elif "Manager" in new_admin_role:
+                        role_key = "Manager"
+                        assigned_branches = st.session_state.companies_list
+                    else:
+                        role_key = "Admin"
+                        assigned_branches = [new_admin_branch]
+
+                    user_key_id = f"user_{len(st.session_state.users_db) + 1}"
+                    st.session_state.users_db[user_key_id] = {
+                        "name": new_admin_name,
+                        "phone": new_admin_phone,
+                        "email": new_admin_email,
+                        "role": role_key,
+                        "branches": assigned_branches
+                    }
+                    st.success(f"✨ เพิ่มแอดมิน '{new_admin_name}' เรียบร้อยแล้ว!")
+                    st.rerun()
