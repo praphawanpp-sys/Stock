@@ -20,13 +20,59 @@ if "categories_list" not in st.session_state:
 
 if "companies_list" not in st.session_state:
     st.session_state.companies_list = [
-        "Daddy Deli (Head Office)",
-        "Harvest Cafe (Branch 0001)",
-        "Taboo By Daddy Deli (Branch 0002)",
-        "Daddy Deli Pattaya Group (Head Office)",
-        "Harvest Bakery And Restaurant (Head Office)",
-        "Daddy Deli Beach House (Head Office)"
+        "Daddy Deli",
+        "Daddy Deli Beach House",
+        "Daddy Deli Pattaya Group",
+        "Harvest Cafe",
+        "Taboo By Daddy Deli",
+        "Harvest Bakery And Restaurant"
     ]
+
+if "company_details" not in st.session_state:
+    st.session_state["company_details"] = {
+        "Daddy Deli": {
+            "name": "บริษัท เดอะ เล็ค ล็อดจ์ กรุ๊ป จำกัด ( สำนักงานใหญ่ )",
+            "name_en": "The Lake Lodge Group Co.,Ltd. ( Head Office )",
+            "address": "No.17 Moo.7 Hin Lek Fai Subdistrict, Hua Hin District, Prachuap Khiri Khan Province 77110",
+            "tax_id": "0775565003672",
+            "contact": "-"
+        },
+        "Daddy Deli Beach House": {
+            "name": "บริษัท แดดดี้ส์ เดลี่ บีชเฮ้าส์ จำกัด ( สำนักงานใหญ่ )",
+            "name_en": "Daddy Deli Beach House Co.,Ltd. ( Head Office )",
+            "address": "No.19 Soi Moo Ban Khaotao, Nong Kae, Hua Hin, Prachuap Khiri Khan Province 77110",
+            "tax_id": "0775569000872",
+            "contact": "-"
+        },
+        "Daddy Deli Pattaya Group": {
+            "name": "บริษัท แดดดี้ส์ เดลี่ พัทยา กรุ๊ป จำกัด ( สำนักงานใหญ่ )",
+            "name_en": "Daddy Deli Pattaya Group Co.,Ltd. ( Head Office )",
+            "address": "No.391/116 Moo 10, Nong Prue Subdistrict, Bang Lamung District, Chonburi Province 20150",
+            "tax_id": "0205569016935",
+            "contact": "-"
+        },
+        "Harvest Cafe": {
+            "name": "บริษัท เดอะ เล็ค ล็อดจ์ กรุ๊ป จำกัด ( สาขา 0001 )",
+            "name_en": "The Lake Lodge Group Co.,Ltd. ( Branch 0001 )",
+            "address": "779 Village No.7 Hin Lek Fai Subdistrict, Hua Hin District, Prachuap Khiri Khan Province 77110",
+            "tax_id": "0775565003672",
+            "contact": "-"
+        },
+        "Taboo By Daddy Deli": {
+            "name": "บริษัท เดอะ เล็ค ล็อดจ์ กรุ๊ป จำกัด ( สาขา 0002 )",
+            "name_en": "The Lake Lodge Group Co.,Ltd. ( Branch 0002 )",
+            "address": "No.10/238 Soi Moo Ban Samor Phrong, Hua Hin District, Prachuap Khiri Khan Province 77110",
+            "tax_id": "0775565003672",
+            "contact": "-"
+        },
+        "Harvest Bakery And Restaurant": {
+            "name": "บริษัท ฮาร์เวสต์ เบเกอรี่ แอนด์ เรสเตอรองต์ จำกัด ( สำนักงานใหญ่ )",
+            "name_en": "Harvest Bakery And Restaurant Co.,Ltd. ( Head Office )",
+            "address": "779 Village No.7 Hin Lek Fai Subdistrict, Hua Hin District, Prachuap Khiri Khan Province 77110",
+            "tax_id": "0775569002727",
+            "contact": "-"
+        }
+    }
 
 if "company_details" not in st.session_state:
     st.session_state["company_details"] = {
