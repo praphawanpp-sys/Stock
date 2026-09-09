@@ -4,7 +4,7 @@ from datetime import datetime
 
 # ตั้งค่าหน้าเว็บ Streamlit
 st.set_page_config(
-    page_title="ระบบขอซื้อ (PR) & ใบสั่งซื้อ (PO)",
+    page_title="ระบบขอซื้อ (PR) & ใบสั่งซื้อ (PO) - Daddy Deli",
     page_icon="📝",
     layout="wide"
 )
@@ -18,7 +18,6 @@ if "units_list" not in st.session_state:
 if "categories_list" not in st.session_state:
     st.session_state.categories_list = ["นม / Milk", "เบเกอรี่ / Bakery", "เครื่องดื่ม / Beverage", "วัตถุดิบอาหาร / Ingredients"]
 
-# รายชื่อบริษัท/สาขาใหม่ตามที่คุณต้องการ
 if "companies_list" not in st.session_state:
     st.session_state.companies_list = [
         "Daddy Deli (Head Office)",
@@ -42,7 +41,6 @@ if "company_details" not in st.session_state:
 if "company_logos" not in st.session_state:
     st.session_state["company_logos"] = {}
 
-# กำหนดโครงสร้างข้อมูลสินค้าเริ่มต้นให้ทุกสาขา
 if "company_inventories" not in st.session_state:
     initial_demo_df = pd.DataFrame([
         {
@@ -88,44 +86,76 @@ if "temp_stock_in_cart" not in st.session_state:
 VAT_TYPES_LIST = ["Non Vat", "Vat 7%", "Vat Excluded"]
 
 # ----------------------------------------------------
-# 2. SIDEBAR CONFIGURATION
+# 2. SIDEBAR CONFIGURATION (เพิ่มตัวเลือกภาษา)
 # ----------------------------------------------------
 st.sidebar.markdown("### 🌐 ภาษา / Language")
-lang = st.sidebar.selectbox("Language", ["ไทย (Thai)"], label_visibility="collapsed")
+lang = st.sidebar.selectbox("Language", ["ไทย (Thai)", "English"], label_visibility="collapsed")
 
-st.sidebar.markdown("### 👤 ผู้ใช้งานปัจจุบัน (Current User)")
+# คำแปล UI ตามภาษาที่เลือก
+texts = {
+    "ไทย (Thai)": {
+        "user_title": "👤 ผู้ใช้งานปัจจุบัน (Current User)",
+        "company_title": "🏢 เลือกบริษัท / สาขา",
+        "menu_title": "⚡ เมนูหลัก",
+        "m1": "📊 แดชบอร์ดภาพรวม",
+        "m2": "📦 การจัดการรายการสินค้า",
+        "m3": "📥 เพิ่มรายการสินค้าใหม่",
+        "m4": "📥 รับสินค้า (Stock In)",
+        "m5": "📤 เบิกสินค้า (Stock Out)",
+        "m6": "📝 ระบบขอซื้อ (PR) & ใบสั่งซื้อ (PO)",
+        "m7": "⏱️ ประวัติการทำรายการ",
+        "m8": "📈 รายการสรุปสต็อก & นับสต็อก",
+        "m9": "⚙️ ตั้งค่าข้อมูลบริษัทและแอดมิน"
+    },
+    "English": {
+        "user_title": "👤 Current User",
+        "company_title": "🏢 Select Company / Branch",
+        "menu_title": "⚡ Main Menu",
+        "m1": "📊 Dashboard",
+        "m2": "📦 Inventory Management",
+        "m3": "📥 Add New Items",
+        "m4": "📥 Stock In",
+        "m5": "📤 Stock Out",
+        "m6": "📝 PR & PO System",
+        "m7": "⏱️ Transaction History",
+        "m8": "📈 Stock Summary & Count",
+        "m9": "⚙️ Settings"
+    }
+}
+t_ui = texts[lang]
+
+st.sidebar.markdown(f"### {t_ui['user_title']}")
 current_user = st.sidebar.selectbox("User", ["owner_master", "staff_procurement"], label_visibility="collapsed")
 user_info = {"Name": "Mr. Owner" if current_user == "owner_master" else "Staff PR", "Role": "Owner" if current_user == "owner_master" else "Staff"}
 
-# เลือกบริษัท / สาขา
-st.sidebar.markdown("### 🏢 เลือกบริษัท / สาขา")
+st.sidebar.markdown(f"### {t_ui['company_title']}")
 selected_company = st.sidebar.selectbox("Company", st.session_state.companies_list, label_visibility="collapsed")
 
 curr_comp_details = st.session_state["company_details"].get(selected_company, {})
-st.sidebar.caption(f"ที่อยู่: {curr_comp_details.get('address', '-')}\n\nเลขผู้เสียภาษี: {curr_comp_details.get('tax_id', '-')}\n\nติดต่อ: {curr_comp_details.get('contact', '-')}")
-st.sidebar.info(f"**{user_info['Name']}**\n\nสิทธิ์: {user_info['Role']}")
+st.sidebar.caption(f"Address: {curr_comp_details.get('address', '-')}\n\nTax ID: {curr_comp_details.get('tax_id', '-')}\n\nContact: {curr_comp_details.get('contact', '-')}")
+st.sidebar.info(f"**{user_info['Name']}**\n\nRole: {user_info['Role']}")
 
 # ----------------------------------------------------
-# 3. MAIN NAVIGATION MENU
+# 3. MAIN NAVIGATION MENU (เรียงลำดับตามเมนูด้านซ้าย)
 # ----------------------------------------------------
 st.sidebar.markdown("---")
-st.sidebar.markdown("### ⚡ เมนูหลัก")
+st.sidebar.markdown(f"### {t_ui['menu_title']}")
 
-t = {
-    "sub_dashboard": "📊 แดชบอร์ดภาพรวม",
-    "sub_inventory": "📦 การจัดการรายการสินค้า",
-    "sub_import_excel": "📥 เพิ่มรายการสินค้าใหม่",
-    "sub_stock_in": "📥 รับสินค้า (Stock In)",
-    "sub_stock_out": "📤 เบิกสินค้า (Stock Out)",
-    "sub_pr_po": "📝 ระบบขอซื้อ (PR) & ใบสั่งซื้อ (PO)",
-    "sub_history": "⏱️ ประวัติการทำรายการ",
-    "sub_report": "📈 รายการสรุปสต็อก & นับสต็อก",
-    "sub_settings": "⚙️ ตั้งค่าข้อมูลบริษัทและแอดมิน"
-}
+menu_options = [
+    t_ui["m1"],
+    t_ui["m2"],
+    t_ui["m3"],
+    t_ui["m4"],
+    t_ui["m5"],
+    t_ui["m6"],
+    t_ui["m7"],
+    t_ui["m8"],
+    t_ui["m9"]
+]
 
 selected_menu = st.sidebar.radio(
     "Menu",
-    list(t.values()),
+    menu_options,
     label_visibility="collapsed"
 )
 
@@ -136,11 +166,11 @@ if selected_company not in st.session_state["company_inventories"]:
 current_inv = st.session_state["company_inventories"][selected_company]
 
 # ----------------------------------------------------
-# 4. ROUTING LOGIC
+# 4. ROUTING LOGIC (เรียงลำดับตามเมนูด้านซ้าย 1 ถึง 9)
 # ----------------------------------------------------
 
-# a) Dashboard
-if selected_menu == t["sub_dashboard"]:
+# เมนูที่ 1: แดชบอร์ดภาพรวม
+if selected_menu == t_ui["m1"]:
     st.title(f"📊 แดชบอร์ดภาพรวม - {selected_company}")
     col1, col2, col3 = st.columns(3)
     col1.metric("จำนวนรายการสินค้าทั้งหมด", f"{len(current_inv)} รายการ")
@@ -153,8 +183,8 @@ if selected_menu == t["sub_dashboard"]:
     else:
         st.info("ยังไม่มีข้อมูลสินค้าในระบบสาขานี้")
 
-# b) Inventory Management (อัปเดตตามคำขอ)
-elif selected_menu == t["sub_inventory"]:
+# เมนูที่ 2: การจัดการรายการสินค้า
+elif selected_menu == t_ui["m2"]:
     st.title(f"📦 การจัดการรายการสินค้า - {selected_company}")
     st.caption("สรุปสินค้าทั้งหมดของบริษัท/สาขานั้นๆ ว่ามีสินค้าอะไรบ้าง")
     
@@ -166,7 +196,6 @@ elif selected_menu == t["sub_inventory"]:
         with scol2:
             search_code = st.text_input("ค้นหาตามรหัสสินค้า (Product Code)")
         with scol3:
-            # ดึงหมวดหมู่ทั้งหมดที่มีอยู่ในตารางมาให้เลือกค้นหา หรือกรองแบบอิสระ
             cat_options = ["ทั้งหมด"] + current_inv["Category"].dropna().unique().tolist()
             search_category = st.selectbox("ค้นหาตามหมวดหมู่ (Category)", cat_options)
 
@@ -191,7 +220,6 @@ elif selected_menu == t["sub_inventory"]:
             cols[5].write(f"หน่วย: {row['Unit']}")
             cols[6].write(f"ราคา: {row['Last Price']} ฿")
 
-            # ดรอปดาวน์ "แก้ไข/ลบ" เล็กๆ ด้านหลังรายการสินค้า
             action_choice = cols[7].selectbox(
                 "จัดการ", 
                 ["เลือก", "✏️ แก้ไข", "🗑️ ลบ"], 
@@ -237,8 +265,8 @@ elif selected_menu == t["sub_inventory"]:
     else:
         st.info("ยังไม่มีรายการสินค้า")
 
-# c) Add New Items
-elif selected_menu == t["sub_import_excel"]:
+# เมนูที่ 3: เพิ่มรายการสินค้าใหม่ (พร้อมแจ้งเตือนเมื่อกดบันทึก)
+elif selected_menu == t_ui["m3"]:
     st.title(f"📥 เพิ่มรายการสินค้าใหม่ - {selected_company}")
     tab1, tab2, tab3, tab4 = st.tabs([
         "1. เพิ่มรายการสินค้าใหม่",
@@ -299,7 +327,7 @@ elif selected_menu == t["sub_import_excel"]:
                         st.success(f"✨ บันทึกเพิ่มรายการสินค้าใหม่ '{item_name}' สำเร็จแล้ว!")
 
     with tab2:
-        st.subheader("ตั้งค่าข้อมูลร้านค้า")
+        st.subheader("ตั้งค่าข้อมูลบริษัท / สาขา (ที่อยู่ / โลโก้)")
         curr_details = st.session_state["company_details"].get(selected_company, {
             "name": selected_company, "address": "", "tax_id": "", "contact": ""
         })
@@ -320,7 +348,7 @@ elif selected_menu == t["sub_import_excel"]:
                 }
                 if uploaded_logo is not None:
                     st.session_state["company_logos"][selected_company] = uploaded_logo
-                st.success("บันทึกข้อมูลบริษัทเรียบร้อยแล้ว '{item_name}' สำเร็จแล้ว!")
+                st.success("บันทึกข้อมูลบริษัทเรียบร้อยแล้ว!")
                 st.rerun()
 
     with tab3:
@@ -401,8 +429,8 @@ elif selected_menu == t["sub_import_excel"]:
                         else:
                             st.warning("ชื่อหมวดหมู่ว่าง หรือซ้ำกับที่มีอยู่แล้ว")
 
-# d) Stock In
-elif selected_menu == t["sub_stock_in"]:
+# เมนูที่ 4: รับสินค้า (Stock In)
+elif selected_menu == t_ui["m4"]:
     st.title(f"📥 รับสินค้าเข้าสต็อก (Stock In) - {selected_company}")
     if len(current_inv) == 0:
         st.warning("ยังไม่มีรายการสินค้าในระบบ กรุณาเพิ่มรายการสินค้าก่อน")
@@ -515,8 +543,8 @@ elif selected_menu == t["sub_stock_in"]:
                     st.success("บันทึกรับสินค้าเข้าสต็อกและปรับปรุงยอดคงเหลือสำเร็จ!")
                     st.rerun()
 
-# e) Stock Out
-elif selected_menu == t["sub_stock_out"]:
+# เมนูที่ 5: เบิกสินค้า (Stock Out)
+elif selected_menu == t_ui["m5"]:
     st.title(f"📤 เบิกสินค้าออกจากสต็อก (Stock Out) - {selected_company}")
     if len(current_inv) == 0:
         st.warning("ยังไม่มีรายการสินค้าในระบบ")
@@ -560,8 +588,8 @@ elif selected_menu == t["sub_stock_out"]:
                     st.success(f"เบิกสินค้า '{so_item}' จำนวน {so_qty} {so_unit} เรียบร้อยแล้ว!")
                     st.rerun()
 
-# f) PR / PO workflow
-elif selected_menu == t["sub_pr_po"]:
+# เมนูที่ 6: ระบบขอซื้อ (PR) & ใบสั่งซื้อ (PO)
+elif selected_menu == t_ui["m6"]:
     st.title(f"📝 ระบบขอซื้อ (PR) & ใบสั่งซื้อ (PO) - {selected_company}")
     pr_tab1, pr_tab2 = st.tabs(["📄 1. สร้างและติดตามใบขอซื้อ (PR)", "📦 2. ออกใบสั่งซื้อ (PO)"])
 
@@ -759,23 +787,23 @@ elif selected_menu == t["sub_pr_po"]:
         else:
             st.info("ยังไม่มีใบสั่งซื้อในระบบ")
 
-# g) History
-elif selected_menu == t["sub_history"]:
+# เมนูที่ 7: ประวัติการทำรายการ
+elif selected_menu == t_ui["m7"]:
     st.title(f"⏱️ ประวัติการทำรายการ - {selected_company}")
     if len(st.session_state["transaction_history"]) > 0:
         st.dataframe(st.session_state["transaction_history"], use_container_width=True)
     else:
         st.info("ยังไม่มีประวัติการทำรายการรับ-เบิกสินค้า")
 
-# h) Report
-elif selected_menu == t["sub_report"]:
+# เมนูที่ 8: รายการสรุปสต็อก & นับสต็อก
+elif selected_menu == t_ui["m8"]:
     st.title(f"📈 รายการสรุปสต็อก & นับสต็อก - {selected_company}")
     if len(current_inv) > 0:
         st.dataframe(current_inv, use_container_width=True)
     else:
         st.info("ยังไม่มีข้อมูลในระบบสต็อก")
 
-# i) Settings
-elif selected_menu == t["sub_settings"]:
+# เมนูที่ 9: ตั้งค่าข้อมูลบริษัทและแอดมิน
+elif selected_menu == t_ui["m9"]:
     st.title(f"⚙️ ตั้งค่าข้อมูลบริษัทและแอดมิน - {selected_company}")
     st.info("ตั้งค่าระบบผู้ใช้งานและข้อมูลองค์กร")
