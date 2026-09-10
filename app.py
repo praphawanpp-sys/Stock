@@ -387,10 +387,9 @@ elif selected_menu == t_ui["m2"]:
 
 elif selected_menu == t_ui["m3"]:
     st.title(f"{t_ui['m3']} - {comp_display_name}")
-    st.markdown("กรอกข้อมูลเพื่อเพิ่มรายการสินค้าใหม่เข้าสู่ระบบสต็อกของสาขานี้ หรือจัดการข้อมูลพื้นฐาน (หมวดหมู่/หน่วยนับ)")
+    st.markdown("กรอกข้อมูลเพื่อเพิ่มรายการสินค้าใหม่เข้าสู่ระบบสต็อกของสาขานี้ หรือจัดการหน่วยนับและหมวดหมู่")
 
-    # เพิ่ม Tab สำหรับแยกการทำงานระหว่าง "เพิ่มสินค้า" กับ "จัดการหมวดหมู่/หน่วยนับ"
-    tab_add_item, tab_manage_masters = st.tabs(["➕ เพิ่มสินค้าใหม่", "⚙️ เพิ่ม/แก้ไขหน่วยนับและหมวดหมู่"])
+    tab_add_item, tab_manage_unit, tab_manage_cat = st.tabs(["➕ เพิ่มสินค้าใหม่", "📏 จัดการหน่วยนับ", "🏷️ จัดการหมวดหมู่สินค้า"])
 
     with tab_add_item:
         with st.form("add_new_item_form"):
@@ -427,34 +426,77 @@ elif selected_menu == t_ui["m3"]:
                     st.success(f"✨ เพิ่มสินค้า '{new_name}' สำเร็จเรียบร้อยแล้ว!")
                     st.rerun()
 
-    with tab_manage_masters:
-        st.subheader("จัดการหน่วยนับและหมวดหมู่สินค้า")
-        
-        col_m1, col_m2 = st.columns(2)
-        
-        with col_m1:
-            st.markdown("#### หน่วยนับ (Units)")
-            new_unit_input = st.text_input("เพิ่มหน่วยนับใหม่")
-            if st.button("➕ เพิ่มหน่วยนับ"):
-                if new_unit_input and new_unit_input not in st.session_state.units_list:
-                    st.session_state.units_list.append(new_unit_input)
-                    st.success(f"เพิ่มหน่วยนับ '{new_unit_input}' สำเร็จ")
-                    st.rerun()
-            
-            st.write("หน่วยนับปัจจุบัน:")
-            st.write(st.session_state.units_list)
+    with tab_manage_unit:
+        st.subheader("จัดการหน่วยนับ (Units)")
+        new_unit_input = st.text_input("เพิ่มหน่วยนับใหม่", key="input_new_unit_tab")
+        if st.button("➕ เพิ่มหน่วยนับ", key="btn_add_unit_tab"):
+            if new_unit_input and new_unit_input not in st.session_state.units_list:
+                st.session_state.units_list.append(new_unit_input)
+                st.success(f"เพิ่มหน่วยนับ '{new_unit_input}' สำเร็จ")
+                st.rerun()
 
-        with col_m2:
-            st.markdown("#### หมวดหมู่สินค้า (Categories)")
-            new_cat_input = st.text_input("เพิ่มหมวดหมู่ใหม่")
-            if st.button("➕ เพิ่มหมวดหมู่"):
-                if new_cat_input and new_cat_input not in st.session_state.categories_list:
-                    st.session_state.categories_list.append(new_cat_input)
-                    st.success(f"เพิ่มหมวดหมู่ '{new_cat_input}' สำเร็จ")
-                    st.rerun()
-                    
-            st.write("หมวดหมู่ปัจจุบัน:")
-            st.write(st.session_state.categories_list)
+        st.markdown("---")
+        st.markdown("**รายการหน่วยนับปัจจุบัน:**")
+        for idx, unit_item in enumerate(st.session_state.units_list):
+            cols_u = st.columns([3, 1.5])
+            cols_u[0].write(f"{idx + 1}. {unit_item}")
+            action_u = cols_u[1].selectbox("จัดการ", ["เลือก", "แก้ไข", "ลบ"], key=f"action_unit_{idx}", label_visibility="collapsed")
+            
+            if action_u == "ลบ":
+                st.session_state.units_list.pop(idx)
+                st.success(f"ลบหน่วยนับ '{unit_item}' เรียบร้อยแล้ว")
+                st.rerun()
+            elif action_u == "แก้ไข":
+                st.session_state[f"edit_mode_unit_{idx}"] = True
+
+            if st.session_state.get(f"edit_mode_unit_{idx}", False):
+                with st.form(f"form_edit_unit_{idx}"):
+                    edited_u = st.text_input("แก้ไขชื่อหน่วยนับ", value=unit_item)
+                    c_su1, c_su2 = st.columns(2)
+                    if c_su1.form_submit_button("บันทึก"):
+                        st.session_state.units_list[idx] = edited_u
+                        st.session_state[f"edit_mode_unit_{idx}"] = False
+                        st.success("แก้ไขสำเร็จ")
+                        st.rerun()
+                    if c_su2.form_submit_button("ยกเลิก"):
+                        st.session_state[f"edit_mode_unit_{idx}"] = False
+                        st.rerun()
+
+    with tab_manage_cat:
+        st.subheader("จัดการหมวดหมู่สินค้า (Categories)")
+        new_cat_input = st.text_input("เพิ่มหมวดหมู่ใหม่", key="input_new_cat_tab")
+        if st.button("➕ เพิ่มหมวดหมู่", key="btn_add_cat_tab"):
+            if new_cat_input and new_cat_input not in st.session_state.categories_list:
+                st.session_state.categories_list.append(new_cat_input)
+                st.success(f"เพิ่มหมวดหมู่ '{new_cat_input}' สำเร็จ")
+                st.rerun()
+
+        st.markdown("---")
+        st.markdown("**รายการหมวดหมู่ปัจจุบัน:**")
+        for idx, cat_item in enumerate(st.session_state.categories_list):
+            cols_c = st.columns([3, 1.5])
+            cols_c[0].write(f"{idx + 1}. {cat_item}")
+            action_c = cols_c[1].selectbox("จัดการ", ["เลือก", "แก้ไข", "ลบ"], key=f"action_cat_{idx}", label_visibility="collapsed")
+            
+            if action_c == "ลบ":
+                st.session_state.categories_list.pop(idx)
+                st.success(f"ลบหมวดหมู่ '{cat_item}' เรียบร้อยแล้ว")
+                st.rerun()
+            elif action_c == "แก้ไข":
+                st.session_state[f"edit_mode_cat_{idx}"] = True
+
+            if st.session_state.get(f"edit_mode_cat_{idx}", False):
+                with st.form(f"form_edit_cat_{idx}"):
+                    edited_c = st.text_input("แก้ไขชื่อหมวดหมู่", value=cat_item)
+                    c_sc1, c_sc2 = st.columns(2)
+                    if c_sc1.form_submit_button("บันทึก"):
+                        st.session_state.categories_list[idx] = edited_c
+                        st.session_state[f"edit_mode_cat_{idx}"] = False
+                        st.success("แก้ไขสำเร็จ")
+                        st.rerun()
+                    if c_sc2.form_submit_button("ยกเลิก"):
+                        st.session_state[f"edit_mode_cat_{idx}"] = False
+                        st.rerun()
 
 elif selected_menu == t_ui["m4"]:
     st.title(f"{t_ui['m4']} - {comp_display_name}")
