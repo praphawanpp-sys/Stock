@@ -13,10 +13,37 @@ st.set_page_config(
 # 1. INITIALIZE SESSION STATES
 # ----------------------------------------------------
 if "units_list" not in st.session_state:
-    st.session_state.units_list = ["Box", "Bottle", "Kg", "Pack", "Can", "Piece"]
+    st.session_state.units_list = [
+        "Bag",
+        "Bottle",
+        "Box",
+        "Can",
+        "Case",
+        "Cup",
+        "Gallon",
+        "Gram",
+        "Jar",
+        "Kg.",
+        "Litre",
+        "Pack",
+        "Pcs."
+    ]
 
 if "categories_list" not in st.session_state:
-    st.session_state.categories_list = ["นม / Milk", "เบเกอรี่ / Bakery", "เครื่องดื่ม / Beverage", "วัตถุดิบอาหาร / Ingredients"]
+    st.session_state.categories_list = [
+        "ไวน์",
+        "น้ำผลไม้/ผลไม้สด-เครื่องดื่ม",
+        "เนื้อวัว",
+        "อาหารทะเล",
+        "ผักและผลไม้-อาหาร",
+        "เนย/ชีส/ซาลามิ/แฮม",
+        "เนื้อสัตว์/เครื่องปรุง/วัตถุดิบอื่นๆ",
+        "เนื้อแกะ",
+        "แซลมอนรมควัน",
+        "เบียร์กระป๋อง/เบียร์สด/น้ำอัดลม",
+        "เมล็ดกาแฟ",
+        "ขนมปัง/เบเกอรี่/ของหวาน/ไอศกรีม"
+    ]
 
 if "companies_list" not in st.session_state:
     st.session_state.companies_list = [
@@ -119,7 +146,7 @@ if "company_inventories" not in st.session_state:
         {
             "Product Code": "1950",
             "Item Name": "นมจืด 2 ลิตร",
-            "Category": "นม / Milk",
+            "Category": "น้ำผลไม้/ผลไม้สด-เครื่องดื่ม",
             "Unit": "Bottle",
             "Conversion Qty": 1.0,
             "Stock Balance": 10.0,
@@ -166,10 +193,18 @@ item_translations = {
 }
 
 category_translations = {
-    "นม / Milk": "Milk",
-    "เบเกอรี่ / Bakery": "Bakery",
-    "เครื่องดื่ม / Beverage": "Beverage",
-    "วัตถุดิบอาหาร / Ingredients": "Food Ingredients"
+    "ไวน์": "Wine",
+    "น้ำผลไม้/ผลไม้สด-เครื่องดื่ม": "Juice/Fresh Fruit-Beverage",
+    "เนื้อวัว": "Beef",
+    "อาหารทะเล": "Seafood",
+    "ผักและผลไม้-อาหาร": "Vegetables & Fruits-Food",
+    "เนย/ชีส/ซาลามิ/แฮม": "Butter/Cheese/Salami/Ham",
+    "เนื้อสัตว์/เครื่องปรุง/วัตถุดิบอื่นๆ": "Meat/Condiments/Other Ingredients",
+    "เนื้อแกะ": "Lamb",
+    "แซลมอนรมควัน": "Smoked Salmon",
+    "เบียร์กระป๋อง/เบียร์สด/น้ำอัดลม": "Canned Beer/Draft Beer/Soft Drinks",
+    "เมล็ดกาแฟ": "Coffee Beans",
+    "ขนมปัง/เบเกอรี่/ของหวาน/ไอศกรีม": "Bread/Bakery/Dessert/Ice Cream"
 }
 
 def translate_item_name(name, lang):
@@ -385,7 +420,6 @@ elif selected_menu == t_ui["m8"]:
 elif selected_menu == t_ui["m9"]:
     st.title(f"{t_ui['m9']} - {comp_display_name}")
     
-    # เพิ่มแท็บตั้งค่าข้อมูลบริษัท/สาขา และ แท็บเพิ่มแอดมิน/ผู้ดูแล ตามข้อกำหนดใหม่
     tab_comp, tab_admin = st.tabs(["🏢 1. ตั้งค่าข้อมูลบริษัท/สาขา", "👤 2. เพิ่มแอดมิน/ผู้ดูแล"])
 
     with tab_comp:
@@ -408,7 +442,7 @@ elif selected_menu == t_ui["m9"]:
             # 5. ข้อมูลแอดมิน/ผู้ดูแล
             c_admin_contact = st.text_input("5. ข้อมูลแอดมิน/ผู้ดูแล", value=curr_details.get("admin_contact", ""))
             # 6. กำหนดสิทธิ
-            c_role_permission = st.selectbox("6. กำหนดสิทธิ", ["เจ้ายอด (Owner) - ดูข้อมูลได้ทุกบริษัท/สาขา", "Manager - ดูข้อมูลได้ทุกบริษัท/สาขา", "Admin - ดูได้แค่บริษัท/สาขา ที่กำหนด"], index=0)
+            c_role_permission = st.selectbox("6. กำหนดสิทธิ", ["เจ้าของ = ดูข้อมูลได้ทุกบริษัท/สาขา", "Manager = ดูข้อมูลได้ทุกบริษัท/สาขา", "Admin = ดูได้แค่บริษัท/สาขา ที่กำหนด"], index=0)
             # 7. โลโก้บริษัท/สาขา
             uploaded_logo = st.file_uploader("7. โลโก้บริษัท/สาขา", type=["png", "jpg", "jpeg"], key="logo_settings_page_v2")
 
@@ -436,7 +470,7 @@ elif selected_menu == t_ui["m9"]:
             new_admin_phone = st.text_input("2. เบอร์โทร")
             # 3. อีเมลล์
             new_admin_email = st.text_input("3. อีเมลล์")
-            # 4. สิทธิในการดูแล (ทำเป็นดรอปดาวน์ตามเงื่อนไข)
+            # 4. สิทธิในการดูแล
             new_admin_role = st.selectbox(
                 "4. สิทธิในการดูแล",
                 [
@@ -445,7 +479,7 @@ elif selected_menu == t_ui["m9"]:
                     "Admin = ดูได้แค่บริษัท/สาขา ที่กำหนด"
                 ]
             )
-            # 5. บริษัท/สาขา ที่ดูแล (ทำเป็นดรอปดาวน์ 6 สาขาตามที่กำหนด)
+            # 5. บริษัท/สาขา ที่ดูแล
             new_admin_branch = st.selectbox(
                 "5. บริษัท/สาขา ที่ดูแล",
                 st.session_state.companies_list
@@ -456,7 +490,6 @@ elif selected_menu == t_ui["m9"]:
                 if not new_admin_name.strip() or not new_admin_email.strip():
                     st.error("⚠️ กรุณากรอกชื่อและอีเมลล์ให้ครบถ้วน")
                 else:
-                    # แปลงสิทธิให้ตรงกับระบบภายใน
                     if "เจ้าของ" in new_admin_role:
                         role_key = "Owner"
                         assigned_branches = st.session_state.companies_list
