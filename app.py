@@ -292,7 +292,7 @@ if selected_menu == t_ui["m1"]:
 
 elif selected_menu == t_ui["m2"]:
     st.title(f"{t_ui['m2']} - {comp_display_name}")
-    st.caption("Summary of all items in this branch." if lang == "English" else "สรุปสินค้าทั้งหมดของบริษัท/สาขานั้นๆ ว่ามีสินค้าอะไรบ้าง")
+    st.caption("Summary of all items in this branch." if lang == "English" else "รายการวัตถุดิบทั้งหมดในสต๊อก")
     
     if len(display_inv) > 0:
         st.markdown("#### 🔍 Search Products" if lang == "English" else "#### 🔍 ค้นหาข้อมูลสินค้า")
