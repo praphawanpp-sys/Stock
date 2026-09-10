@@ -400,7 +400,43 @@ elif selected_menu == t_ui["m2"]:
 
 elif selected_menu == t_ui["m3"]:
     st.title(f"{t_ui['m3']} - {comp_display_name}")
-    st.info("เพิ่มรายการสินค้าใหม่")
+    elif selected_menu == t_ui["m3"]:
+    st.title(f"{t_ui['m3']} - {comp_display_name}")
+    st.markdown("กรอกข้อมูลเพื่อเพิ่มรายการสินค้าใหม่เข้าสู่ระบบสต็อกของสาขานี้")
+
+    with st.form("add_new_item_form"):
+        new_code = st.text_input("รหัสสินค้า (Product Code)")
+        new_name = st.text_input("ชื่อสินค้า (Item Name)")
+        new_supplier = st.text_input("ชื่อร้านค้า / Supplier (เช่น Makro, Gourmet Market)")
+        new_category = st.selectbox("หมวดหมู่สินค้า", st.session_state.categories_list)
+        new_unit = st.selectbox("หน่วยนับ", st.session_state.units_list)
+        new_conv = st.number_input("อัตราส่วนการแปลงหน่วย (Conversion Qty)", value=1.0, min_value=0.01)
+        new_price = st.number_input("ราคาล่าสุด (Last Price)", value=0.0, min_value=0.0)
+        new_vat = st.selectbox("ประเภท Vat", VAT_TYPES_LIST)
+        new_initial_stock = st.number_input("จำนวนสต็อกเริ่มต้น (Initial Stock Balance)", value=0.0, min_value=0.0)
+
+        submitted_new_item = st.form_submit_button("💾 บันทึกเพิ่มสินค้าใหม่")
+        if submitted_new_item:
+            if not new_name.strip():
+                st.error("⚠️ กรุณากรอกชื่อสินค้า")
+            else:
+                new_row = pd.DataFrame([{
+                    "Product Code": new_code,
+                    "Item Name": new_name,
+                    "Category": new_category,
+                    "Unit": new_unit,
+                    "Conversion Qty": new_conv,
+                    "Stock Balance": new_initial_stock,
+                    "Last Price": new_price,
+                    "Supplier": new_supplier,
+                    "Vat Type": new_vat
+                }])
+                st.session_state["company_inventories"][selected_company] = pd.concat(
+                    [st.session_state["company_inventories"][selected_company], new_row], 
+                    ignore_index=True
+                )
+                st.success(f"✨ เพิ่มสินค้า '{new_name}' สำเร็จเรียบร้อยแล้ว!")
+                st.rerun()
 
 elif selected_menu == t_ui["m4"]:
     st.title(f"{t_ui['m4']} - {comp_display_name}")
