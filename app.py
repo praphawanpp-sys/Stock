@@ -51,6 +51,7 @@ if "users_db" not in st.session_state:
             "role": "Owner", 
             "branches": st.session_state.companies_list  
            }
+    }
 
 if "company_details" not in st.session_state:
     st.session_state["company_details"] = {
