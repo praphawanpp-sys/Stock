@@ -387,9 +387,14 @@ elif selected_menu == t_ui["m2"]:
 
 elif selected_menu == t_ui["m3"]:
     st.title(f"{t_ui['m3']} - {comp_display_name}")
-    st.markdown("กรอกข้อมูลเพื่อเพิ่มรายการสินค้าใหม่เข้าสู่ระบบสต็อกของสาขานี้ หรือจัดการหน่วยนับและหมวดหมู่")
+    st.markdown("กรอกข้อมูลเพื่อเพิ่มรายการสินค้าใหม่เข้าสู่ระบบสต็อกของสาขานี้ หรือจัดการข้อมูลพื้นฐาน")
 
-    tab_add_item, tab_manage_unit, tab_manage_cat = st.tabs(["➕ เพิ่มสินค้าใหม่", "📏 จัดการหน่วยนับ", "🏷️ จัดการหมวดหมู่สินค้า"])
+    tab_add_item, tab_manage_unit, tab_manage_cat, tab_manage_supplier = st.tabs([
+        "➕ เพิ่มสินค้าใหม่", 
+        "📏 จัดการหน่วยนับ", 
+        "🏷️ จัดการหมวดหมู่สินค้า", 
+        "🏢 จัดการ/เพิ่มบริษัทที่จัดซื้อสินค้า"
+    ])
 
     with tab_add_item:
         with st.form("add_new_item_form"):
@@ -498,20 +503,270 @@ elif selected_menu == t_ui["m3"]:
                         st.session_state[f"edit_mode_cat_{idx}"] = False
                         st.rerun()
 
+    with tab_manage_supplier:
+        st.subheader("จัดการ/เพิ่มบริษัทที่จัดซื้อสินค้า (Supplier Profile)")
+        
+        # กำหนด session state สำหรับเก็บรายการบริษัท
+        if "suppliers_list" not in st.session_state:
+            st.session_state.suppliers_list = []
+
+        with st.form("form_add_supplier"):
+            st.markdown("##### ➕ เพิ่มบริษัทจัดซื้อใหม่")
+            sup_name = st.text_input("1. ชื่อบริษัท")
+            sup_address = st.text_area("2. ที่อยู่บริษัท")
+            sup_tax = st.text_input("3. เลขที่ผู้เสียภาษี")
+            sup_contact = st.text_input("4. ข้อมูลติดต่อเซลล์ (ชื่อ, เบอร์โทร, ไลน์ ฯลฯ)")
+            
+            submitted_sup = st.form_submit_button("💾 บันทึกบริษัทใหม่")
+            if submitted_sup:
+                if not sup_name.strip():
+                    st.error("⚠️ กรุณากรอกชื่อบริษัท")
+                else:
+                    st.session_state.suppliers_list.append({
+                        "name": sup_name,
+                        "address": sup_address,
+                        "tax_id": sup_tax,
+                        "contact": sup_contact
+                    })
+                    st.success(f"✨ เพิ่มบริษัท '{sup_name}' สำเร็จเรียบร้อยแล้ว!")
+                    st.rerun()
+
+        st.markdown("---")
+        st.markdown("**รายการบริษัทที่จัดซื้อปัจจุบัน:**")
+        if not st.session_state.suppliers_list:
+            st.info("ยังไม่มีข้อมูลบริษัทจัดซื้อในระบบ")
+        else:
+            for idx, sup in enumerate(st.session_state.suppliers_list):
+                cols_s = st.columns([3, 1.5])
+                cols_s[0].write(f"**{idx + 1}. {sup['name']}**\n- ที่อยู่: {sup['address']}\n- เลขผู้เสียภาษี: {sup['tax_id']}\n- ติดต่อเซลล์: {sup['contact']}")
+                action_s = cols_s[1].selectbox("จัดการ", ["เลือก", "แก้ไข", "ลบ"], key=f"action_sup_{idx}", label_visibility="collapsed")
+                
+                if action_s == "ลบ":
+                    st.session_state.suppliers_list.pop(idx)
+                    st.success("ลบข้อมูลบริษัทเรียบร้อยแล้ว")
+                    st.rerun()
+                elif action_s == "แก้ไข":
+                    st.session_state[f"edit_mode_sup_{idx}"] = True
+
+                if st.session_state.get(f"edit_mode_sup_{idx}", False):
+                    with st.form(f"form_edit_sup_{idx}"):
+                        st.markdown(f"##### แก้ไขข้อมูลบริษัท: {sup['name']}")
+                        ed_name = st.text_input("1. ชื่อบริษัท", value=sup['name'])
+                        ed_addr = st.text_area("2. ที่อยู่บริษัท", value=sup['address'])
+                        ed_tax = st.text_input("3. เลขที่ผู้เสียภาษี", value=sup['tax_id'])
+                        ed_cont = st.text_input("4. ข้อมูลติดต่อเซลล์", value=sup['contact'])
+                        
+                        c_ss1, c_ss2 = st.columns(2)
+                        if c_ss1.form_submit_button("บันทึกการแก้ไข"):
+                            st.session_state.suppliers_list[idx] = {
+                                "name": ed_name,
+                                "address": ed_addr,
+                                "tax_id": ed_tax,
+                                "contact": ed_cont
+                            }
+                            st.session_state[f"edit_mode_sup_{idx}"] = False
+                            st.success("แก้ไขข้อมูลสำเร็จ")
+                            st.rerun()
+                        if c_ss2.form_submit_button("ยกเลิก"):
+                            st.session_state[f"edit_mode_sup_{idx}"] = False
+                            st.rerun()
+                st.markdown("---")
+                
 elif selected_menu == t_ui["m4"]:
     st.title(f"{t_ui['m4']} - {comp_display_name}")
+    if len(current_inv) == 0:
+        st.warning("No items available." if lang == "English" else "ยังไม่มีรายการสินค้าในระบบ กรุณาเพิ่มรายการสินค้าก่อน")
+    else:
+        col_si1, col_si2, col_si3 = st.columns(3)
+        with col_si1:
+            si_date = st.date_input("Date" if lang == "English" else "วันที่รับสินค้า", value=datetime.today())
+        with col_si2:
+            existing_suppliers = current_inv["Supplier"].dropna().unique().tolist()
+            si_supplier = st.selectbox("Supplier", existing_suppliers if existing_suppliers else ["CP Axtra (Makro)"])
+        with col_si3:
+            si_doc_no = st.text_input("Invoice No.")
+
+        st.markdown("---")
+        st.subheader("Stock In Cart" if lang == "English" else "เลือกและเพิ่มสินค้าเข้าตะกร้ารับเข้า")
+        
+        si_search_query = st.text_input("Search Product Code or Name" if lang == "English" else "🔍 พิมพ์รหัสสินค้า (Product Code) หรือ ชื่อสินค้า เพื่อดึงข้อมูลอัตโนมัติ", value="")
+        
+        selected_item_name = ""
+        default_unit = "หน่วย"
+        default_price = 0.0
+        found_code = ""
+
+        if si_search_query:
+            q = str(si_search_query).strip().lower()
+            res = current_inv[
+                (current_inv["Product Code"].astype(str).str.strip().str.lower() == q) |
+                (current_inv["Item Name"].astype(str).str.lower().str.contains(q, na=False)) |
+                (current_inv["Product Code"].astype(str).str.lower().str.contains(q, na=False))
+            ]
+            if not res.empty:
+                selected_item_name = str(res.iloc[0]["Item Name"])
+                default_unit = str(res.iloc[0]["Unit"])
+                default_price = float(res.iloc[0]["Last Price"])
+                found_code = str(res.iloc[0]["Product Code"])
+
+        with st.form("form_add_stock_in_item"):
+            if si_search_query:
+                if selected_item_name:
+                    display_name_matched = translate_item_name(selected_item_name, lang)
+                    st.success(f"Found [Code: {found_code}] -> **{display_name_matched}**")
+                else:
+                    st.error("Item not found.")
+            else:
+                st.info("Please type product code or name.")
+
+            col_sq1, col_sq2, col_sq3 = st.columns(3)
+            with col_sq1:
+                si_qty = st.number_input("Quantity", min_value=0.1, value=1.0)
+            with col_sq2:
+                unit_idx = st.session_state.units_list.index(default_unit) if default_unit in st.session_state.units_list else 0
+                si_unit = st.selectbox("Unit", st.session_state.units_list, index=unit_idx)
+            with col_sq3:
+                si_price = st.number_input("Price", min_value=0.0, value=default_price)
+
+            add_to_si_cart = st.form_submit_button("Add to Stock In Cart" if lang == "English" else "➕ เพิ่มรายการนี้เข้าตะกร้ารับสินค้า")
+            if add_to_si_cart:
+                if selected_item_name:
+                    st.session_state["temp_stock_in_cart"].append({
+                        "Item Name": selected_item_name,
+                        "Quantity": si_qty,
+                        "Unit": si_unit,
+                        "Price": si_price,
+                        "Total": si_qty * si_price
+                    })
+                    st.success("Added!")
+                    st.rerun()
+                else:
+                    st.error("Invalid item.")
+
+        if len(st.session_state["temp_stock_in_cart"]) > 0:
+            st.markdown("#### Cart")
+            cart_df = pd.DataFrame(st.session_state["temp_stock_in_cart"])
+            if lang == "English":
+                cart_df["Item Name"] = cart_df["Item Name"].apply(lambda x: translate_item_name(x, lang))
+            st.dataframe(cart_df, use_container_width=True)
+            
+            total_si_amount = cart_df["Total"].sum()
+            st.markdown(f"### Total: **{total_si_amount:,.2f} THB**")
+
+            col_sb1, col_sb2 = st.columns(2)
+            with col_sb1:
+                if st.button("Clear Cart"):
+                    st.session_state["temp_stock_in_cart"] = []
+                    st.rerun()
+            with col_sb2:
+                if st.button("Confirm Stock In"):
+                    inv = st.session_state["company_inventories"][selected_company]
+                    for item in st.session_state["temp_stock_in_cart"]:
+                        i_name = item["Item Name"]
+                        i_qty = item["Quantity"]
+                        i_unit = item["Unit"]
+                        i_price = item["Price"]
+                        
+                        idx_match = inv.index[inv["Item Name"] == i_name]
+                        if not idx_match.empty:
+                            idx = idx_match[0]
+                            inv.loc[idx, "Stock Balance"] += i_qty
+                            inv.loc[idx, "Last Price"] = i_price
+
+                        new_trans = pd.DataFrame([{
+                            "Date": str(si_date),
+                            "Branch": selected_company,
+                            "Type": "Stock In",
+                            "Item Name": i_name,
+                            "Quantity": i_qty,
+                            "Unit": i_unit,
+                            "Note": f"Invoice: {si_doc_no} / Supplier: {si_supplier}"
+                        }])
+                        st.session_state["transaction_history"] = pd.concat([st.session_state["transaction_history"], new_trans], ignore_index=True)
+
+                    st.session_state["temp_stock_in_cart"] = []
+                    st.success("Stock updated successfully!")
+                    st.rerun()
 
 elif selected_menu == t_ui["m5"]:
     st.title(f"{t_ui['m5']} - {comp_display_name}")
+    if len(current_inv) == 0:
+        st.warning("No items available.")
+    else:
+        item_options = current_inv["Item Name"].tolist()
+        display_item_options = [translate_item_name(x, lang) for x in item_options]
+
+        with st.form("stock_out_form"):
+            so_date = st.date_input("Date", value=datetime.today())
+            selected_display_item = st.selectbox("Select Item", display_item_options)
+            
+            so_item = item_options[display_item_options.index(selected_display_item)]
+            
+            default_unit = "หน่วย"
+            current_bal = 0.0
+            matched_item = current_inv[current_inv["Item Name"] == so_item]
+            if not matched_item.empty:
+                default_unit = str(matched_item.iloc[0]["Unit"])
+                current_bal = float(matched_item.iloc[0]["Stock Balance"])
+
+            st.info(f"Current Stock: **{current_bal} {default_unit}**")
+
+            so_qty = st.number_input("Quantity", min_value=0.1, value=1.0)
+            so_unit = st.selectbox("Unit", st.session_state.units_list, index=st.session_state.units_list.index(default_unit) if default_unit in st.session_state.units_list else 0)
+            so_note = st.text_input("Note / Department")
+
+            submit_so = st.form_submit_button("Confirm Stock Out")
+            if submit_so:
+                if so_qty > current_bal:
+                    st.error("Insufficient stock!")
+                else:
+                    inv = st.session_state["company_inventories"][selected_company]
+                    idx = inv.index[inv["Item Name"] == so_item][0]
+                    inv.loc[idx, "Stock Balance"] -= so_qty
+                    
+                    new_trans = pd.DataFrame([{
+                        "Date": str(so_date),
+                        "Branch": selected_company,
+                        "Type": "Stock Out",
+                        "Item Name": so_item,
+                        "Quantity": so_qty,
+                        "Unit": so_unit,
+                        "Note": so_note
+                    }])
+                    st.session_state["transaction_history"] = pd.concat([st.session_state["transaction_history"], new_trans], ignore_index=True)
+                    st.success("Stock out successful!")
+                    st.rerun()
 
 elif selected_menu == t_ui["m6"]:
     st.title(f"{t_ui['m6']} - {comp_display_name}")
+    pr_tab1, pr_tab2 = st.tabs(["📄 1. PR", "📦 2. PO"])
+
+    with pr_tab1:
+        st.subheader("Create PR")
+        if "temp_pr_cart" not in st.session_state:
+            st.session_state["temp_pr_cart"] = []
+        st.info("PR system active.")
+
+    with pr_tab2:
+        st.subheader("Purchase Orders (PO)")
+        st.info("PO system active.")
 
 elif selected_menu == t_ui["m7"]:
     st.title(f"{t_ui['m7']} - {comp_display_name}")
+    if len(st.session_state["transaction_history"]) > 0:
+        hist_df = st.session_state["transaction_history"].copy()
+        if lang == "English":
+            hist_df["Item Name"] = hist_df["Item Name"].apply(lambda x: translate_item_name(x, lang))
+        st.dataframe(hist_df, use_container_width=True)
+    else:
+        st.info("No transaction history.")
 
 elif selected_menu == t_ui["m8"]:
     st.title(f"{t_ui['m8']} - {comp_display_name}")
+    if len(display_inv) > 0:
+        st.dataframe(display_inv, use_container_width=True)
+    else:
+        st.info("No stock data.")
 
 elif selected_menu == t_ui["m9"]:
     st.title(f"{t_ui['m9']} - {comp_display_name}")
