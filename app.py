@@ -400,8 +400,6 @@ elif selected_menu == t_ui["m2"]:
 
 elif selected_menu == t_ui["m3"]:
     st.title(f"{t_ui['m3']} - {comp_display_name}")
-    elif selected_menu == t_ui["m3"]:
-    st.title(f"{t_ui['m3']} - {comp_display_name}")
     st.markdown("กรอกข้อมูลเพื่อเพิ่มรายการสินค้าใหม่เข้าสู่ระบบสต็อกของสาขานี้")
 
     with st.form("add_new_item_form"):
