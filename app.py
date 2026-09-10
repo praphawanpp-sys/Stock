@@ -10,40 +10,27 @@ st.set_page_config(
 )
 
 # ----------------------------------------------------
-# 1. INITIALIZE SESSION STATES
+# 1. INITIALIZE SESSION STATES (อัปเดตหมวดหมู่และหน่วยนับใหม่)
 # ----------------------------------------------------
-if "units_list" not in st.session_state:
-    st.session_state.units_list = [
-        "Bag",
-        "Bottle",
-        "Box",
-        "Can",
-        "Case",
-        "Cup",
-        "Gallon",
-        "Gram",
-        "Jar",
-        "Kg.",
-        "Litre",
-        "Pack",
-        "Pcs."
-    ]
+st.session_state.units_list = [
+    "Bag", "Bottle", "Box", "Can", "Case", "Cup", 
+    "Gallon", "Gram", "Jar", "Kg.", "Litre", "Pack", "Pcs."
+]
 
-if "categories_list" not in st.session_state:
-    st.session_state.categories_list = [
-        "ไวน์",
-        "น้ำผลไม้/ผลไม้สด-เครื่องดื่ม",
-        "เนื้อวัว",
-        "อาหารทะเล",
-        "ผักและผลไม้-อาหาร",
-        "เนย/ชีส/ซาลามิ/แฮม",
-        "เนื้อสัตว์/เครื่องปรุง/วัตถุดิบอื่นๆ",
-        "เนื้อแกะ",
-        "แซลมอนรมควัน",
-        "เบียร์กระป๋อง/เบียร์สด/น้ำอัดลม",
-        "เมล็ดกาแฟ",
-        "ขนมปัง/เบเกอรี่/ของหวาน/ไอศกรีม"
-    ]
+st.session_state.categories_list = [
+    "ไวน์",
+    "น้ำผลไม้/ผลไม้สด-เครื่องดื่ม",
+    "เนื้อวัว",
+    "อาหารทะเล",
+    "ผักและผลไม้-อาหาร",
+    "เนย/ชีส/ซาลามิ/แฮม",
+    "เนื้อสัตว์/เครื่องปรุง/วัตถุดิบอื่นๆ",
+    "เนื้อแกะ",
+    "แซลมอนรมควัน",
+    "เบียร์กระป๋อง/เบียร์สด/น้ำอัดลม",
+    "เมล็ดกาแฟ",
+    "ขนมปัง/เบเกอรี่/ของหวาน/ไอศกรีม"
+]
 
 if "companies_list" not in st.session_state:
     st.session_state.companies_list = [
