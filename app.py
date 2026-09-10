@@ -50,22 +50,7 @@ if "users_db" not in st.session_state:
             "email": "owner@daddydeli.com",
             "role": "Owner", 
             "branches": st.session_state.companies_list  
-        },
-        "manager_general": {
-            "name": "ผู้จัดการทั่วไป (Manager)", 
-            "phone": "082-222-2222",
-            "email": "manager@daddydeli.com",
-            "role": "Manager", 
-            "branches": st.session_state.companies_list  
-        },
-        "admin_daddy_deli": {
-            "name": "แอดมิน (เฉพาะ Daddy Deli)", 
-            "phone": "083-333-3333",
-            "email": "admin1@daddydeli.com",
-            "role": "Admin", 
-            "branches": ["Daddy Deli"]  
-        }
-    }
+           }
 
 if "company_details" not in st.session_state:
     st.session_state["company_details"] = {
@@ -137,7 +122,7 @@ if "company_inventories" not in st.session_state:
             "Unit": "Bottle",
             "Conversion Qty": 1.0,
             "Stock Balance": 10.0,
-            "Last Price": 95.0,
+            "Last Price": 99.0,
             "Supplier": "CP Axtra (Makro)",
             "Vat Type": "Non Vat"
         }
