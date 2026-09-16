@@ -521,7 +521,7 @@ elif selected_menu == t_ui["m3"]:
                 st.rerun()
 
     with tab_manage_cat:
-    st.subheader("จัดการหมวดหมู่สินค้า (Categories)")
+        st.subheader("จัดการหมวดหมู่สินค้า (Categories)")
     
     # --- ตัวอย่างฟอร์มเพิ่มหมวดหมู่ใหม่ ---
     with st.form("add_cat_form"):
