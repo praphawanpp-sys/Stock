@@ -449,7 +449,7 @@ elif selected_menu == t_ui["m3"]:
     with st.form("add_new_item_form"):
             new_code = st.text_input("รหัสสินค้า (Product Code)")
             new_name = st.text_input("ชื่อสินค้า (Item Name)")
-            new_supplier = st.text_input("ชื่อร้านค้า / Supplier (เช่น Makro, Gourmet Market)")
+            new_supplier = st.selectbox("ชื่อร้านค้า / Supplier (เช่น Makro, Gourmet Market)")
             new_category = st.selectbox("หมวดหมู่สินค้า", st.session_state.categories_list)
             new_unit = st.selectbox("หน่วยนับ", st.session_state.units_list)
             new_conv = st.number_input("อัตราส่วนการแปลงหน่วย (Conversion Qty)", value=1.0, min_value=0.01)
