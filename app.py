@@ -341,18 +341,25 @@ elif selected_menu == t_ui["m2"]:
         st.subheader("Product List & Management" if lang == "English" else "รายชื่อสินค้าในระบบและการจัดการ")
 
         for idx, row in filtered_df.iterrows():
-            cols = st.columns([2.2, 1.2, 1.2, 1.2, 0.9, 0.9, 0.9, 1.3])
-            cols[0].write(f"**{row['Item Name']}**")
-            cols[1].write(f"Code: {row['Product Code']}" if lang == "English" else f"รหัส: {row['Product Code']}")
-            cols[2].write(f"Sup: {row['Supplier']}" if lang == "English" else f"ร้าน: {row['Supplier']}")
-            cols[3].write(f"Cat: {row['Category']}" if lang == "English" else f"หมวด: {row['Category']}")
-            cols[4].write(f"Bal: {row['Stock Balance']}" if lang == "English" else f"คงเหลือ: {row['Stock Balance']}")
-            cols[5].write(f"Unit: {row['Unit']}" if lang == "English" else f"หน่วย: {row['Unit']}")
-            cols[6].write(f"{row['Last Price']} ฿")
-
-            action_choice = cols[7].selectbox(
-                "Action" if lang == "English" else "จัดการ", 
-                ["Select" if lang == "English" else "เลือก", "✏️ Edit" if lang == "English" else "✏️ แก้ไข", "🗑️ Delete" if lang == "English" else "🗑️ ลบ"], 
+        # แบ่งเป็น 2 คอลัมน์หลัก: ฝั่งซ้ายแสดงข้อมูลสินค้าทั้งหมด, ฝั่งขวาสำหรับ Dropdown จัดการ
+        cols = st.columns([5, 1.2])
+        
+        # ฝั่งซ้าย: รวมรายละเอียดสินค้าให้อยู่ในบรรทัดเดียวกันแบบสวยงาม
+        with cols[0]:
+            st.markdown(
+                f"**{row['Item Name']}** &nbsp;|&nbsp; "
+                f"รหัส: `{row['Product Code']}` &nbsp;|&nbsp; "
+                f"ร้าน: {row['Supplier']} &nbsp;|&nbsp; "
+                f"หมวด: {row['Category']} &nbsp;|&nbsp; "
+                f"คงเหลือ: **{row['Stock Balance']} {row['Unit']}** &nbsp;|&nbsp; "
+                f"ราคา: {row['Last Price']} ฿"
+            )
+            
+        # ฝั่งขวา: เมนูดรอปดาวน์จัดการ (เลือก / แก้ไข / ลบ)
+        with cols[1]:
+            action_choice = st.selectbox(
+                "Action" if lang == "English" else "จัดการ",
+                ["Select" if lang == "English" else "เลือก", "✏️ Edit" if lang == "English" else "✏️ แก้ไข", "🗑️ Delete" if lang == "English" else "🗑️ ลบ"],
                 key=f"action_{selected_company}_{idx}",
                 label_visibility="collapsed"
             )
