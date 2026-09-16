@@ -309,8 +309,16 @@ elif selected_menu == t_ui["m2"]:
     st.caption("Summary of all items in this branch." if lang == "English" else "สรุปสินค้าทั้งหมดของบริษัท/สาขานั้นๆ ว่ามีสินค้าอะไรบ้าง")
     
     if len(display_inv) > 0:
-       st.markdown("### 🔍 ค้นหาข้อมูลสินค้า")
-    
+        st.markdown("#### 🔍 Search Products" if lang == "English" else "#### 🔍 ค้นหาข้อมูลสินค้า")
+        scol1, scol2, scol3 = st.columns(3)
+        with scol1:
+            search_supplier = st.text_input("Supplier" if lang == "English" else "ค้นหาตามชื่อร้านค้า (Supplier)")
+        with scol2:
+            search_code = st.text_input("Product Code" if lang == "English" else "ค้นหาตามรหัสสินค้า (Product Code)")
+        with scol3:
+            cat_options = ["All" if lang == "English" else "ทั้งหมด"] + display_inv["Category"].dropna().unique().tolist()
+            search_category = st.selectbox("Category" if lang == "English" else "ค้นหาตามหมวดหมู่ (Category)", cat_options)
+
         filtered_df = display_inv.copy()
         if search_supplier:
             filtered_df = filtered_df[filtered_df["Supplier"].astype(str).str.contains(search_supplier, case=False, na=False)]
@@ -380,8 +388,7 @@ elif selected_menu == t_ui["m2"]:
 elif selected_menu == t_ui["m3"]:
     st.title(f"{t_ui['m3']} - {comp_display_name}")
     st.markdown("กรอกข้อมูลเพื่อเพิ่มรายการสินค้าใหม่เข้าสู่ระบบสต็อกของสาขานี้ หรือจัดการข้อมูลพื้นฐาน")
-       
-    # --------------------------------------------------
+
     tab_add_item, tab_manage_unit, tab_manage_cat, tab_manage_supplier = st.tabs([
         "➕ เพิ่มสินค้าใหม่", 
         "📏 จัดการหน่วยนับ", 
@@ -390,18 +397,12 @@ elif selected_menu == t_ui["m3"]:
     ])
 
     with tab_add_item:
-        # กำหนดค่าตัวเลือกนอก Form เพื่อให้ดึงค่าล่าสุดจากระบบได้ทันที
-        sup_options = [s["name"] for s in st.session_state.get("suppliers_list", [])]
-        if not sup_options:
-            sup_options = ["Makro", "Gourmet Market"]
-            
-        selected_sup = st.selectbox("1. ค้นหาตามชื่อร้านค้า / Supplier", sup_options)
-        selected_cat = st.selectbox("2. ค้นหาตามหมวดหมู่", st.session_state.categories_list)
-        selected_unit = st.selectbox("หน่วยนับ", st.session_state.units_list)
-
         with st.form("add_new_item_form"):
             new_code = st.text_input("รหัสสินค้า (Product Code)")
             new_name = st.text_input("ชื่อสินค้า (Item Name)")
+            new_supplier = st.text_input("ชื่อร้านค้า / Supplier (เช่น Makro, Gourmet Market)")
+            new_category = st.selectbox("หมวดหมู่สินค้า", st.session_state.categories_list)
+            new_unit = st.selectbox("หน่วยนับ", st.session_state.units_list)
             new_conv = st.number_input("อัตราส่วนการแปลงหน่วย (Conversion Qty)", value=1.0, min_value=0.01)
             new_price = st.number_input("ราคาล่าสุด (Last Price)", value=0.0, min_value=0.0)
             new_vat = st.selectbox("ประเภท Vat", VAT_TYPES_LIST)
@@ -415,12 +416,12 @@ elif selected_menu == t_ui["m3"]:
                     new_row = pd.DataFrame([{
                         "Product Code": new_code,
                         "Item Name": new_name,
-                        "Category": selected_cat,
-                        "Unit": selected_unit,
+                        "Category": new_category,
+                        "Unit": new_unit,
                         "Conversion Qty": new_conv,
                         "Stock Balance": new_initial_stock,
                         "Last Price": new_price,
-                        "Supplier": selected_sup,
+                        "Supplier": new_supplier,
                         "Vat Type": new_vat
                     }])
                     st.session_state["company_inventories"][selected_company] = pd.concat(
@@ -505,6 +506,7 @@ elif selected_menu == t_ui["m3"]:
     with tab_manage_supplier:
         st.subheader("จัดการ/เพิ่มบริษัทที่จัดซื้อสินค้า (Supplier Profile)")
         
+        # กำหนด session state สำหรับเก็บรายการบริษัท
         if "suppliers_list" not in st.session_state:
             st.session_state.suppliers_list = []
 
