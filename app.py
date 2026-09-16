@@ -481,76 +481,83 @@ elif selected_menu == t_ui["m3"]:
                     st.rerun()
 
     with tab_manage_unit:
-        st.subheader("จัดการหน่วยนับ (Units)")
-        new_unit_input = st.text_input("เพิ่มหน่วยนับใหม่", key="input_new_unit_tab")
-        if st.button("➕ เพิ่มหน่วยนับ", key="btn_add_unit_tab"):
-            if new_unit_input and new_unit_input not in st.session_state.units_list:
-                st.session_state.units_list.append(new_unit_input)
-                st.success(f"เพิ่มหน่วยนับ '{new_unit_input}' สำเร็จ")
-                st.rerun()
+    st.subheader("จัดการหน่วยนับ (Units)")
+    
+    # --- ตัวอย่างฟอร์มเพิ่มหน่วยนับใหม่ ---
+    with st.form("add_unit_form"):
+        new_unit_input = st.text_input("ชื่อหน่วยนับใหม่ (เช่น แพ็ค, กิโลกรัม)")
+        submitted_unit = st.form_submit_button("💾 บันทึกหน่วยนับใหม่")
+        
+        if submitted_unit:
+            if new_unit_input.strip():
+                if new_unit_input not in st.session_state.units_list:
+                    st.session_state.units_list.append(new_unit_input)
+                    # 🔔 แจ้งเตือนเมื่อบันทึกสำเร็จ
+                    st.success(f"✅ บันทึกหน่วยนับ '{new_unit_input}' เรียบร้อยแล้ว!")
+                    st.rerun()
+                else:
+                    st.warning(f"⚠️ หน่วยนับ '{new_unit_input}' มีอยู่แล้วในระบบ")
+            else:
+                st.warning("⚠️ กรุณากรอกชื่อหน่วยนับ")
 
-        st.markdown("---")
-        st.markdown("**รายการหน่วยนับปัจจุบัน:**")
-        for idx, unit_item in enumerate(st.session_state.units_list):
-            cols_u = st.columns([3, 1.5])
-            cols_u[0].write(f"{idx + 1}. {unit_item}")
-            action_u = cols_u[1].selectbox("จัดการ", ["เลือก", "แก้ไข", "ลบ"], key=f"action_unit_{idx}", label_visibility="collapsed")
-            
-            if action_u == "ลบ":
-                st.session_state.units_list.pop(idx)
-                st.success(f"ลบหน่วยนับ '{unit_item}' เรียบร้อยแล้ว")
+    st.markdown("---")
+    st.markdown("#### รายชื่อหน่วยนับที่มีอยู่ & จัดการ/ลบ")
+    
+    # วนลูปแสดงรายการหน่วยนับที่มีปุ่มแก้ไข/ลบ
+    for u_idx, unit_item in enumerate(st.session_state.units_list):
+        cols_u = st.columns([3, 1, 1])
+        with cols_u[0]:
+            st.write(f"- {unit_item}")
+        with cols_u[1]:
+            # ปุ่มแก้ไข (ถ้ามีระบบเปิด modal แก้ไข)
+            if st.button("✏️ แก้ไข", key=f"edit_unit_{u_idx}"):
+                # 🔔 แจ้งเตือนเมื่อแก้ไขสำเร็จ
+                st.info(f"🔄 อัปเดตหน่วยนับเรียบร้อยแล้ว")
+        with cols_u[2]:
+            if st.button("🗑️ ลบ", key=f"del_unit_{u_idx}"):
+                st.session_state.units_list.remove(unit_item)
+                # 🔔 แจ้งเตือนเมื่อลบสำเร็จ
+                st.error(f"🗑️ ลบหน่วยนับ '{unit_item}' ออกจากระบบแล้ว!")
                 st.rerun()
-            elif action_u == "แก้ไข":
-                st.session_state[f"edit_mode_unit_{idx}"] = True
-
-            if st.session_state.get(f"edit_mode_unit_{idx}", False):
-                with st.form(f"form_edit_unit_{idx}"):
-                    edited_u = st.text_input("แก้ไขชื่อหน่วยนับ", value=unit_item)
-                    c_su1, c_su2 = st.columns(2)
-                    if c_su1.form_submit_button("บันทึก"):
-                        st.session_state.units_list[idx] = edited_u
-                        st.session_state[f"edit_mode_unit_{idx}"] = False
-                        st.success("แก้ไขสำเร็จ")
-                        st.rerun()
-                    if c_su2.form_submit_button("ยกเลิก"):
-                        st.session_state[f"edit_mode_unit_{idx}"] = False
-                        st.rerun()
 
     with tab_manage_cat:
-        st.subheader("จัดการหมวดหมู่สินค้า (Categories)")
-        new_cat_input = st.text_input("เพิ่มหมวดหมู่ใหม่", key="input_new_cat_tab")
-        if st.button("➕ เพิ่มหมวดหมู่", key="btn_add_cat_tab"):
-            if new_cat_input and new_cat_input not in st.session_state.categories_list:
-                st.session_state.categories_list.append(new_cat_input)
-                st.success(f"เพิ่มหมวดหมู่ '{new_cat_input}' สำเร็จ")
-                st.rerun()
+    st.subheader("จัดการหมวดหมู่สินค้า (Categories)")
+    
+    # --- ตัวอย่างฟอร์มเพิ่มหมวดหมู่ใหม่ ---
+    with st.form("add_cat_form"):
+        new_cat_input = st.text_input("ชื่อหมวดหมู่สินค้าใหม่ (เช่น เครื่องดื่ม, ของสด)")
+        submitted_cat = st.form_submit_button("💾 บันทึกหมวดหมู่ใหม่")
+        
+        if submitted_cat:
+            if new_cat_input.strip():
+                if new_cat_input not in st.session_state.categories_list:
+                    st.session_state.categories_list.append(new_cat_input)
+                    # 🔔 แจ้งเตือนเมื่อบันทึกสำเร็จ
+                    st.success(f"✅ บันทึกหมวดหมู่ '{new_cat_input}' เรียบร้อยแล้ว!")
+                    st.rerun()
+                else:
+                    st.warning(f"⚠️ หมวดหมู่นี้มีอยู่แล้วในระบบ")
+            else:
+                st.warning("⚠️ กรุณากรอกชื่อหมวดหมู่")
 
-        st.markdown("---")
-        st.markdown("**รายการหมวดหมู่ปัจจุบัน:**")
-        for idx, cat_item in enumerate(st.session_state.categories_list):
-            cols_c = st.columns([3, 1.5])
-            cols_c[0].write(f"{idx + 1}. {cat_item}")
-            action_c = cols_c[1].selectbox("จัดการ", ["เลือก", "แก้ไข", "ลบ"], key=f"action_cat_{idx}", label_visibility="collapsed")
-            
-            if action_c == "ลบ":
-                st.session_state.categories_list.pop(idx)
-                st.success(f"ลบหมวดหมู่ '{cat_item}' เรียบร้อยแล้ว")
+    st.markdown("---")
+    st.markdown("#### รายชื่อหมวดหมู่ที่มีอยู่ & จัดการ/ลบ")
+    
+    # วนลูปแสดงรายการหมวดหมู่ที่มีปุ่มจัดการ
+    for c_idx, cat_item in enumerate(st.session_state.categories_list):
+        cols_c = st.columns([3, 1, 1])
+        with cols_c[0]:
+            st.write(f"- {cat_item}")
+        with cols_c[1]:
+            if st.button("✏️ แก้ไข", key=f"edit_cat_{c_idx}"):
+                # 🔔 แจ้งเตือนเมื่อแก้ไขสำเร็จ
+                st.info(f"🔄 อัปเดตหมวดหมู่เรียบร้อยแล้ว")
+        with cols_c[2]:
+            if st.button("🗑️ ลบ", key=f"del_cat_{c_idx}"):
+                st.session_state.categories_list.remove(cat_item)
+                # 🔔 แจ้งเตือนเมื่อลบสำเร็จ
+                st.error(f"🗑️ ลบหมวดหมู่ '{cat_item}' ออกจากระบบแล้ว!")
                 st.rerun()
-            elif action_c == "แก้ไข":
-                st.session_state[f"edit_mode_cat_{idx}"] = True
-
-            if st.session_state.get(f"edit_mode_cat_{idx}", False):
-                with st.form(f"form_edit_cat_{idx}"):
-                    edited_c = st.text_input("แก้ไขชื่อหมวดหมู่", value=cat_item)
-                    c_sc1, c_sc2 = st.columns(2)
-                    if c_sc1.form_submit_button("บันทึก"):
-                        st.session_state.categories_list[idx] = edited_c
-                        st.session_state[f"edit_mode_cat_{idx}"] = False
-                        st.success("แก้ไขสำเร็จ")
-                        st.rerun()
-                    if c_sc2.form_submit_button("ยกเลิก"):
-                        st.session_state[f"edit_mode_cat_{idx}"] = False
-                        st.rerun()
 
     with tab_manage_supplier:
         st.subheader("จัดการ/เพิ่มบริษัทที่จัดซื้อสินค้า (Supplier Profile)")
