@@ -397,20 +397,18 @@ elif selected_menu == t_ui["m3"]:
     ])
 
     with tab_add_item:
+        # กำหนดค่าตัวเลือกนอก Form เพื่อให้ดึงค่าล่าสุดจากระบบได้ทันที
+        sup_options = [s["name"] for s in st.session_state.get("suppliers_list", [])]
+        if not sup_options:
+            sup_options = ["Makro", "Gourmet Market"]
+            
+        selected_sup = st.selectbox("1. ค้นหาตามชื่อร้านค้า / Supplier", sup_options)
+        selected_cat = st.selectbox("2. ค้นหาตามหมวดหมู่", st.session_state.categories_list)
+        selected_unit = st.selectbox("หน่วยนับ", st.session_state.units_list)
+
         with st.form("add_new_item_form"):
             new_code = st.text_input("รหัสสินค้า (Product Code)")
             new_name = st.text_input("ชื่อสินค้า (Item Name)")
-            
-            # ดึงรายชื่อบริษัทจาก suppliers_list มาทำเป็น Dropdown (ถ้ามี) หากไม่มีให้แสดงค่าเริ่มต้น
-            sup_options = [s["name"] for s in st.session_state.get("suppliers_list", [])]
-            if not sup_options:
-                sup_options = ["Makro", "Gourmet Market"]
-            new_supplier = st.selectbox("1. ค้นหาตามชื่อร้านค้า / Supplier", sup_options)
-            
-            # ดึงหมวดหมู่สินค้าจาก st.session_state.categories_list มาทำเป็น Dropdown
-            new_category = st.selectbox("2. ค้นหาตามหมวดหมู่", st.session_state.categories_list)
-            
-            new_unit = st.selectbox("หน่วยนับ", st.session_state.units_list)
             new_conv = st.number_input("อัตราส่วนการแปลงหน่วย (Conversion Qty)", value=1.0, min_value=0.01)
             new_price = st.number_input("ราคาล่าสุด (Last Price)", value=0.0, min_value=0.0)
             new_vat = st.selectbox("ประเภท Vat", VAT_TYPES_LIST)
@@ -424,12 +422,12 @@ elif selected_menu == t_ui["m3"]:
                     new_row = pd.DataFrame([{
                         "Product Code": new_code,
                         "Item Name": new_name,
-                        "Category": new_category,
-                        "Unit": new_unit,
+                        "Category": selected_cat,
+                        "Unit": selected_unit,
                         "Conversion Qty": new_conv,
                         "Stock Balance": new_initial_stock,
                         "Last Price": new_price,
-                        "Supplier": new_supplier,
+                        "Supplier": selected_sup,
                         "Vat Type": new_vat
                     }])
                     st.session_state["company_inventories"][selected_company] = pd.concat(
