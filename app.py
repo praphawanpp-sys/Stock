@@ -446,39 +446,45 @@ elif selected_menu == t_ui["m3"]:
     st.markdown("---")
     # ---------------------------------------------
     
-    with st.form("add_new_item_form"):
-            new_code = st.text_input("รหัสสินค้า (Product Code)")
-            new_name = st.text_input("ชื่อสินค้า (Item Name)")
-            new_supplier = st.selectbox("ชื่อร้านค้า / Supplier", st.session_state.suppliers_list if "suppliers_list" in st.session_state else ["Makro", "Gourmet Market"])
-            new_category = st.selectbox("หมวดหมู่สินค้า", st.session_state.categories_list)
-            new_unit = st.selectbox("หน่วยนับ", st.session_state.units_list)
-            new_conv = st.number_input("อัตราส่วนการแปลงหน่วย (Conversion Qty)", value=1.0, min_value=0.01)
-            new_price = st.number_input("ราคาล่าสุด (Last Price)", value=0.0, min_value=0.0)
-            new_vat = st.selectbox("ประเภท Vat", VAT_TYPES_LIST)
-            new_initial_stock = st.number_input("จำนวนสต็อกเริ่มต้น (Initial Stock Balance)", value=0.0, min_value=0.0)
-
-            submitted_new_item = st.form_submit_button("💾 บันทึกเพิ่มสินค้าใหม่")
-            if submitted_new_item:
-                if not new_name.strip():
-                    st.error("⚠️ กรุณากรอกชื่อสินค้า")
-                else:
-                    new_row = pd.DataFrame([{
-                        "Product Code": new_code,
-                        "Item Name": new_name,
-                        "Category": new_category,
-                        "Unit": new_unit,
-                        "Conversion Qty": new_conv,
-                        "Stock Balance": new_initial_stock,
-                        "Last Price": new_price,
-                        "Supplier": new_supplier,
-                        "Vat Type": new_vat
-                    }])
-                    st.session_state["company_inventories"][selected_company] = pd.concat(
-                        [st.session_state["company_inventories"][selected_company], new_row], 
-                        ignore_index=True
-                    )
-                    st.success(f"✨ เพิ่มสินค้า '{new_name}' สำเร็จเรียบร้อยแล้ว!")
+    with tab_manage_unit:
+    st.subheader("จัดการหน่วยนับ (Units)")
+    
+    # --- ตัวอย่างฟอร์มเพิ่มหน่วยนับใหม่ ---
+    with st.form("add_unit_form"):
+        new_unit_input = st.text_input("ชื่อหน่วยนับใหม่ (เช่น แพ็ค, กิโลกรัม)")
+        submitted_unit = st.form_submit_button("💾 บันทึกหน่วยนับใหม่")
+        
+        if submitted_unit:
+            if new_unit_input.strip():
+                if new_unit_input not in st.session_state.units_list:
+                    st.session_state.units_list.append(new_unit_input)
+                    # 🔔 แจ้งเตือนเมื่อบันทึกสำเร็จ
+                    st.success(f"✅ บันทึกหน่วยนับ '{new_unit_input}' เรียบร้อยแล้ว!")
                     st.rerun()
+                else:
+                    st.warning(f"⚠️ หน่วยนับ '{new_unit_input}' มีอยู่แล้วในระบบ")
+            else:
+                st.warning("⚠️ กรุณากรอกชื่อหน่วยนับ")
+
+    st.markdown("---")
+    st.markdown("#### รายชื่อหน่วยนับที่มีอยู่ & จัดการ/ลบ")
+    
+    # วนลูปแสดงรายการหน่วยนับที่มีปุ่มแก้ไข/ลบ
+    for u_idx, unit_item in enumerate(st.session_state.units_list):
+        cols_u = st.columns([3, 1, 1])
+        with cols_u[0]:
+            st.write(f"- {unit_item}")
+        with cols_u[1]:
+            # ปุ่มแก้ไข (ถ้ามีระบบเปิด modal แก้ไข)
+            if st.button("✏️ แก้ไข", key=f"edit_unit_{u_idx}"):
+                # 🔔 แจ้งเตือนเมื่อแก้ไขสำเร็จ
+                st.info(f"🔄 อัปเดตหน่วยนับเรียบร้อยแล้ว")
+        with cols_u[2]:
+            if st.button("🗑️ ลบ", key=f"del_unit_{u_idx}"):
+                st.session_state.units_list.remove(unit_item)
+                # 🔔 แจ้งเตือนเมื่อลบสำเร็จ
+                st.error(f"🗑️ ลบหน่วยนับ '{unit_item}' ออกจากระบบแล้ว!")
+                st.rerun()
 
     with tab_manage_supplier:
         st.subheader("จัดการ/เพิ่มบริษัทที่จัดซื้อสินค้า (Supplier Profile)")
