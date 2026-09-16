@@ -340,7 +340,7 @@ elif selected_menu == t_ui["m2"]:
         st.markdown("---")
         st.subheader("Product List & Management" if lang == "English" else "รายชื่อสินค้าในระบบและการจัดการ")
 
-        for idx, row in filtered_df.iterrows():
+    for idx, row in filtered_df.iterrows():
         # แบ่งเป็น 2 คอลัมน์หลัก: ฝั่งซ้ายแสดงข้อมูลสินค้าทั้งหมด, ฝั่งขวาสำหรับ Dropdown จัดการ
         cols = st.columns([5, 1.2])
         
