@@ -307,7 +307,27 @@ if selected_menu == t_ui["m1"]:
 elif selected_menu == t_ui["m2"]:
     st.title(f"{t_ui['m2']} - {comp_display_name}")
     st.caption("Summary of all items in this branch." if lang == "English" else "สรุปสินค้าทั้งหมดของบริษัท/สาขานั้นๆ ว่ามีสินค้าอะไรบ้าง")
-    
+   
+    # --- ส่วนค้นหาข้อมูลสินค้า (วางแทนที่โค้ดค้นหาอันเดิมด้านบนสุดของหน้า m3) ---
+    st.markdown("### 🔍 ค้นหาข้อมูลสินค้า")
+
+    # สร้างตัวเลือก Dropdown สำหรับ Supplier
+    sup_search_options = ["ทั้งหมด"] + [s["name"] for s in st.session_state.get("suppliers_list", [])]
+    if len(sup_search_options) == 1:
+        sup_search_options = ["ทั้งหมด", "Makro", "Gourmet Market"]
+
+    # สร้างตัวเลือก Dropdown สำหรับหมวดหมู่
+    cat_search_options = ["ทั้งหมด"] + list(st.session_state.get("categories_list", []))
+
+    col_s1, col_s2, col_s3 = st.columns(3)
+    with col_s1:
+        # เปลี่ยนเป็น Dropdown ค้นหาตามชื่อร้านค้า
+        search_supplier = st.selectbox("ค้นหาตามชื่อร้านค้า (Supplier)", sup_search_options)
+    with col_s2:
+        search_code = st.text_input("ค้นหารหัสสินค้า (Product Code)")
+    with col_s3:
+        # เปลี่ยนเป็น Dropdown ค้นหาตามหมวดหมู่
+        search_category = st.selectbox("ค้นหาตามหมวดหมู่ (Category)", cat_search_options)
     if len(display_inv) > 0:
         st.markdown("#### 🔍 Search Products" if lang == "English" else "#### 🔍 ค้นหาข้อมูลสินค้า")
         scol1, scol2, scol3 = st.columns(3)
