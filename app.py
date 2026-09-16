@@ -480,8 +480,8 @@ elif selected_menu == t_ui["m3"]:
                     st.success(f"✨ เพิ่มสินค้า '{new_name}' สำเร็จเรียบร้อยแล้ว!")
                     st.rerun()
 
-    with tab_manage_unit:
-    st.subheader("จัดการหน่วยนับ (Units)")
+        with tab_manage_unit:
+        st.subheader("จัดการหน่วยนับ (Units)")
     
     # --- ตัวอย่างฟอร์มเพิ่มหน่วยนับใหม่ ---
     with st.form("add_unit_form"):
