@@ -392,9 +392,7 @@ elif selected_menu == t_ui["m2"]:
                             st.rerun()
 
             st.markdown("<hr style='margin: 5px 0;'>", unsafe_allow_html=True)
-    else:
-        st.info("No items available." if lang == "English" else "ยังไม่มีรายการสินค้า")
-
+  
 elif selected_menu == t_ui["m3"]:
     st.title(f"{t_ui['m3']} - {comp_display_name}")
     st.markdown("กรอกข้อมูลเพื่อเพิ่มรายการสินค้าใหม่เข้าสู่ระบบสต็อกของสาขานี้ หรือจัดการข้อมูลพื้นฐาน")
