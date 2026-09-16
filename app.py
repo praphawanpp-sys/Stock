@@ -577,22 +577,28 @@ with tab_manage_cat:
                         ed_addr = st.text_area("2. ที่อยู่บริษัท", value=sup['address'])
                         ed_tax = st.text_input("3. เลขที่ผู้เสียภาษี", value=sup['tax_id'])
                         ed_cont = st.text_input("4. ข้อมูลติดต่อเซลล์", value=sup['contact'])
-                        
+                        # นำ columns เข้ามาไว้ข้างใน with st.form(...)
                         c_ss1, c_ss2 = st.columns(2)
-                        if c_ss1.form_submit_button("บันทึกการแก้ไข"):
+                        with c_ss1:
+                            submitted_edit = st.form_submit_button("💾 บันทึกการแก้ไข")
+                        with c_ss2:
+                            submitted_cancel = st.form_submit_button("❌ ยกเลิก")
+
+                        if submitted_edit:
                             st.session_state.suppliers_list[idx] = {
                                 "name": ed_name,
                                 "address": ed_addr,
                                 "tax_id": ed_tax,
                                 "contact": ed_cont
-                            })
+                            }
                             st.session_state[f"edit_mode_sup_{idx}"] = False
-                            st.success("แก้ไขข้อมูลสำเร็จ")
+                            st.success("✅ แก้ไขข้อมูลบริษัทสำเร็จ")
                             st.rerun()
-                        if c_ss2.form_submit_button("ยกเลิก"):
+            
+                        if submitted_cancel:
                             st.session_state[f"edit_mode_sup_{idx}"] = False
                             st.rerun()
-                st.markdown("---")
+                                st.markdown("---")
                 
 elif selected_menu == t_ui["m4"]:
     st.title(f"{t_ui['m4']} - {comp_display_name}")
