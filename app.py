@@ -308,7 +308,7 @@ elif selected_menu == t_ui["m2"]:
     st.title(f"{t_ui['m2']} - {comp_display_name}")
     st.caption("Summary of all items in this branch." if lang == "English" else "สรุปสินค้าทั้งหมดของบริษัท/สาขานั้นๆ ว่ามีสินค้าอะไรบ้าง")
    
-    # --- ส่วนค้นหาข้อมูลสินค้า (วางแทนที่โค้ดค้นหาอันเดิมด้านบนสุดของหน้า m3) ---
+    # --- ส่วนค้นหาข้อมูลสินค้า (วางแทนที่โค้ดค้นหาอันเดิมด้านบนสุดของหน้า m2) ---
     st.markdown("### 🔍 ค้นหาข้อมูลสินค้า")
 
     # สร้างตัวเลือก Dropdown สำหรับ Supplier
@@ -330,8 +330,8 @@ elif selected_menu == t_ui["m2"]:
         search_category = st.selectbox("ค้นหาตามหมวดหมู่ (Category)", cat_search_options)
     
         filtered_df = display_inv.copy()
-        if search_supplier:
-            filtered_df = filtered_df[filtered_df["Supplier"].astype(str).str.contains(search_supplier, case=False, na=False)]
+        if search_supplier and search_supplier != "ทั้งหมด":
+    filtered_df = filtered_df[filtered_df["Supplier"].astype(str).str.contains(search_supplier, case=False, na=False)]
         if search_code:
             filtered_df = filtered_df[filtered_df["Product Code"].astype(str).str.contains(search_code, case=False, na=False)]
         if search_category not in ["All", "ทั้งหมด"]:
