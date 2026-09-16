@@ -388,7 +388,28 @@ elif selected_menu == t_ui["m2"]:
 elif selected_menu == t_ui["m3"]:
     st.title(f"{t_ui['m3']} - {comp_display_name}")
     st.markdown("กรอกข้อมูลเพื่อเพิ่มรายการสินค้าใหม่เข้าสู่ระบบสต็อกของสาขานี้ หรือจัดการข้อมูลพื้นฐาน")
+    
+# --- วางโค้ดส่วนนี้ที่บรรทัด 391 (ก่อนสร้างแท็บ) ---
+    st.markdown("### 🔍 ค้นหาข้อมูลสินค้า")
+    
+    # ดึงรายชื่อ Supplier และ หมวดหมู่ มาทำเป็น Dropdown สำหรับค้นหา
+    sup_search_options = ["ทั้งหมด"] + [s["name"] for s in st.session_state.get("suppliers_list", [])]
+    if len(sup_search_options) == 1:
+        sup_search_options = ["ทั้งหมด", "Makro", "Gourmet Market"]
+        
+    cat_search_options = ["ทั้งหมด"] + list(st.session_state.get("categories_list", []))
 
+    col_s1, col_s2, col_s3 = st.columns(3)
+    with col_s1:
+        search_supplier = st.selectbox("ค้นหาตามชื่อร้านค้า (Supplier)", sup_search_options)
+    with col_s2:
+        search_code = st.text_input("ค้นหารหัสสินค้า (Product Code)")
+    with col_s3:
+        search_category = st.selectbox("ค้นหาตามหมวดหมู่ (Category)", cat_search_options)
+    
+    st.markdown("---")
+    
+    # --------------------------------------------------
     tab_add_item, tab_manage_unit, tab_manage_cat, tab_manage_supplier = st.tabs([
         "➕ เพิ่มสินค้าใหม่", 
         "📏 จัดการหน่วยนับ", 
