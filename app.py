@@ -337,8 +337,8 @@ elif selected_menu == t_ui["m2"]:
         if search_category not in ["All", "ทั้งหมด"]:
             filtered_df = filtered_df[filtered_df["Category"] == search_category]
 
-        st.markdown("---")
-        st.subheader("Product List & Management" if lang == "English" else "รายชื่อสินค้าในระบบและการจัดการ")
+    st.markdown("---")
+    st.subheader("Product List & Management" if lang == "English" else "รายชื่อสินค้าในระบบและการจัดการ")
 
     for idx, row in filtered_df.iterrows():
         # แบ่งเป็น 2 คอลัมน์หลัก: ฝั่งซ้ายแสดงข้อมูลสินค้าทั้งหมด, ฝั่งขวาสำหรับ Dropdown จัดการ
