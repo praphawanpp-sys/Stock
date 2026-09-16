@@ -331,7 +331,7 @@ elif selected_menu == t_ui["m2"]:
     
         filtered_df = display_inv.copy()
         if search_supplier and search_supplier != "ทั้งหมด":
-    filtered_df = filtered_df[filtered_df["Supplier"].astype(str).str.contains(search_supplier, case=False, na=False)]
+            filtered_df = filtered_df[filtered_df["Supplier"].astype(str).str.contains(search_supplier, case=False, na=False)]
         if search_code:
             filtered_df = filtered_df[filtered_df["Product Code"].astype(str).str.contains(search_code, case=False, na=False)]
         if search_category not in ["All", "ทั้งหมด"]:
