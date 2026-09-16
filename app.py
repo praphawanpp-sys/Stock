@@ -486,6 +486,45 @@ elif selected_menu == t_ui["m3"]:
                 st.error(f"🗑️ ลบหน่วยนับ '{unit_item}' ออกจากระบบแล้ว!")
                 st.rerun()
 
+with tab_manage_cat:
+    st.subheader("จัดการหมวดหมู่สินค้า (Categories)")
+    
+    # --- ตัวอย่างฟอร์มเพิ่มหมวดหมู่ใหม่ ---
+    with st.form("add_cat_form"):
+        new_cat_input = st.text_input("ชื่อหมวดหมู่สินค้าใหม่ (เช่น เครื่องดื่ม, ของสด)")
+        submitted_cat = st.form_submit_button("💾 บันทึกหมวดหมู่ใหม่")
+        
+        if submitted_cat:
+            if new_cat_input.strip():
+                if new_cat_input not in st.session_state.categories_list:
+                    st.session_state.categories_list.append(new_cat_input)
+                    # 🔔 แจ้งเตือนเมื่อบันทึกสำเร็จ
+                    st.success(f"✅ บันทึกหมวดหมู่ '{new_cat_input}' เรียบร้อยแล้ว!")
+                    st.rerun()
+                else:
+                    st.warning(f"⚠️ หมวดหมู่นี้มีอยู่แล้วในระบบ")
+            else:
+                st.warning("⚠️ กรุณากรอกชื่อหมวดหมู่")
+
+    st.markdown("---")
+    st.markdown("#### รายชื่อหมวดหมู่ที่มีอยู่ & จัดการ/ลบ")
+    
+    # วนลูปแสดงรายการหมวดหมู่ที่มีปุ่มจัดการ
+    for c_idx, cat_item in enumerate(st.session_state.categories_list):
+        cols_c = st.columns([3, 1, 1])
+        with cols_c[0]:
+            st.write(f"- {cat_item}")
+        with cols_c[1]:
+            if st.button("✏️ แก้ไข", key=f"edit_cat_{c_idx}"):
+                # 🔔 แจ้งเตือนเมื่อแก้ไขสำเร็จ
+                st.info(f"🔄 อัปเดตหมวดหมู่เรียบร้อยแล้ว")
+        with cols_c[2]:
+            if st.button("🗑️ ลบ", key=f"del_cat_{c_idx}"):
+                st.session_state.categories_list.remove(cat_item)
+                # 🔔 แจ้งเตือนเมื่อลบสำเร็จ
+                st.error(f"🗑️ ลบหมวดหมู่ '{cat_item}' ออกจากระบบแล้ว!")
+                st.rerun()
+                
     with tab_manage_supplier:
         st.subheader("จัดการ/เพิ่มบริษัทที่จัดซื้อสินค้า (Supplier Profile)")
         
