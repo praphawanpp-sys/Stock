@@ -598,7 +598,6 @@ with tab_manage_cat:
                         if submitted_cancel:
                             st.session_state[f"edit_mode_sup_{idx}"] = False
                             st.rerun()
-                                st.markdown("---")
                 
 elif selected_menu == t_ui["m4"]:
     st.title(f"{t_ui['m4']} - {comp_display_name}")
