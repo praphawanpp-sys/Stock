@@ -412,6 +412,45 @@ elif selected_menu == t_ui["m3"]:
     ])
 
     with tab_add_item:
+        # --- เพิ่มส่วนอัปโหลดไฟล์ Excel สำหรับนำเข้าสินค้า ---
+    st.markdown("### 📊 หรือนำเข้าสินค้าผ่านไฟล์ Excel")
+    uploaded_excel = st.file_uploader("เลือกไฟล์ Excel (รองรับ .xlsx, .xls)", type=["xlsx", "xls"], key="upload_excel_m3")
+    
+    if uploaded_excel is not None:
+        try:
+            df_excel = pd.read_excel(uploaded_excel)
+            st.write("ตัวอย่างข้อมูลจากไฟล์ Excel:")
+            st.dataframe(df_excel.head())
+            
+            if st.button("🚀 ยันทึกข้อมูลจาก Excel เข้าสู่ระบบ"):
+                # วนลูปบันทึกข้อมูลจากไฟล์เข้าสู่ stock ของสาขา
+                for idx_ex, row_ex in df_excel.iterrows():
+                    new_excel_row = pd.DataFrame([{
+                        "Product Code": str(row_ex.get("Product Code", "")),
+                        "Item Name": str(row_ex.get("Item Name", "")),
+                        "Category": str(row_ex.get("Category", "")),
+                        "Unit": str(row_ex.get("Unit", "")),
+                        "Conversion Qty": float(row_ex.get("Conversion Qty", 1.0)),
+                        "Stock Balance": float(row_ex.get("Stock Balance", 0.0)),
+                        "Last Price": float(row_ex.get("Last Price", 0.0)),
+                        "Supplier": str(row_ex.get("Supplier", "")),
+                    }])
+                    # นำไปต่อเข้ากับ stock ปัจจุบันของบริษัท
+                    st.session_state["company_inventories"][selected_company] = pd.concat(
+                        [st.session_state["company_inventories"][selected_company], new_excel_row], 
+                        ignore_index=True
+                    )
+                st.success("✅ นำเข้าข้อมูลสินค้าจาก Excel สำเร็จเรียบร้อยแล้ว!")
+                st.rerun()
+        except Exception as e:
+            st.error(f"❌ เกิดข้อผิดพลาดในการอ่านไฟล์ Excel: {e}")
+            
+    st.markdown("---")
+    # ---------------------------------------------
+    
+    with st.form("add_new_item_form"):
+        # (โค้ดฟอร์มกรอกข้อมูลเดิมของคุณต่อตรงนี้...)
+        
         with st.form("add_new_item_form"):
             new_code = st.text_input("รหัสสินค้า (Product Code)")
             new_name = st.text_input("ชื่อสินค้า (Item Name)")
