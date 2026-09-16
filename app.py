@@ -585,7 +585,7 @@ with tab_manage_cat:
                                 "address": ed_addr,
                                 "tax_id": ed_tax,
                                 "contact": ed_cont
-                            }
+                            })
                             st.session_state[f"edit_mode_sup_{idx}"] = False
                             st.success("แก้ไขข้อมูลสำเร็จ")
                             st.rerun()
