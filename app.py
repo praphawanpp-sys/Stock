@@ -328,17 +328,7 @@ elif selected_menu == t_ui["m2"]:
     with col_s3:
         # เปลี่ยนเป็น Dropdown ค้นหาตามหมวดหมู่
         search_category = st.selectbox("ค้นหาตามหมวดหมู่ (Category)", cat_search_options)
-    if len(display_inv) > 0:
-        st.markdown("#### 🔍 Search Products" if lang == "English" else "#### 🔍 ค้นหาข้อมูลสินค้า")
-        scol1, scol2, scol3 = st.columns(3)
-        with scol1:
-            search_supplier = st.text_input("Supplier" if lang == "English" else "ค้นหาตามชื่อร้านค้า (Supplier)")
-        with scol2:
-            search_code = st.text_input("Product Code" if lang == "English" else "ค้นหาตามรหัสสินค้า (Product Code)")
-        with scol3:
-            cat_options = ["All" if lang == "English" else "ทั้งหมด"] + display_inv["Category"].dropna().unique().tolist()
-            search_category = st.selectbox("Category" if lang == "English" else "ค้นหาตามหมวดหมู่ (Category)", cat_options)
-
+    
         filtered_df = display_inv.copy()
         if search_supplier:
             filtered_df = filtered_df[filtered_df["Supplier"].astype(str).str.contains(search_supplier, case=False, na=False)]
