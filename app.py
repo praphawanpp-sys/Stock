@@ -336,69 +336,85 @@ elif selected_menu == t_ui["m2"]:
             filtered_df = filtered_df[filtered_df["Product Code"].astype(str).str.contains(search_code, case=False, na=False)]
         if search_category not in ["All", "ทั้งหมด"]:
             filtered_df = filtered_df[filtered_df["Category"] == search_category]
-
+# --- ส่วนแสดงรายการสินค้าทั้งหมดและการจัดการ ---
     st.markdown("---")
-    st.subheader("Product List & Management" if lang == "English" else "รายชื่อสินค้าในระบบและการจัดการ")
-
-    for idx, row in filtered_df.iterrows():
-        # แบ่งเป็น 2 คอลัมน์หลัก: ฝั่งซ้ายแสดงข้อมูลสินค้าทั้งหมด, ฝั่งขวาสำหรับ Dropdown จัดการ
-        cols = st.columns([5, 1.2])
-        
-        # ฝั่งซ้าย: รวมรายละเอียดสินค้าให้อยู่ในบรรทัดเดียวกันแบบสวยงาม
-        with cols[0]:
-            st.markdown(
-                f"**{row['Item Name']}** &nbsp;|&nbsp; "
-                f"รหัส: `{row['Product Code']}` &nbsp;|&nbsp; "
-                f"ร้าน: {row['Supplier']} &nbsp;|&nbsp; "
-                f"หมวด: {row['Category']} &nbsp;|&nbsp; "
-                f"คงเหลือ: **{row['Stock Balance']} {row['Unit']}** &nbsp;|&nbsp; "
-                f"ราคา: {row['Last Price']} ฿"
+    st.markdown("### 📋 รายการสินค้าทั้งหมดในระบบของสาขานี้ & จัดการ")
+    
+    current_inv = st.session_state["company_inventories"].get(selected_company, pd.DataFrame())
+    if current_inv.empty:
+        st.info("ยังไม่มีรายการสินค้าในระบบ")
+    else:
+        for i, row in current_inv.iterrows():
+            # 1. จัดเรียงลำดับใหม่เป็น: ร้าน, รหัส, ชื่อสินค้า, หมวดหมู่, คงเหลือ
+            display_text = (
+                f"🏪 **ร้าน:** {row.get('Supplier', '-')} | "
+                f"📌 **รหัส:** {row.get('Product Code', '-')} | "
+                f"📦 **ชื่อสินค้า:** **{row.get('Item Name', '-')}** | "
+                f"🏷️ **หมวดหมู่:** {row.get('Category', '-')} | "
+                f"🔢 **คงเหลือ:** {row.get('Stock Balance', 0)} {row.get('Unit', '')} | "
+                f"💰 **ราคา:** {row.get('Last Price', 0):,.2f} ฿"
             )
             
-        # ฝั่งขวา: เมนูดรอปดาวน์จัดการ (เลือก / แก้ไข / ลบ)
-        with cols[1]:
-            action_choice = st.selectbox(
-                "Action" if lang == "English" else "จัดการ",
-                ["Select" if lang == "English" else "เลือก", "✏️ Edit" if lang == "English" else "✏️ แก้ไข", "🗑️ Delete" if lang == "English" else "🗑️ ลบ"],
-                key=f"action_{selected_company}_{idx}",
-                label_visibility="collapsed"
-            )
-
-            if action_choice in ["✏️ Edit", "✏️ แก้ไข"]:
-                st.session_state[f"editing_item_{selected_company}_{idx}"] = True
-            elif action_choice in ["🗑️ Delete", "🗑️ ลบ"]:
-                st.session_state["company_inventories"][selected_company] = current_inv.drop(idx).reset_index(drop=True)
-                st.success(f"Deleted '{row['Item Name']}'" if lang == "English" else f"ลบสินค้า '{row['Item Name']}' เรียบร้อยแล้ว")
+            cols_item = st.columns([4, 1])
+            cols_item[0].write(display_text)
+            
+            action_item = cols_item[1].selectbox("จัดการ", ["เลือก", "แก้ไข", "ลบ"], key=f"action_item_{i}", label_visibility="collapsed")
+            
+            if action_item == "ลบ":
+                st.session_state["company_inventories"][selected_company] = current_inv.drop(i).reset_index(drop=True)
+                st.success("🗑️ ลบรายการสินค้าเรียบร้อยแล้ว")
                 st.rerun()
+            elif action_item == "แก้ไข":
+                st.session_state[f"edit_mode_item_{i}"] = True
 
-            if st.session_state.get(f"editing_item_{selected_company}_{idx}", False):
-                with st.form(f"form_edit_item_{selected_company}_{idx}"):
-                    st.markdown(f"**Editing:** {row['Item Name']}" if lang == "English" else f"**กำลังแก้ไขสินค้า:** {row['Item Name']}")
-                    e_code = st.text_input("Product Code", value=str(row["Product Code"]))
-                    e_name = st.text_input("Item Name", value=str(row["Item Name"]))
-                    e_supplier = st.text_input("Supplier", value=str(row["Supplier"]))
-                    e_cat = st.selectbox("Category", st.session_state.categories_list, index=st.session_state.categories_list.index(current_inv.loc[idx, "Category"]) if current_inv.loc[idx, "Category"] in st.session_state.categories_list else 0)
-                    e_unit = st.selectbox("Unit", st.session_state.units_list, index=st.session_state.units_list.index(current_inv.loc[idx, "Unit"]) if current_inv.loc[idx, "Unit"] in st.session_state.units_list else 0)
-                    e_price = st.number_input("Last Price", value=float(row["Last Price"]))
-                    
-                    col_sub1, col_sub2 = st.columns(2)
-                    with col_sub1:
-                        if st.form_submit_button("💾 Save Changes" if lang == "English" else "💾 บันทึกการแก้ไข"):
-                            st.session_state["company_inventories"][selected_company].loc[idx, "Product Code"] = e_code
-                            st.session_state["company_inventories"][selected_company].loc[idx, "Item Name"] = e_name
-                            st.session_state["company_inventories"][selected_company].loc[idx, "Supplier"] = e_supplier
-                            st.session_state["company_inventories"][selected_company].loc[idx, "Category"] = e_cat
-                            st.session_state["company_inventories"][selected_company].loc[idx, "Unit"] = e_unit
-                            st.session_state["company_inventories"][selected_company].loc[idx, "Last Price"] = e_price
-                            st.session_state[f"editing_item_{selected_company}_{idx}"] = False
-                            st.success("Saved successfully!" if lang == "English" else "บันทึกการแก้ไขเรียบร้อยแล้ว!")
-                            st.rerun()
-                    with col_sub2:
-                        if st.form_submit_button("❌ Cancel" if lang == "English" else "❌ ยกเลิก"):
-                            st.session_state[f"editing_item_{selected_company}_{idx}"] = False
-                            st.rerun()
+            # 2. ฟอร์มแก้ไขแบบเต็มหน้าจอ (แสดงเมื่อกดแก้ไข)
+            if st.session_state.get(f"edit_mode_item_{i}", False):
+                st.markdown(f"---")
+                with st.container():
+                    st.warning(f"✏️ กำลังแก้ไขสินค้า: {row.get('Item Name', '')}")
+                    with st.form(f"form_edit_item_{i}"):
+                        ed_code = st.text_input("รหัสสินค้า (Product Code)", value=str(row.get('Product Code', '')))
+                        ed_name = st.text_input("ชื่อสินค้า (Item Name)", value=str(row.get('Item Name', '')))
+                        
+                        # ดึงรายชื่อ Supplier และ Category ที่มีมาให้เลือก
+                        sup_list = [s.get('name', '') for s in st.session_state.get('suppliers_list', [])]
+                        if not sup_list: sup_list = [str(row.get('Supplier', ''))]
+                        current_sup = str(row.get('Supplier', ''))
+                        sup_idx = sup_list.index(current_sup) if current_sup in sup_list else 0
+                        ed_supplier = st.selectbox("ชื่อร้านค้า (Supplier)", sup_list, index=sup_idx)
+                        
+                        cat_list = st.session_state.get('categories_list', ['ทั่วไป'])
+                        current_cat = str(row.get('Category', 'ทั่วไป'))
+                        cat_idx = cat_list.index(current_cat) if current_cat in cat_list else 0
+                        ed_category = st.selectbox("หมวดหมู่สินค้า", cat_list, index=cat_idx)
+                        
+                        ed_price = st.number_input("ราคารวม Vat", value=float(row.get('Last Price', 0.0)), format="%.2f")
+                        ed_vat = st.selectbox("Vat Type", ["Vat 7%", "Non Vat"], index=0 if row.get('Vat Type', '') == "Vat 7%" else 1)
+                        
+                        c_i1, c_i2 = st.columns(2)
+                        with c_i1:
+                            sub_edit_item = st.form_submit_button("💾 บันทึกการแก้ไข")
+                        with c_i2:
+                            sub_cancel_item = st.form_submit_button("❌ ยกเลิก")
 
-            st.markdown("<hr style='margin: 5px 0;'>", unsafe_allow_html=True)
+                        if sub_edit_item:
+                            # บันทึกข้อมูลลง DataFrame
+                            st.session_state["company_inventories"][selected_company].loc[i, 'Product Code'] = ed_code
+                            st.session_state["company_inventories"][selected_company].loc[i, 'Item Name'] = ed_name
+                            st.session_state["company_inventories"][selected_company].loc[i, 'Supplier'] = ed_supplier
+                            st.session_state["company_inventories"][selected_company].loc[i, 'Category'] = ed_category
+                            st.session_state["company_inventories"][selected_company].loc[i, 'Last Price'] = ed_price
+                            st.session_state["company_inventories"][selected_company].loc[i, 'Vat Type'] = ed_vat
+                            
+                            # ปิดโหมดแก้ไข (ให้ฟอร์มพับเก็บกลับไป)
+                            st.session_state[f"edit_mode_item_{i}"] = False
+                            st.success(f"✅ บันทึกการแก้ไขสินค้า '{ed_name}' เรียบร้อยแล้ว!")
+                            st.rerun()
+                            
+                        if sub_cancel_item:
+                            st.session_state[f"edit_mode_item_{i}"] = False
+                            st.rerun()
+                st.markdown(f"---")
   
 elif selected_menu == t_ui["m3"]:
     st.title(f"{t_ui['m3']} - {comp_display_name}")
