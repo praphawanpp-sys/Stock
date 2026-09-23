@@ -598,8 +598,9 @@ with tab_manage_cat:
                         if submitted_cancel:
                             st.session_state[f"edit_mode_sup_{idx}"] = False
                             st.rerun()
-                
-            st.markdown("---")
+# (บรรทัดที่สิ้นสุดลูป for และเงื่อนไขของเมนูที่ 3 ด้านบน...)
+    st.markdown("---")
+
 # ---------------------------------------------------------
 # เมนูที่ 4 (m4): บันทึกรับสินค้าเข้าสต็อก (Stock In)
 # ---------------------------------------------------------
@@ -616,11 +617,6 @@ elif selected_menu == t_ui["m4"]:
             si_supplier = st.selectbox("Supplier", existing_suppliers if existing_suppliers else ["CP Axtra (Makro)"])
         with col_si3:
             si_doc_no = st.text_input("Invoice No.")
-
-        st.markdown("---")
-        st.subheader("Stock In Cart" if lang == "English" else "เลือกและเพิ่มสินค้าเข้าตะกร้ารับเข้า")
-        
-        si_search_query = st.text_input("Search Product Code or Name" if lang == "English" else "🔍 พิมพ์รหัสสินค้า (Product Code) หรือชื่อสินค้าเพื่อค้นหา...")
 
         st.markdown("---")
         st.subheader("Stock In Cart" if lang == "English" else "เลือกและเพิ่มสินค้าเข้าตะกร้ารับเข้า")
