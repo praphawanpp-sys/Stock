@@ -402,26 +402,26 @@ elif selected_menu == t_ui["m2"]:
   
 elif selected_menu == t_ui["m3"]:
     st.title(f"{t_ui['m3']} - {comp_display_name}")
-    st.markdown("กรอกข้อมูลเพื่อเพิ่มรายการสินค้าใหม่เข้าสู่ระบบสต็อกของสาขานี้ หรือจัดการข้อมูลพื้นฐาน")
+    st.markdown("กรอกข้อมูลเพื่อเพิ่มรายการสินค้าใหม่เข้าสู่ระบบของสาขานี้ หรือจัดการข้อมูลพื้นฐาน")
 
     tab_add_item, tab_manage_unit, tab_manage_cat, tab_manage_supplier = st.tabs([
-        "➕ เพิ่มสินค้าใหม่", 
-        "📏 จัดการหน่วยนับ", 
-        "🏷️ จัดการหมวดหมู่สินค้า", 
-        "🏢 จัดการ/เพิ่มบริษัทที่จัดซื้อสินค้า"
+        "➕ เพิ่มสินค้าใหม่",
+        "📏 จัดการหน่วยนับ",
+        "🏷️ จัดการหมวดหมู่สินค้า",
+        "🏢 จัดการ/เพิ่มบริษัทจัดซื้อสินค้า"
     ])
 
+    # --- Tab 1: เพิ่มสินค้าใหม่ ---
     with tab_add_item:
-        # --- เพิ่มส่วนอัปโหลดไฟล์ Excel สำหรับนำเข้าสินค้า ---
         st.markdown("### 📊 หรือนำเข้าสินค้าผ่านไฟล์ Excel")
         uploaded_excel = st.file_uploader("เลือกไฟล์ Excel (รองรับ .xlsx, .xls)", type=["xlsx", "xls"], key="upload_excel_m3")
-    
+
         if uploaded_excel is not None:
             try:
                 df_excel = pd.read_excel(uploaded_excel)
                 st.write("ตัวอย่างข้อมูลจากไฟล์ Excel:")
                 st.dataframe(df_excel.head())
-            
+
                 if st.button("🚀 บันทึกข้อมูลจาก Excel เข้าสู่ระบบ"):
                     for idx_ex, row_ex in df_excel.iterrows():
                         new_excel_row = pd.DataFrame([{
@@ -435,30 +435,26 @@ elif selected_menu == t_ui["m3"]:
                             "Supplier": str(row_ex.get("Supplier", "")),
                         }])
                         st.session_state["company_inventories"][selected_company] = pd.concat(
-                            [st.session_state["company_inventories"][selected_company], new_excel_row], 
+                            [st.session_state["company_inventories"][selected_company], new_excel_row],
                             ignore_index=True
                         )
                     st.success("✅ นำเข้าข้อมูลสินค้าจาก Excel สำเร็จเรียบร้อยแล้ว!")
                     st.rerun()
             except Exception as e:
                 st.error(f"❌ เกิดข้อผิดพลาดในการอ่านไฟล์ Excel: {e}")
-            
-    st.markdown("---")
-    # ---------------------------------------------
-    
+
+    # --- Tab 2: จัดการหน่วยนับ ---
     with tab_manage_unit:
         st.subheader("จัดการหน่วยนับ (Units)")
-    
-    # --- ตัวอย่างฟอร์มเพิ่มหน่วยนับใหม่ ---
-    with st.form("add_unit_form"):
-        new_unit_input = st.text_input("ชื่อหน่วยนับใหม่ (เช่น แพ็ค, กิโลกรัม)")
-        submitted_unit = st.form_submit_button("💾 บันทึกหน่วยนับใหม่")
         
+        with st.form("add_unit_form"):
+            new_unit_input = st.text_input("ชื่อหน่วยนับใหม่ (เช่น แพ็ค, กิโลกรัม)")
+            submitted_unit = st.form_submit_button("💾 บันทึกหน่วยนับใหม่")
+
         if submitted_unit:
             if new_unit_input.strip():
                 if new_unit_input not in st.session_state.units_list:
                     st.session_state.units_list.append(new_unit_input)
-                    # 🔔 แจ้งเตือนเมื่อบันทึกสำเร็จ
                     st.success(f"✅ บันทึกหน่วยนับ '{new_unit_input}' เรียบร้อยแล้ว!")
                     st.rerun()
                 else:
@@ -466,39 +462,34 @@ elif selected_menu == t_ui["m3"]:
             else:
                 st.warning("⚠️ กรุณากรอกชื่อหน่วยนับ")
 
-    st.markdown("---")
-    st.markdown("#### รายชื่อหน่วยนับที่มีอยู่ & จัดการ/ลบ")
-    
-    # วนลูปแสดงรายการหน่วยนับที่มีปุ่มแก้ไข/ลบ
-    for u_idx, unit_item in enumerate(st.session_state.units_list):
-        cols_u = st.columns([3, 1, 1])
-        with cols_u[0]:
-            st.write(f"- {unit_item}")
-        with cols_u[1]:
-            # ปุ่มแก้ไข (ถ้ามีระบบเปิด modal แก้ไข)
-            if st.button("✏️ แก้ไข", key=f"edit_unit_{u_idx}"):
-                # 🔔 แจ้งเตือนเมื่อแก้ไขสำเร็จ
-                st.info(f"🔄 อัปเดตหน่วยนับเรียบร้อยแล้ว")
-        with cols_u[2]:
-            if st.button("🗑️ ลบ", key=f"del_unit_{u_idx}"):
-                st.session_state.units_list.remove(unit_item)
-                # 🔔 แจ้งเตือนเมื่อลบสำเร็จ
-                st.error(f"🗑️ ลบหน่วยนับ '{unit_item}' ออกจากระบบแล้ว!")
-                st.rerun()
+        st.markdown("---")
+        st.markdown("#### รายชื่อหน่วยนับที่มีอยู่ & จัดการ/ลบ")
 
-with tab_manage_cat:
-    st.subheader("จัดการหมวดหมู่สินค้า (Categories)")
-    
-    # --- ตัวอย่างฟอร์มเพิ่มหมวดหมู่ใหม่ ---
-    with st.form("add_cat_form"):
-        new_cat_input = st.text_input("ชื่อหมวดหมู่สินค้าใหม่ (เช่น เครื่องดื่ม, ของสด)")
-        submitted_cat = st.form_submit_button("💾 บันทึกหมวดหมู่ใหม่")
+        for u_idx, unit_item in enumerate(st.session_state.units_list):
+            cols_u = st.columns([3, 1, 1])
+            with cols_u[0]:
+                st.write(f"- {unit_item}")
+            with cols_u[1]:
+                if st.button("✏️ แก้ไข", key=f"edit_unit_{u_idx}"):
+                    st.info(f"🔄 อัปเดตหน่วยนับเรียบร้อยแล้ว")
+            with cols_u[2]:
+                if st.button("🗑️ ลบ", key=f"del_unit_{u_idx}"):
+                    st.session_state.units_list.remove(unit_item)
+                    st.error(f"🗑️ ลบหน่วยนับ '{unit_item}' ออกจากระบบแล้ว!")
+                    st.rerun()
+
+    # --- Tab 3: จัดการหมวดหมู่สินค้า ---
+    with tab_manage_cat:
+        st.subheader("จัดการหมวดหมู่สินค้า (Categories)")
         
+        with st.form("add_cat_form"):
+            new_cat_input = st.text_input("ชื่อหมวดหมู่สินค้าใหม่ (เช่น เครื่องดื่ม, ของสด)")
+            submitted_cat = st.form_submit_button("💾 บันทึกหมวดหมู่ใหม่")
+
         if submitted_cat:
             if new_cat_input.strip():
                 if new_cat_input not in st.session_state.categories_list:
                     st.session_state.categories_list.append(new_cat_input)
-                    # 🔔 แจ้งเตือนเมื่อบันทึกสำเร็จ
                     st.success(f"✅ บันทึกหมวดหมู่ '{new_cat_input}' เรียบร้อยแล้ว!")
                     st.rerun()
                 else:
@@ -506,29 +497,26 @@ with tab_manage_cat:
             else:
                 st.warning("⚠️ กรุณากรอกชื่อหมวดหมู่")
 
-    st.markdown("---")
-    st.markdown("#### รายชื่อหมวดหมู่ที่มีอยู่ & จัดการ/ลบ")
-    
-    # วนลูปแสดงรายการหมวดหมู่ที่มีปุ่มจัดการ
-    for c_idx, cat_item in enumerate(st.session_state.categories_list):
-        cols_c = st.columns([3, 1, 1])
-        with cols_c[0]:
-            st.write(f"- {cat_item}")
-        with cols_c[1]:
-            if st.button("✏️ แก้ไข", key=f"edit_cat_{c_idx}"):
-                # 🔔 แจ้งเตือนเมื่อแก้ไขสำเร็จ
-                st.info(f"🔄 อัปเดตหมวดหมู่เรียบร้อยแล้ว")
-        with cols_c[2]:
-            if st.button("🗑️ ลบ", key=f"del_cat_{c_idx}"):
-                st.session_state.categories_list.remove(cat_item)
-                # 🔔 แจ้งเตือนเมื่อลบสำเร็จ
-                st.error(f"🗑️ ลบหมวดหมู่ '{cat_item}' ออกจากระบบแล้ว!")
-                st.rerun()
-                
+        st.markdown("---")
+        st.markdown("#### รายชื่อหมวดหมู่ที่มีอยู่ & จัดการ/ลบ")
+
+        for c_idx, cat_item in enumerate(st.session_state.categories_list):
+            cols_c = st.columns([3, 1, 1])
+            with cols_c[0]:
+                st.write(f"- {cat_item}")
+            with cols_c[1]:
+                if st.button("✏️ แก้ไข", key=f"edit_cat_{c_idx}"):
+                    st.info(f"🔄 อัปเดตหมวดหมู่เรียบร้อยแล้ว")
+            with cols_c[2]:
+                if st.button("🗑️ ลบ", key=f"del_cat_{c_idx}"):
+                    st.session_state.categories_list.remove(cat_item)
+                    st.error(f"🗑️ ลบหมวดหมู่ '{cat_item}' ออกจากระบบแล้ว!")
+                    st.rerun()
+
+    # --- Tab 4: จัดการ/เพิ่มบริษัทจัดซื้อสินค้า ---
     with tab_manage_supplier:
-        st.subheader("จัดการ/เพิ่มบริษัทที่จัดซื้อสินค้า (Supplier Profile)")
-        
-        # กำหนด session state สำหรับเก็บรายการบริษัท
+        st.subheader("จัดการ/เพิ่มบริษัทจัดซื้อสินค้า (Supplier Profile)")
+
         if "suppliers_list" not in st.session_state:
             st.session_state.suppliers_list = []
 
@@ -538,23 +526,25 @@ with tab_manage_cat:
             sup_address = st.text_area("2. ที่อยู่บริษัท")
             sup_tax = st.text_input("3. เลขที่ผู้เสียภาษี")
             sup_contact = st.text_input("4. ข้อมูลติดต่อเซลล์ (ชื่อ, เบอร์โทร, ไลน์ ฯลฯ)")
-            
+
             submitted_sup = st.form_submit_button("💾 บันทึกบริษัทใหม่")
-            if submitted_sup:
-                if not sup_name.strip():
-                    st.error("⚠️ กรุณากรอกชื่อบริษัท")
-                else:
-                    st.session_state.suppliers_list.append({
-                        "name": sup_name,
-                        "address": sup_address,
-                        "tax_id": sup_tax,
-                        "contact": sup_contact
-                    })
-                    st.success(f"✨ เพิ่มบริษัท '{sup_name}' สำเร็จเรียบร้อยแล้ว!")
-                    st.rerun()
+
+        if submitted_sup:
+            if not sup_name.strip():
+                st.error("⚠️ กรุณากรอกชื่อบริษัท")
+            else:
+                st.session_state.suppliers_list.append({
+                    "name": sup_name,
+                    "address": sup_address,
+                    "tax_id": sup_tax,
+                    "contact": sup_contact
+                })
+                st.success(f"✨ เพิ่มบริษัท '{sup_name}' สำเร็จเรียบร้อยแล้ว!")
+                st.rerun()
 
         st.markdown("---")
-        st.markdown("**รายการบริษัทที่จัดซื้อปัจจุบัน:**")
+        st.markdown("**รายชื่อบริษัทที่จัดซื้อปัจจุบัน:**")
+
         if not st.session_state.suppliers_list:
             st.info("ยังไม่มีข้อมูลบริษัทจัดซื้อในระบบ")
         else:
@@ -562,7 +552,7 @@ with tab_manage_cat:
                 cols_s = st.columns([3, 1.5])
                 cols_s[0].write(f"**{idx + 1}. {sup['name']}**\n- ที่อยู่: {sup['address']}\n- เลขผู้เสียภาษี: {sup['tax_id']}\n- ติดต่อเซลล์: {sup['contact']}")
                 action_s = cols_s[1].selectbox("จัดการ", ["เลือก", "แก้ไข", "ลบ"], key=f"action_sup_{idx}", label_visibility="collapsed")
-                
+
                 if action_s == "ลบ":
                     st.session_state.suppliers_list.pop(idx)
                     st.success("ลบข้อมูลบริษัทเรียบร้อยแล้ว")
@@ -577,7 +567,7 @@ with tab_manage_cat:
                         ed_addr = st.text_area("2. ที่อยู่บริษัท", value=sup['address'])
                         ed_tax = st.text_input("3. เลขที่ผู้เสียภาษี", value=sup['tax_id'])
                         ed_cont = st.text_input("4. ข้อมูลติดต่อเซลล์", value=sup['contact'])
-                        # นำ columns เข้ามาไว้ข้างใน with st.form(...)
+                        
                         c_ss1, c_ss2 = st.columns(2)
                         with c_ss1:
                             submitted_edit = st.form_submit_button("💾 บันทึกการแก้ไข")
@@ -594,11 +584,14 @@ with tab_manage_cat:
                             st.session_state[f"edit_mode_sup_{idx}"] = False
                             st.success("✅ แก้ไขข้อมูลบริษัทสำเร็จ")
                             st.rerun()
-            
+                            
                         if submitted_cancel:
                             st.session_state[f"edit_mode_sup_{idx}"] = False
                             st.rerun()
-        st.markdown("---")
+                            
+                    st.markdown("---")
+
+    st.markdown("---")
 # ---------------------------------------------------------
 # เมนูที่ 4 (m4): บันทึกรับสินค้าเข้าสต็อก (Stock In)
 # ---------------------------------------------------------
