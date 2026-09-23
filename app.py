@@ -410,9 +410,50 @@ elif selected_menu == t_ui["m3"]:
         "🏷️ จัดการหมวดหมู่สินค้า",
         "🏢 จัดการ/เพิ่มบริษัทจัดซื้อสินค้า"
     ])
-
-    # --- Tab 1: เพิ่มสินค้าใหม่ ---
+# --- Tab 1: เพิ่มสินค้าใหม่ ---
     with tab_add_item:
+        st.markdown("### ✍️ เพิ่มรายการสินค้าใหม่ด้วยตนเอง")
+        
+        with st.form("manual_add_item_form"):
+            # ดึงรายชื่อ Supplier จากที่มีอยู่ในระบบมาทำดรอปดาวน์ (ถ้ามี)
+            existing_sup_names = [s.get('name', '') for s in st.session_state.get('suppliers_list', [])]
+            if not existing_sup_names:
+                existing_sup_names = ["CP Axtra (Makro)"]
+                
+            manual_supplier = st.selectbox("1. ชื่อร้านค้า (Supplier)", existing_sup_names)
+            manual_code = st.text_input("2. รหัสสินค้า (Product Code)")
+            manual_name = st.text_input("3. ชื่อสินค้า (Item Name)")
+            manual_price = st.number_input("4. ราคาสินค้า (รวม Vat)", min_value=0.0, format="%.2f")
+            manual_vat_type = st.selectbox("5. Vat / Non Vat", ["Vat 7%", "Non Vat"])
+            
+            submitted_manual_item = st.form_submit_button("💾 บันทึกสินค้าใหม่เข้าสู่ระบบ")
+
+        if submitted_manual_item:
+            if not manual_name.strip():
+                st.error("⚠️ กรุณากรอกชื่อสินค้า")
+            else:
+                # สร้าง DataFrame สำหรับสินค้าใหม่ที่กรอกเข้ามา
+                new_manual_row = pd.DataFrame([{
+                    "Product Code": str(manual_code).strip(),
+                    "Item Name": str(manual_name).strip(),
+                    "Category": "ทั่วไป",  # กำหนดค่าเริ่มต้น หรือเพิ่มช่องเลือกหมวดหมู่ภายหลังได้
+                    "Unit": "หน่วย",      # กำหนดค่าเริ่มต้น
+                    "Conversion Qty": 1.0,
+                    "Stock Balance": 0.0,
+                    "Last Price": float(manual_price),
+                    "Supplier": str(manual_supplier),
+                    "Vat Type": str(manual_vat_type)
+                }])
+                
+                # บันทึกลงใน session state ของสาขานั้นๆ
+                st.session_state["company_inventories"][selected_company] = pd.concat(
+                    [st.session_state["company_inventories"][selected_company], new_manual_row],
+                    ignore_index=True
+                )
+                st.success(f"✨ เพิ่มสินค้า '{manual_name}' สำเร็จเรียบร้อยแล้ว!")
+                st.rerun()
+
+        st.markdown("---")
         st.markdown("### 📊 หรือนำเข้าสินค้าผ่านไฟล์ Excel")
         uploaded_excel = st.file_uploader("เลือกไฟล์ Excel (รองรับ .xlsx, .xls)", type=["xlsx", "xls"], key="upload_excel_m3")
 
@@ -442,7 +483,7 @@ elif selected_menu == t_ui["m3"]:
                     st.rerun()
             except Exception as e:
                 st.error(f"❌ เกิดข้อผิดพลาดในการอ่านไฟล์ Excel: {e}")
-
+                
     # --- Tab 2: จัดการหน่วยนับ ---
     with tab_manage_unit:
         st.subheader("จัดการหน่วยนับ (Units)")
