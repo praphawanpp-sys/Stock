@@ -454,16 +454,6 @@ elif selected_menu == t_ui["m3"]:
                 st.rerun()
 
         st.markdown("---")
-        st.markdown("### 📋 รายการสินค้าทั้งหมดในระบบของสาขานี้")
-        
-        # แสดงข้อมูลสินค้าที่มีอยู่เป็นตารางบรรทัดๆ ด้านล่าง
-        current_inv = st.session_state["company_inventories"].get(selected_company, pd.DataFrame())
-        if current_inv.empty:
-            st.info("ยังไม่มีรายการสินค้าในระบบ")
-        else:
-            st.dataframe(current_inv, use_container_width=True)
-
-        st.markdown("---")
         st.markdown("### 📊 หรือนำเข้าสินค้าผ่านไฟล์ Excel")
         uploaded_excel = st.file_uploader("เลือกไฟล์ Excel (รองรับ .xlsx, .xls)", type=["xlsx", "xls"], key="upload_excel_m3")
 
@@ -493,6 +483,56 @@ elif selected_menu == t_ui["m3"]:
                     st.rerun()
             except Exception as e:
                 st.error(f"❌ เกิดข้อผิดพลาดในการอ่านไฟล์ Excel: {e}")
+
+        # --- ส่วนแสดงรายการสินค้าทั้งหมดด้านล่างสุด พร้อมปุ่มจัดการ (แก้ไข/ลบ) ---
+        st.markdown("---")
+        st.markdown("### 📋 รายการสินค้าทั้งหมดในระบบของสาขานี้ & จัดการ")
+        
+        current_inv = st.session_state["company_inventories"].get(selected_company, pd.DataFrame())
+        if current_inv.empty:
+            st.info("ยังไม่มีรายการสินค้าในระบบ")
+        else:
+            for i, row in current_inv.iterrows():
+                cols_item = st.columns([3, 1.5])
+                cols_item[0].write(f"**[{row.get('Product Code', '-')}] {row.get('Item Name', '-')>**\n- ร้านค้า: {row.get('Supplier', '-')} | ราคา: {row.get('Last Price', 0):,.2f} บาท ({row.get('Vat Type', 'Vat 7%')})")
+                
+                action_item = cols_item[1].selectbox("จัดการ", ["เลือก", "แก้ไข", "ลบ"], key=f"action_item_{i}", label_visibility="collapsed")
+                
+                if action_item == "ลบ":
+                    st.session_state["company_inventories"][selected_company] = current_inv.drop(i).reset_index(drop=True)
+                    st.success("🗑️ ลบรายการสินค้าเรียบร้อยแล้ว")
+                    st.rerun()
+                elif action_item == "แก้ไข":
+                    st.session_state[f"edit_mode_item_{i}"] = True
+
+                if st.session_state.get(f"edit_mode_item_{i}", False):
+                    with st.form(f"form_edit_item_{i}"):
+                        st.markdown(f"##### แก้ไขสินค้า: {row.get('Item Name', '')}")
+                        ed_code = st.text_input("รหัสสินค้า", value=str(row.get('Product Code', '')))
+                        ed_name = st.text_input("ชื่อสินค้า", value=str(row.get('Item Name', '')))
+                        ed_price = st.number_input("ราคารวม Vat", value=float(row.get('Last Price', 0.0)), format="%.2f")
+                        ed_vat = st.selectbox("Vat Type", ["Vat 7%", "Non Vat"], index=0 if row.get('Vat Type', '') == "Vat 7%" else 1)
+                        
+                        c_i1, c_i2 = st.columns(2)
+                        with c_i1:
+                            sub_edit_item = st.form_submit_button("💾 บันทึกการแก้ไข")
+                        with c_i2:
+                            sub_cancel_item = st.form_submit_button("❌ ยกเลิก")
+
+                        if sub_edit_item:
+                            st.session_state["company_inventories"][selected_company].loc[i, 'Product Code'] = ed_code
+                            st.session_state["company_inventories"][selected_company].loc[i, 'Item Name'] = ed_name
+                            st.session_state["company_inventories"][selected_company].loc[i, 'Last Price'] = ed_price
+                            st.session_state["company_inventories"][selected_company].loc[i, 'Vat Type'] = ed_vat
+                            st.session_state[f"edit_mode_item_{i}"] = False
+                            st.success("✅ แก้ไขข้อมูลสินค้าสำเร็จ")
+                            st.rerun()
+                            
+                        if sub_cancel_item:
+                            st.session_state[f"edit_mode_item_{i}"] = False
+                            st.rerun()
+                            
+                    st.markdown("---")
                 
     # --- Tab 2: จัดการหน่วยนับ ---
     with tab_manage_unit:
