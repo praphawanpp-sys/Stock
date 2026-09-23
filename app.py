@@ -550,8 +550,8 @@ elif selected_menu == t_ui["m3"]:
                             
                     st.markdown("---")
                 
-   # --- Tab 2: จัดการหน่วยนับ (Units) ---
-    with tab_unit:  # แก้จาก tab_units เป็น tab_unit ตามตัวแปรหลัก
+  # --- Tab 2: จัดการหน่วยนับ (Units) ---
+    with tab_units:
         st.markdown("### 📏 จัดการหน่วยนับ (Units)")
         
         # ตรวจสอบและสร้างตัวแปรเก็บรายการหน่วยนับใน session_state ถ้ายังไม่มี
@@ -614,7 +614,7 @@ elif selected_menu == t_ui["m3"]:
                         if sub_cancel_u:
                             st.session_state[f"edit_mode_unit_{idx}"] = False
                             st.rerun()
-
+                            
     # --- Tab 3: จัดการหมวดหมู่สินค้า ---
     with tab_manage_cat:
         st.subheader("จัดการหมวดหมู่สินค้า (Categories)")
