@@ -436,8 +436,8 @@ elif selected_menu == t_ui["m3"]:
                 new_manual_row = pd.DataFrame([{
                     "Product Code": str(manual_code).strip(),
                     "Item Name": str(manual_name).strip(),
-                    "Category": "ทั่วไป",  # กำหนดค่าเริ่มต้น หรือเพิ่มช่องเลือกหมวดหมู่ภายหลังได้
-                    "Unit": "หน่วย",      # กำหนดค่าเริ่มต้น
+                    "Category": "ทั่วไป",
+                    "Unit": "หน่วย",
                     "Conversion Qty": 1.0,
                     "Stock Balance": 0.0,
                     "Last Price": float(manual_price),
@@ -450,8 +450,18 @@ elif selected_menu == t_ui["m3"]:
                     [st.session_state["company_inventories"][selected_company], new_manual_row],
                     ignore_index=True
                 )
-                st.success(f"✨ เพิ่มสินค้า '{manual_name}' สำเร็จเรียบร้อยแล้ว!")
+                st.success(f"✨ บันทึกสินค้า '{manual_name}' เรียบร้อยแล้ว!")
                 st.rerun()
+
+        st.markdown("---")
+        st.markdown("### 📋 รายการสินค้าทั้งหมดในระบบของสาขานี้")
+        
+        # แสดงข้อมูลสินค้าที่มีอยู่เป็นตารางบรรทัดๆ ด้านล่าง
+        current_inv = st.session_state["company_inventories"].get(selected_company, pd.DataFrame())
+        if current_inv.empty:
+            st.info("ยังไม่มีรายการสินค้าในระบบ")
+        else:
+            st.dataframe(current_inv, use_container_width=True)
 
         st.markdown("---")
         st.markdown("### 📊 หรือนำเข้าสินค้าผ่านไฟล์ Excel")
