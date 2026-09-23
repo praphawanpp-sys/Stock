@@ -550,40 +550,70 @@ elif selected_menu == t_ui["m3"]:
                             
                     st.markdown("---")
                 
-    # --- Tab 2: จัดการหน่วยนับ ---
-    with tab_manage_unit:
-        st.subheader("จัดการหน่วยนับ (Units)")
+   # --- Tab 2: จัดการหน่วยนับ (Units) ---
+    with tab_units:
+        st.markdown("### 📏 จัดการหน่วยนับ (Units)")
         
-        with st.form("add_unit_form"):
-            new_unit_input = st.text_input("ชื่อหน่วยนับใหม่ (เช่น แพ็ค, กิโลกรัม)")
+        # ตรวจสอบและสร้างตัวแปรเก็บรายการหน่วยนับใน session_state ถ้ายังไม่มี
+        if "units_list" not in st.session_state:
+            st.session_state["units_list"] = ["Bag", "Bottle", "Box", "Can", "Case", "Cup", "Gallon", "Gram", "Jar", "Kg.", "Litre", "Pack", "Pcs."]
+
+        with st.form("form_add_unit"):
+            new_unit_name = st.text_input("ชื่อหน่วยนับใหม่ (เช่น แพ็ค, กิโลกรัม)")
             submitted_unit = st.form_submit_button("💾 บันทึกหน่วยนับใหม่")
 
         if submitted_unit:
-            if new_unit_input.strip():
-                if new_unit_input not in st.session_state.units_list:
-                    st.session_state.units_list.append(new_unit_input)
-                    st.success(f"✅ บันทึกหน่วยนับ '{new_unit_input}' เรียบร้อยแล้ว!")
-                    st.rerun()
-                else:
-                    st.warning(f"⚠️ หน่วยนับ '{new_unit_input}' มีอยู่แล้วในระบบ")
+            if not new_unit_name.strip():
+                st.error("⚠️ กรุณากรอกชื่อหน่วยนับ")
             else:
-                st.warning("⚠️ กรุณากรอกชื่อหน่วยนับ")
+                # ตรวจสอบว่ามีหน่วยนับนี้อยู่แล้วหรือยัง (กันซ้ำ)
+                if new_unit_name.strip() in st.session_state["units_list"]:
+                    st.warning(f"⚠️ หน่วยนับ '{new_unit_name.strip()}' มีอยู่ในระบบอยู่แล้ว")
+                else:
+                    # เพิ่มหน่วยนับใหม่เข้าไปในรายการ
+                    st.session_state["units_list"].append(new_unit_name.strip())
+                    st.success(f"✨ บันทึกหน่วยนับ '{new_unit_name.strip()}' เรียบร้อยแล้ว!")
+                    st.rerun()
 
         st.markdown("---")
-        st.markdown("#### รายชื่อหน่วยนับที่มีอยู่ & จัดการ/ลบ")
+        st.markdown("### 📋 รายชื่อหน่วยนับที่มีอยู่ & จัดการ/ลบ")
 
-        for u_idx, unit_item in enumerate(st.session_state.units_list):
-            cols_u = st.columns([3, 1, 1])
-            with cols_u[0]:
-                st.write(f"- {unit_item}")
-            with cols_u[1]:
-                if st.button("✏️ แก้ไข", key=f"edit_unit_{u_idx}"):
-                    st.info(f"🔄 อัปเดตหน่วยนับเรียบร้อยแล้ว")
-            with cols_u[2]:
-                if st.button("🗑️ ลบ", key=f"del_unit_{u_idx}"):
-                    st.session_state.units_list.remove(unit_item)
-                    st.error(f"🗑️ ลบหน่วยนับ '{unit_item}' ออกจากระบบแล้ว!")
+        if not st.session_state["units_list"]:
+            st.info("ยังไม่มีรายการหน่วยนับในระบบ")
+        else:
+            for idx, u_item in enumerate(st.session_state["units_list"]):
+                cols_u = st.columns([4, 1, 1])
+                cols_u[0].write(f"• {u_item}")
+                
+                btn_edit_u = cols_u[1].button("✏️ แก้ไข", key=f"btn_edit_u_{idx}")
+                btn_del_u = cols_u[2].button("🗑️ ลบ", key=f"btn_del_u_{idx}")
+
+                if btn_del_u:
+                    st.session_state["units_list"].pop(idx)
+                    st.success(f"🗑️ ลบหน่วยนับ '{u_item}' เรียบร้อยแล้ว")
                     st.rerun()
+
+                if btn_edit_u:
+                    st.session_state[f"edit_mode_unit_{idx}"] = True
+
+                if st.session_state.get(f"edit_mode_unit_{idx}", False):
+                    with st.form(f"form_edit_unit_{idx}"):
+                        edited_u_name = st.text_input("แก้ไขชื่อหน่วยนับ", value=u_item, key=f"input_edit_u_{idx}")
+                        c_ue1, c_ue2 = st.columns(2)
+                        sub_edit_u = c_ue1.form_submit_button("💾 บันทึก")
+                        sub_cancel_u = c_ue2.form_submit_button("❌ ยกเลิก")
+
+                        if sub_edit_u:
+                            if edited_u_name.strip():
+                                st.session_state["units_list"][idx] = edited_u_name.strip()
+                                st.session_state[f"edit_mode_unit_{idx}"] = False
+                                st.success("✅ แก้ไขหน่วยนับสำเร็จ")
+                                st.rerun()
+                            else:
+                                st.error("⚠️ กรุณากรอกชื่อหน่วยนับ")
+                        if sub_cancel_u:
+                            st.session_state[f"edit_mode_unit_{idx}"] = False
+                            st.rerun()
 
     # --- Tab 3: จัดการหมวดหมู่สินค้า ---
     with tab_manage_cat:
