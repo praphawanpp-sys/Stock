@@ -494,7 +494,7 @@ elif selected_menu == t_ui["m3"]:
         else:
             for i, row in current_inv.iterrows():
                 cols_item = st.columns([3, 1.5])
-                cols_item[0].write(f"**[{row.get('Product Code', '-')}] {row.get('Item Name', '-')>**\n- ร้านค้า: {row.get('Supplier', '-')} | ราคา: {row.get('Last Price', 0):,.2f} บาท ({row.get('Vat Type', 'Vat 7%')})")
+                cols_item[0].write(f"**[{row.get('Product Code', '-')}] {row.get('Item Name', '-')}**\n- ร้านค้า: {row.get('Supplier', '-')} | ราคา: {row.get('Last Price', 0):,.2f} บาท ({row.get('Vat Type', 'Vat 7%')})")
                 
                 action_item = cols_item[1].selectbox("จัดการ", ["เลือก", "แก้ไข", "ลบ"], key=f"action_item_{i}", label_visibility="collapsed")
                 
