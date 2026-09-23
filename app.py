@@ -599,6 +599,11 @@ with tab_manage_cat:
                             st.session_state[f"edit_mode_sup_{idx}"] = False
                             st.rerun()
                 
+st.markdown("---")
+
+# ---------------------------------------------------------
+# เมนูที่ 4 (m4): บันทึกรับสินค้าเข้าสต็อก (Stock In)
+# ---------------------------------------------------------
 elif selected_menu == t_ui["m4"]:
     st.title(f"{t_ui['m4']} - {comp_display_name}")
     if len(current_inv) == 0:
@@ -616,12 +621,25 @@ elif selected_menu == t_ui["m4"]:
         st.markdown("---")
         st.subheader("Stock In Cart" if lang == "English" else "เลือกและเพิ่มสินค้าเข้าตะกร้ารับเข้า")
         
-        si_search_query = st.text_input("Search Product Code or Name" if lang == "English" else "🔍 พิมพ์รหัสสินค้า (Product Code) หรือ ชื่อสินค้า เพื่อดึงข้อมูลอัตโนมัติ", value="")
+        si_search_query = st.text_input("Search Product Code or Name" if lang == "English" else "🔍 พิมพ์รหัสสินค้า (Product Code) หรือชื่อสินค้าเพื่อค้นหา...")
         
         selected_item_name = ""
         default_unit = "หน่วย"
         default_price = 0.0
         found_code = ""
+        
+        if si_search_query:
+            q = str(si_search_query).strip().lower()
+            res = current_inv[
+                (current_inv["Product Code"].astype(str).str.strip().str.lower() == q) |
+                (current_inv["Item Name"].astype(str).str.lower().str.contains(q, na=False)) |
+                (current_inv["Product Code"].astype(str).str.lower().str.contains(q, na=False))
+            ]
+            if not res.empty:
+                selected_item_name = str(res.iloc[0]["Item Name"])
+                default_unit = str(res.iloc[0]["Unit"])
+                default_price = float(res.iloc[0]["Last Price"])
+                found_code = str(res.iloc[0]["Product Code"])
 
         if si_search_query:
             q = str(si_search_query).strip().lower()
