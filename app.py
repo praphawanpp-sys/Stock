@@ -599,7 +599,7 @@ with tab_manage_cat:
                             st.session_state[f"edit_mode_sup_{idx}"] = False
                             st.rerun()
                 
-st.markdown("---")
+            st.markdown("---")
 
 # ---------------------------------------------------------
 # เมนูที่ 4 (m4): บันทึกรับสินค้าเข้าสต็อก (Stock In)
