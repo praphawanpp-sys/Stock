@@ -550,8 +550,13 @@ elif selected_menu == t_ui["m3"]:
                             
                     st.markdown("---")
                 
-  # --- Tab 2: จัดการหน่วยนับ (Units) ---
-    with tab_units:
+# --- Tab 2: จัดการหน่วยนับ (Units) ---
+    try:
+        current_tab_unit = tab_units
+    except NameError:
+        current_tab_unit = tab_unit
+
+    with current_tab_unit:
         st.markdown("### 📏 จัดการหน่วยนับ (Units)")
         
         # ตรวจสอบและสร้างตัวแปรเก็บรายการหน่วยนับใน session_state ถ้ายังไม่มี
