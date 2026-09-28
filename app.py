@@ -748,7 +748,31 @@ elif selected_menu == t_ui["m4"]:
 
         st.markdown("---")
         st.subheader("Stock In Cart" if lang == "English" else "เลือกและเพิ่มสินค้าเข้าตะกร้ารับเข้า")
-        
+        # --- เพิ่มระบบกล้องสแกนบาร์โค้ดสำหรับรับสินค้า ---
+    if "scanned_si_code" not in st.session_state:
+        st.session_state["scanned_si_code"] = ""
+
+    enable_cam_si = st.checkbox("📸 เปิดกล้องสแกนบาร์โค้ดรับสินค้า", key="cam_si_input")
+    if enable_cam_si:
+        pic_si = st.camera_input("ถ่ายภาพบาร์โค้ดรับสินค้า", key="pic_si_input")
+        if pic_si:
+            try:
+                import cv2
+                import numpy as np
+                from PIL import Image
+                img = Image.open(pic_si)
+                gray = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2GRAY)
+                detector = cv2.barcode.BarcodeDetector()
+                retval, decoded_info, _, _ = detector.detectAndDecode(gray)
+                if retval and decoded_info and decoded_info[0]:
+                    st.session_state["scanned_si_code"] = str(decoded_info[0]).strip()
+                    st.success(f"🎉 อ่านรหัสสินค้าได้: {st.session_state['scanned_si_code']}")
+                    st.rerun()
+            except Exception as e:
+                st.error(f"❌ อ่านภาพไม่สำเร็จ: {e}")
+    # -----------------------------------------------
+
+    si_search_query = st.text_input("Search Product Code or Name", value=st.session_state.get("scanned_si_code", ""), key="si_search_box")
         si_search_query = st.text_input("Search Product Code or Name" if lang == "English" else "🔍 พิมพ์รหัสสินค้า (Product Code) หรือชื่อสินค้าเพื่อค้นหา...")
         
         selected_item_name = ""
