@@ -888,17 +888,49 @@ elif selected_menu == t_ui["m4"]:
                     st.success("Stock updated successfully!")
                     st.rerun()
 
-elif selected_menu == t_ui["m5"]:
-    st.title(f"{t_ui['m5']} - {comp_display_name}")
-    if len(current_inv) == 0:
-        st.warning("No items available.")
-    else:
-        item_options = current_inv["Item Name"].tolist()
-        display_item_options = [translate_item_name(x, lang) for x in item_options]
+else:
+            # --- ระบบกล้องสแกนบาร์โค้ดสำหรับเบิกสินค้า ---
+            if "scanned_so_code" not in st.session_state:
+                st.session_state["scanned_so_code"] = ""
 
-        with st.form("stock_out_form"):
-            so_date = st.date_input("Date", value=datetime.today())
-            selected_display_item = st.selectbox("Select Item", display_item_options)
+            enable_cam_so = st.checkbox("📸 เปิดกล้องสแกนบาร์โค้ดเบิกสินค้า", key="cam_so_input")
+            if enable_cam_so:
+                pic_so = st.camera_input("ถ่ายภาพบาร์โค้ดเบิกสินค้า", key="pic_so_input")
+                if pic_so:
+                    try:
+                        import cv2
+                        import numpy as np
+                        from PIL import Image
+                        img = Image.open(pic_so)
+                        gray = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2GRAY)
+                        detector = cv2.barcode.BarcodeDetector()
+                        retval, decoded_info, _, _ = detector.detectAndDecode(gray)
+                        if retval and decoded_info and decoded_info[0]:
+                            scanned_code_val = str(decoded_info[0]).strip()
+                            # ค้นหาว่ารหัสนี้ตรงกับสินค้าตัวไหนใน stock
+                            matched_row = current_inv[current_inv["Product Code"].astype(str).str.strip() == scanned_code_val]
+                            if not matched_row.empty:
+                                st.session_state["scanned_so_code"] = str(matched_row.iloc[0]["Item Name"])
+                                st.success(f"🎉 สแกนเบิกสินค้าสำเร็จ: {st.session_state['scanned_so_code']}")
+                                st.rerun()
+                            else:
+                                st.error(f"❌ไม่พบรหัสสินค้า '{scanned_code_val}' ในระบบ")
+                    except Exception as e:
+                        st.error(f"❌ อ่านภาพไม่สำเร็จ: {e}")
+            # -----------------------------------------------
+
+            item_options = current_inv["Item Name"].tolist()
+            display_item_options = [translate_item_name(x, lang) for x in item_options]
+            
+            # หากมีการสแกนบาร์โค้ดเข้ามา ให้เซ็ตค่าเริ่มต้นของ selectbox เป็นสินค้านั้น
+            default_index = 0
+            searched_name = st.session_state.get("scanned_so_code", "")
+            if searched_name in item_options:
+                default_index = item_options.index(searched_name)
+
+            with st.form("stock_out_form"):
+                so_date = st.date_input("Date" if lang == "English" else "วันที่เบิกสินค้า", value=datetime.today())
+                selected_display_item = st.selectbox("Select Item", display_item_options, index=default_index)
             
             so_item = item_options[display_item_options.index(selected_display_item)]
             
