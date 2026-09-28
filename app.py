@@ -892,6 +892,50 @@ elif selected_menu == t_ui["m6"]:
         if "temp_pr_cart" not in st.session_state:
             st.session_state["temp_pr_cart"] = []
         st.info("PR system active.")
+        
+        # --- โค้ดระบบสแกนบาร์โค้ดเพิ่มสินค้าลงตะกร้า PR ---
+        st.markdown("---")
+        st.markdown("### 📷 สแกนบาร์โค้ดเพื่อเพิ่มสินค้า")
+        scanned_code = st.text_input("ยิงบาร์โค้ดหรือกรอกรหัสสินค้า (Product Code)", key="barcode_scanner_pr_input")
+
+        if scanned_code:
+            current_inv = st.session_state.get("company_inventories", {}).get(selected_company, pd.DataFrame())
+            
+            if not current_inv.empty:
+                matched_item = current_inv[current_inv["Product Code"].astype(str).str.strip() == scanned_code.strip()]
+                
+                if not matched_item.empty:
+                    item_row = matched_item.iloc[0]
+                    item_name = item_row["Item Name"]
+                    item_price = item_row["Last Price"]
+                    item_unit = item_row["Unit"]
+                    
+                    found_in_cart = False
+                    for cart_item in st.session_state["temp_pr_cart"]:
+                        if cart_item.get("Product Code") == scanned_code.strip():
+                            cart_item["Quantity"] = cart_item.get("Quantity", 1.0) + 1.0
+                            found_in_cart = True
+                            break
+                            
+                    if not found_in_cart:
+                        st.session_state["temp_pr_cart"].append({
+                            "Product Code": scanned_code.strip(),
+                            "Item Name": item_name,
+                            "Quantity": 1.0,
+                            "Unit": item_unit,
+                            "Price": item_price
+                        })
+                        
+                    st.success(f"➕ เพิ่มสินค้า '{item_name}' ลงตะกร้า PR เรียบร้อยแล้ว!")
+                    st.rerun()
+                else:
+                    st.error(f"❌ ไม่พบรหัสสินค้า '{scanned_code}' ในระบบของสาขา {selected_company}")
+
+        # แสดงตารางตะกร้าสินค้า PR ปัจจุบัน
+        if len(st.session_state["temp_pr_cart"]) > 0:
+            st.markdown("#### 🛒 รายการในตะกร้า PR")
+            df_pr_cart = pd.DataFrame(st.session_state["temp_pr_cart"])
+            st.dataframe(df_pr_cart, use_container_width=True)
 
     with pr_tab2:
         st.subheader("Purchase Orders (PO)")
