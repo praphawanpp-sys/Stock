@@ -899,19 +899,44 @@ elif selected_menu == t_ui["m6"]:
         # ช่องพิมพ์รหัสแบบเดิม (เผื่อใช้คีย์มือ)
         scanned_code = st.text_input("พิมพ์รหัสสินค้า (Product Code)", key="barcode_scanner_pr_input")
 
-        # เพิ่มปุ่มเปิดกล้องมือถือ/คอมพิวเตอร์เพื่อถ่ายภาพบาร์โค้ด
-        enable_cam = st.checkbox("📸 เปิดกล้องเพื่อสแกนบาร์โค้ด")
+        # เปิดกล้องถ่ายภาพบาร์โค้ด
+        enable_cam = st.checkbox("📸 เปิดกล้องเพื่อสแกนบาร์โค้ดอัตโนมัติ", key="enable_cam_pr")
+        
+        detected_code_from_cam = None
         if enable_cam:
             picture = st.camera_input("ถ่ายภาพบาร์โค้ดสินค้า")
             if picture:
-                st.info("ได้รับภาพถ่ายแล้ว (หากต้องการดึงค่าบาร์โค้ดอัตโนมัติจากภาพ ต้องติดตั้งไลบรารีสแกนเพิ่ม แต่เบื้องต้นท่านสามารถใช้กล้องส่องแล้วพิมพ์รหัสโค้ดลงในช่องด้านบนได้ทันทีครับ)")
+                try:
+                    import cv2
+                    import numpy as np
+                    from PIL import Image
+
+                    # แปลงรูปภาพที่ถ่ายจากกล้องให้เป็นรูปแบบที่ OpenCV อ่านได้
+                    image = Image.open(picture)
+                    img_np = np.array(image)
+                    gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
+
+                    # ใช้ระบบแกะรหัสบาร์โค้ดในตัวของ OpenCV
+                    detector = cv2.barcode.BarcodeDetector()
+                    retval, decoded_info, decoded_type, points = detector.detectAndDecode(gray)
+
+                    if retval and decoded_info and decoded_info[0]:
+                        detected_code_from_cam = str(decoded_info[0]).strip()
+                        st.success(f"🎉 อ่านบาร์โค้ดจากภาพสำเร็จ: **{detected_code_from_cam}**")
+                    else:
+                        st.warning("⚠️ มองไม่เห็นบาร์โค้ดในภาพ กรุณาขยับกล้องให้ใกล้ขึ้น หรือจัดแสงให้ชัดเจนแล้วถ่ายใหม่อีกครั้ง")
+                except Exception as e:
+                    st.error(f"❌ ไม่สามารถประมวลผลภาพได้: {e}")
+
+        # เลือกว่าจะใช้รหัสจากช่องพิมพ์ หรือรหัสที่อ่านได้จากกล้อง
+        final_code_to_search = detected_code_from_cam if detected_code_from_cam else scanned_code
 
         # กระบวนการค้นหาและเพิ่มสินค้าลงตะกร้า
-        if scanned_code:
+        if final_code_to_search:
             current_inv = st.session_state.get("company_inventories", {}).get(selected_company, pd.DataFrame())
             
             if not current_inv.empty:
-                matched_item = current_inv[current_inv["Product Code"].astype(str).str.strip() == scanned_code.strip()]
+                matched_item = current_inv[current_inv["Product Code"].astype(str).str.strip() == final_code_to_search.strip()]
                 
                 if not matched_item.empty:
                     item_row = matched_item.iloc[0]
@@ -921,14 +946,14 @@ elif selected_menu == t_ui["m6"]:
                     
                     found_in_cart = False
                     for cart_item in st.session_state["temp_pr_cart"]:
-                        if cart_item.get("Product Code") == scanned_code.strip():
+                        if cart_item.get("Product Code") == final_code_to_search.strip():
                             cart_item["Quantity"] = cart_item.get("Quantity", 1.0) + 1.0
                             found_in_cart = True
                             break
                             
                     if not found_in_cart:
                         st.session_state["temp_pr_cart"].append({
-                            "Product Code": scanned_code.strip(),
+                            "Product Code": final_code_to_search.strip(),
                             "Item Name": item_name,
                             "Quantity": 1.0,
                             "Unit": item_unit,
@@ -938,7 +963,7 @@ elif selected_menu == t_ui["m6"]:
                     st.success(f"➕ เพิ่มสินค้า '{item_name}' ลงตะกร้า PR เรียบร้อยแล้ว!")
                     st.rerun()
                 else:
-                    st.error(f"❌ ไม่พบรหัสสินค้า '{scanned_code}' ในระบบของสาขา {selected_company}")
+                    st.error(f"❌ ไม่พบรหัสสินค้า '{final_code_to_search}' ในระบบฐานข้อมูลของสาขา {selected_company}")
 
         # แสดงตารางตะกร้าสินค้า PR ปัจจุบัน
         if len(st.session_state["temp_pr_cart"]) > 0:
