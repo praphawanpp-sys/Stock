@@ -428,9 +428,50 @@ elif selected_menu == t_ui["m3"]:
     ])
 # --- Tab 1: เพิ่มสินค้าใหม่ ---
     with tab_add_item:
-        st.markdown("### ✍️ เพิ่มรายการสินค้าใหม่ด้วยตนเอง")
+        # --- วางไว้ในหน้าหรือแท็บเบิกสินค้า ---
+st.markdown("### 📤 สแกนบาร์โค้ดเพื่อเบิกสินค้าออก")
+if "issuing_cart" not in st.session_state:
+    st.session_state["issuing_cart"] = []
+
+enable_cam_issue = st.checkbox("📸 เปิดกล้องสแกนบาร์โค้ดเบิกสินค้า", key="cam_issue")
+scanned_issue_code = None
+
+if enable_cam_issue:
+    pic_issue = st.camera_input("ถ่ายภาพบาร์โค้ดเบิกสินค้า", key="pic_issue")
+    if pic_issue:
+        try:
+            import cv2
+            import numpy as np
+            from PIL import Image
+            img = Image.open(pic_issue)
+            gray = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2GRAY)
+            detector = cv2.barcode.BarcodeDetector()
+            retval, decoded_info, _, _ = detector.detectAndDecode(gray)
+            if retval and decoded_info and decoded_info[0]:
+                scanned_issue_code = str(decoded_info[0]).strip()
+                st.success(f"🎉 สแกนเบิกสินค้า: {scanned_issue_code}")
+        except Exception as e:
+            st.error(f"❌ ประมวลผลภาพไม่สำเร็จ: {e}")
+
+if scanned_issue_code:
+    current_inv = st.session_state.get("company_inventories", {}).get(selected_company, pd.DataFrame())
+    if not current_inv.empty:
+        matched = current_inv[current_inv["Product Code"].astype(str).str.strip() == scanned_issue_code]
+        if not matched.empty:
+            item_row = matched.iloc[0]
+            # เพิ่มเข้าตะกร้าเบิกสินค้าอัตโนมัติ
+            st.session_state["issuing_cart"].append({
+                "Product Code": scanned_issue_code,
+                "Item Name": item_row["Item Name"],
+                "Quantity": 1.0,
+                "Unit": item_row["Unit"]
+            })
+            st.success(f"✅ เพิ่ม '{item_row['Item Name']}' ลงรายการเบิกออกแล้ว!")
+            st.rerun()
+        else:
+            st.error(f"❌ ไม่พบรหัสสินค้า '{scanned_issue_code}' ในฐานข้อมูลสาขา")st.markdown("### ✍️ เพิ่มรายการสินค้าใหม่ด้วยตนเอง")
         
-        with st.form("manual_add_item_form"):
+        with st.form("manual_code"):
             # ดึงรายชื่อ Supplier จากที่มีอยู่ในระบบมาทำดรอปดาวน์ (ถ้ามี)
             existing_sup_names = [s.get('name', '') for s in st.session_state.get('suppliers_list', [])]
             if not existing_sup_names:
