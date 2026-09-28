@@ -428,58 +428,48 @@ elif selected_menu == t_ui["m3"]:
     ])
 # --- Tab 1: เพิ่มสินค้าใหม่ ---
     with tab_add_item:
-        # --- วางไว้ในหน้าหรือแท็บเบิกสินค้า ---
-st.markdown("### 📤 สแกนบาร์โค้ดเพื่อเบิกสินค้าออก")
-if "issuing_cart" not in st.session_state:
-    st.session_state["issuing_cart"] = []
+       st.markdown("### ✍️ เพิ่มรายการสินค้าใหม่ด้วยตนเอง")
 
-enable_cam_issue = st.checkbox("📸 เปิดกล้องสแกนบาร์โค้ดเบิกสินค้า", key="cam_issue")
-scanned_issue_code = None
+    # --- เพิ่มระบบกล้องสแกนบาร์โค้ดตรงนี้ ---
+    if "scanned_new_code" not in st.session_state:
+        st.session_state["scanned_new_code"] = ""
 
-if enable_cam_issue:
-    pic_issue = st.camera_input("ถ่ายภาพบาร์โค้ดเบิกสินค้า", key="pic_issue")
-    if pic_issue:
-        try:
-            import cv2
-            import numpy as np
-            from PIL import Image
-            img = Image.open(pic_issue)
-            gray = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2GRAY)
-            detector = cv2.barcode.BarcodeDetector()
-            retval, decoded_info, _, _ = detector.detectAndDecode(gray)
-            if retval and decoded_info and decoded_info[0]:
-                scanned_issue_code = str(decoded_info[0]).strip()
-                st.success(f"🎉 สแกนเบิกสินค้า: {scanned_issue_code}")
-        except Exception as e:
-            st.error(f"❌ ประมวลผลภาพไม่สำเร็จ: {e}")
+    enable_cam_add = st.checkbox("📸 เปิดกล้องสแกนบาร์โค้ดสินค้าใหม่", key="cam_add_item")
+    if enable_cam_add:
+        pic_add = st.camera_input("ถ่ายภาพบาร์โค้ดสินค้าใหม่", key="pic_add_item")
+        if pic_add:
+            try:
+                import cv2
+                import numpy as np
+                from PIL import Image
+                img = Image.open(pic_add)
+                gray = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2GRAY)
+                detector = cv2.barcode.BarcodeDetector()
+                retval, decoded_info, _, _ = detector.detectAndDecode(gray)
+                if retval and decoded_info and decoded_info[0]:
+                    st.session_state["scanned_new_code"] = str(decoded_info[0]).strip()
+                    st.success(f"🎉 อ่านรหัสได้: {st.session_state['scanned_new_code']}")
+                    st.rerun()
+            except Exception as e:
+                st.error(f"❌ อ่านภาพไม่สำเร็จ: {e}")
+    # ------------------------------------
 
-if scanned_issue_code:
-    current_inv = st.session_state.get("company_inventories", {}).get(selected_company, pd.DataFrame())
-    if not current_inv.empty:
-        matched = current_inv[current_inv["Product Code"].astype(str).str.strip() == scanned_issue_code]
-        if not matched.empty:
-            item_row = matched.iloc[0]
-            # เพิ่มเข้าตะกร้าเบิกสินค้าอัตโนมัติ
-            st.session_state["issuing_cart"].append({
-                "Product Code": scanned_issue_code,
-                "Item Name": item_row["Item Name"],
-                "Quantity": 1.0,
-                "Unit": item_row["Unit"]
-            })
-            st.success(f"✅ เพิ่ม '{item_row['Item Name']}' ลงรายการเบิกออกแล้ว!")
-            st.rerun()
-        else:
-            st.error(f"❌ ไม่พบรหัสสินค้า '{scanned_issue_code}' ในฐานข้อมูลสาขา")st.markdown("### ✍️ เพิ่มรายการสินค้าใหม่ด้วยตนเอง")
+    with st.form("manual_add_item_form"):
+        #ดึงรายชื่อ Supplier จากที่มีอยู่ในระบบมาทำดรอปดาวน์ (ถ้ามี)
+        existing_sup_names = [s.get('name', '') for s in st.session_state.get('suppliers_list', [])]
+        if not existing_sup_names:
+            existing_sup_names = ["CP Axtra (Makro)"]
+
+        manual_supplier = st.selectbox("1. ชื่อร้านค้า (Supplier)", existing_sup_names)
         
-        with st.form("manual_code"):
-            # ดึงรายชื่อ Supplier จากที่มีอยู่ในระบบมาทำดรอปดาวน์ (ถ้ามี)
-            existing_sup_names = [s.get('name', '') for s in st.session_state.get('suppliers_list', [])]
-            if not existing_sup_names:
-                existing_sup_names = ["CP Axtra (Makro)"]
-                
-            manual_supplier = st.selectbox("1. ชื่อร้านค้า (Supplier)", existing_sup_names)
-            manual_code = st.text_input("2. รหัสสินค้า (Product Code)")
-            manual_name = st.text_input("3. ชื่อสินค้า (Item Name)")
+        # นำค่าที่สแกนได้มาแสดงในช่อง Product Code อัตโนมัติ
+        manual_code = st.text_input("2. รหัสสินค้า (Product Code)", value=st.session_state.get("scanned_new_code", ""))
+        
+        manual_name = st.text_input("3. ชื่อสินค้า (Item Name)")
+        manual_price = st.number_input("4. ราคาสินค้า (รวม Vat)", min_value=0.0, format="%.2f")
+        manual_vat_type = st.selectbox("5. Vat / Non Vat", ["Vat 7%", "Non Vat"])
+        
+        submitted_manual_item = st.form_submit_button("💾 บันทึกสินค้าใหม่เข้าสู่ระบบ")
             manual_price = st.number_input("4. ราคาสินค้า (รวม Vat)", min_value=0.0, format="%.2f")
             manual_vat_type = st.selectbox("5. Vat / Non Vat", ["Vat 7%", "Non Vat"])
             
@@ -940,44 +930,19 @@ elif selected_menu == t_ui["m6"]:
         # ช่องพิมพ์รหัสแบบเดิม (เผื่อใช้คีย์มือ)
         scanned_code = st.text_input("พิมพ์รหัสสินค้า (Product Code)", key="barcode_scanner_pr_input")
 
-        # เปิดกล้องถ่ายภาพบาร์โค้ด
-        enable_cam = st.checkbox("📸 เปิดกล้องเพื่อสแกนบาร์โค้ดอัตโนมัติ", key="enable_cam_pr")
-        
-        detected_code_from_cam = None
+        # เพิ่มปุ่มเปิดกล้องมือถือ/คอมพิวเตอร์เพื่อถ่ายภาพบาร์โค้ด
+        enable_cam = st.checkbox("📸 เปิดกล้องเพื่อสแกนบาร์โค้ด")
         if enable_cam:
             picture = st.camera_input("ถ่ายภาพบาร์โค้ดสินค้า")
             if picture:
-                try:
-                    import cv2
-                    import numpy as np
-                    from PIL import Image
-
-                    # แปลงรูปภาพที่ถ่ายจากกล้องให้เป็นรูปแบบที่ OpenCV อ่านได้
-                    image = Image.open(picture)
-                    img_np = np.array(image)
-                    gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
-
-                    # ใช้ระบบแกะรหัสบาร์โค้ดในตัวของ OpenCV
-                    detector = cv2.barcode.BarcodeDetector()
-                    retval, decoded_info, decoded_type, points = detector.detectAndDecode(gray)
-
-                    if retval and decoded_info and decoded_info[0]:
-                        detected_code_from_cam = str(decoded_info[0]).strip()
-                        st.success(f"🎉 อ่านบาร์โค้ดจากภาพสำเร็จ: **{detected_code_from_cam}**")
-                    else:
-                        st.warning("⚠️ มองไม่เห็นบาร์โค้ดในภาพ กรุณาขยับกล้องให้ใกล้ขึ้น หรือจัดแสงให้ชัดเจนแล้วถ่ายใหม่อีกครั้ง")
-                except Exception as e:
-                    st.error(f"❌ ไม่สามารถประมวลผลภาพได้: {e}")
-
-        # เลือกว่าจะใช้รหัสจากช่องพิมพ์ หรือรหัสที่อ่านได้จากกล้อง
-        final_code_to_search = detected_code_from_cam if detected_code_from_cam else scanned_code
+                st.info("ได้รับภาพถ่ายแล้ว (หากต้องการดึงค่าบาร์โค้ดอัตโนมัติจากภาพ ต้องติดตั้งไลบรารีสแกนเพิ่ม แต่เบื้องต้นท่านสามารถใช้กล้องส่องแล้วพิมพ์รหัสโค้ดลงในช่องด้านบนได้ทันทีครับ)")
 
         # กระบวนการค้นหาและเพิ่มสินค้าลงตะกร้า
-        if final_code_to_search:
+        if scanned_code:
             current_inv = st.session_state.get("company_inventories", {}).get(selected_company, pd.DataFrame())
             
             if not current_inv.empty:
-                matched_item = current_inv[current_inv["Product Code"].astype(str).str.strip() == final_code_to_search.strip()]
+                matched_item = current_inv[current_inv["Product Code"].astype(str).str.strip() == scanned_code.strip()]
                 
                 if not matched_item.empty:
                     item_row = matched_item.iloc[0]
@@ -987,14 +952,14 @@ elif selected_menu == t_ui["m6"]:
                     
                     found_in_cart = False
                     for cart_item in st.session_state["temp_pr_cart"]:
-                        if cart_item.get("Product Code") == final_code_to_search.strip():
+                        if cart_item.get("Product Code") == scanned_code.strip():
                             cart_item["Quantity"] = cart_item.get("Quantity", 1.0) + 1.0
                             found_in_cart = True
                             break
                             
                     if not found_in_cart:
                         st.session_state["temp_pr_cart"].append({
-                            "Product Code": final_code_to_search.strip(),
+                            "Product Code": scanned_code.strip(),
                             "Item Name": item_name,
                             "Quantity": 1.0,
                             "Unit": item_unit,
@@ -1004,7 +969,7 @@ elif selected_menu == t_ui["m6"]:
                     st.success(f"➕ เพิ่มสินค้า '{item_name}' ลงตะกร้า PR เรียบร้อยแล้ว!")
                     st.rerun()
                 else:
-                    st.error(f"❌ ไม่พบรหัสสินค้า '{final_code_to_search}' ในระบบฐานข้อมูลของสาขา {selected_company}")
+                    st.error(f"❌ ไม่พบรหัสสินค้า '{scanned_code}' ในระบบของสาขา {selected_company}")
 
         # แสดงตารางตะกร้าสินค้า PR ปัจจุบัน
         if len(st.session_state["temp_pr_cart"]) > 0:
