@@ -888,7 +888,11 @@ elif selected_menu == t_ui["m4"]:
                     st.success("Stock updated successfully!")
                     st.rerun()
 
-else:
+elif selected_menu == t_ui["m5"]:
+        st.title(f"{t_ui['m5']} - {comp_display_name}")
+        if len(current_inv) == 0:
+            st.warning("No items available.")
+        else:
             # --- ระบบกล้องสแกนบาร์โค้ดสำหรับเบิกสินค้า ---
             if "scanned_so_code" not in st.session_state:
                 st.session_state["scanned_so_code"] = ""
@@ -907,7 +911,6 @@ else:
                         retval, decoded_info, _, _ = detector.detectAndDecode(gray)
                         if retval and decoded_info and decoded_info[0]:
                             scanned_code_val = str(decoded_info[0]).strip()
-                            # ค้นหาว่ารหัสนี้ตรงกับสินค้าตัวไหนใน stock
                             matched_row = current_inv[current_inv["Product Code"].astype(str).str.strip() == scanned_code_val]
                             if not matched_row.empty:
                                 st.session_state["scanned_so_code"] = str(matched_row.iloc[0]["Item Name"])
@@ -922,7 +925,6 @@ else:
             item_options = current_inv["Item Name"].tolist()
             display_item_options = [translate_item_name(x, lang) for x in item_options]
             
-            # หากมีการสแกนบาร์โค้ดเข้ามา ให้เซ็ตค่าเริ่มต้นของ selectbox เป็นสินค้านั้น
             default_index = 0
             searched_name = st.session_state.get("scanned_so_code", "")
             if searched_name in item_options:
@@ -931,44 +933,44 @@ else:
             with st.form("stock_out_form"):
                 so_date = st.date_input("Date" if lang == "English" else "วันที่เบิกสินค้า", value=datetime.today())
                 selected_display_item = st.selectbox("Select Item", display_item_options, index=default_index)
-            
-            so_item = item_options[display_item_options.index(selected_display_item)]
-            
-            default_unit = "หน่วย"
-            current_bal = 0.0
-            matched_item = current_inv[current_inv["Item Name"] == so_item]
-            if not matched_item.empty:
-                default_unit = str(matched_item.iloc[0]["Unit"])
-                current_bal = float(matched_item.iloc[0]["Stock Balance"])
 
-            st.info(f"Current Stock: **{current_bal} {default_unit}**")
+                so_item = item_options[display_item_options.index(selected_display_item)]
 
-            so_qty = st.number_input("Quantity", min_value=0.1, value=1.0)
-            so_unit = st.selectbox("Unit", st.session_state.units_list, index=st.session_state.units_list.index(default_unit) if default_unit in st.session_state.units_list else 0)
-            so_note = st.text_input("Note / Department")
+                default_unit = "หน่วย"
+                current_bal = 0.0
+                matched_item = current_inv[current_inv["Item Name"] == so_item]
+                if not matched_item.empty:
+                    default_unit = str(matched_item.iloc[0]["Unit"])
+                    current_bal = float(matched_item.iloc[0]["Stock Balance"])
 
-            submit_so = st.form_submit_button("Confirm Stock Out")
-            if submit_so:
-                if so_qty > current_bal:
-                    st.error("Insufficient stock!")
-                else:
-                    inv = st.session_state["company_inventories"][selected_company]
-                    idx = inv.index[inv["Item Name"] == so_item][0]
-                    inv.loc[idx, "Stock Balance"] -= so_qty
-                    
-                    new_trans = pd.DataFrame([{
-                        "Date": str(so_date),
-                        "Branch": selected_company,
-                        "Type": "Stock Out",
-                        "Item Name": so_item,
-                        "Quantity": so_qty,
-                        "Unit": so_unit,
-                        "Note": so_note
-                    }])
-                    st.session_state["transaction_history"] = pd.concat([st.session_state["transaction_history"], new_trans], ignore_index=True)
-                    st.success("Stock out successful!")
-                    st.rerun()
+                st.info(f"Current Stock: **{current_bal} {default_unit}**")
 
+                so_qty = st.number_input("Quantity", min_value=0.1, value=1.0)
+                so_unit = st.selectbox("Unit", st.session_state.units_list, index=st.session_state.units_list.index(default_unit) if default_unit in st.session_state.units_list else 0)
+                so_note = st.text_input("Note / Department")
+
+                submit_so = st.form_submit_button("Confirm Stock Out")
+                if submit_so:
+                    if so_qty > current_bal:
+                        st.error("Insufficient stock!")
+                    else:
+                        inv = st.session_state["company_inventories"][selected_company]
+                        idx = inv.index[inv["Item Name"] == so_item][0]
+                        inv.loc[idx, "Stock Balance"] -= so_qty
+
+                        new_trans = pd.DataFrame([{
+                            "Date": str(so_date),
+                            "Branch": selected_company,
+                            "Type": "Stock Out",
+                            "Item Name": so_item,
+                            "Quantity": so_qty,
+                            "Unit": so_unit,
+                            "Note": so_note
+                        }])
+                        st.session_state["transaction_history"] = pd.concat([st.session_state["transaction_history"], new_trans], ignore_index=True)
+                        st.success("Stock Out recorded successfully!")
+                        st.rerun()
+                        
 elif selected_menu == t_ui["m6"]:
     st.title(f"{t_ui['m6']} - {comp_display_name}")
     pr_tab1, pr_tab2 = st.tabs(["📄 1. PR", "📦 2. PO"])
