@@ -893,11 +893,20 @@ elif selected_menu == t_ui["m6"]:
             st.session_state["temp_pr_cart"] = []
         st.info("PR system active.")
         
-        # --- โค้ดระบบสแกนบาร์โค้ดเพิ่มสินค้าลงตะกร้า PR ---
         st.markdown("---")
-        st.markdown("### 📷 สแกนบาร์โค้ดเพื่อเพิ่มสินค้า")
-        scanned_code = st.text_input("ยิงบาร์โค้ดหรือกรอกรหัสสินค้า (Product Code)", key="barcode_scanner_pr_input")
+        st.markdown("### 📷 สแกนบาร์โค้ดด้วยกล้องหรือพิมพ์รหัส")
+        
+        # ช่องพิมพ์รหัสแบบเดิม (เผื่อใช้คีย์มือ)
+        scanned_code = st.text_input("พิมพ์รหัสสินค้า (Product Code)", key="barcode_scanner_pr_input")
 
+        # เพิ่มปุ่มเปิดกล้องมือถือ/คอมพิวเตอร์เพื่อถ่ายภาพบาร์โค้ด
+        enable_cam = st.checkbox("📸 เปิดกล้องเพื่อสแกนบาร์โค้ด")
+        if enable_cam:
+            picture = st.camera_input("ถ่ายภาพบาร์โค้ดสินค้า")
+            if picture:
+                st.info("ได้รับภาพถ่ายแล้ว (หากต้องการดึงค่าบาร์โค้ดอัตโนมัติจากภาพ ต้องติดตั้งไลบรารีสแกนเพิ่ม แต่เบื้องต้นท่านสามารถใช้กล้องส่องแล้วพิมพ์รหัสโค้ดลงในช่องด้านบนได้ทันทีครับ)")
+
+        # กระบวนการค้นหาและเพิ่มสินค้าลงตะกร้า
         if scanned_code:
             current_inv = st.session_state.get("company_inventories", {}).get(selected_company, pd.DataFrame())
             
@@ -936,7 +945,6 @@ elif selected_menu == t_ui["m6"]:
             st.markdown("#### 🛒 รายการในตะกร้า PR")
             df_pr_cart = pd.DataFrame(st.session_state["temp_pr_cart"])
             st.dataframe(df_pr_cart, use_container_width=True)
-
     with pr_tab2:
         st.subheader("Purchase Orders (PO)")
         st.info("PO system active.")
