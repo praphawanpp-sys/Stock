@@ -428,7 +428,7 @@ elif selected_menu == t_ui["m3"]:
     ])
 # --- Tab 1: เพิ่มสินค้าใหม่ ---
     with tab_add_item:
-       st.markdown("### ✍️ เพิ่มรายการสินค้าใหม่ด้วยตนเอง")
+      st.markdown("### ✍️ เพิ่มรายการสินค้าใหม่ด้วยตนเอง")
 
     # --- เพิ่มระบบกล้องสแกนบาร์โค้ดตรงนี้ ---
     if "scanned_new_code" not in st.session_state:
@@ -470,10 +470,6 @@ elif selected_menu == t_ui["m3"]:
         manual_vat_type = st.selectbox("5. Vat / Non Vat", ["Vat 7%", "Non Vat"])
         
         submitted_manual_item = st.form_submit_button("💾 บันทึกสินค้าใหม่เข้าสู่ระบบ")
-            manual_price = st.number_input("4. ราคาสินค้า (รวม Vat)", min_value=0.0, format="%.2f")
-            manual_vat_type = st.selectbox("5. Vat / Non Vat", ["Vat 7%", "Non Vat"])
-            
-            submitted_manual_item = st.form_submit_button("💾 บันทึกสินค้าใหม่เข้าสู่ระบบ")
 
         if submitted_manual_item:
             if not manual_name.strip():
