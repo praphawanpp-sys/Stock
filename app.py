@@ -887,7 +887,7 @@ elif selected_menu == t_ui["m6"]:
     st.title(f"{t_ui['m6']} - {comp_display_name}")
     pr_tab1, pr_tab2 = st.tabs(["📄 1. PR", "📦 2. PO"])
 
-   with pr_tab1:
+with pr_tab1:
         st.subheader("Create PR")
         if "temp_pr_cart" not in st.session_state:
             st.session_state["temp_pr_cart"] = []
